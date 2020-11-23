@@ -5,7 +5,7 @@ import org.checkerframework.common.basetype.{BaseAnnotatedTypeFactory, BaseTypeC
 
 class NumabsVisitor(checker: BaseTypeChecker) extends BaseTypeVisitor[BaseAnnotatedTypeFactory](checker) {
   override def visitMethod(node: MethodTree, p: Void): Void = {
-    println(s"!!! ${node.getName}")
+    logger.trace(s"Visiting method: ${node.getName}")
     super.visitMethod(node, p)
   }
 }
