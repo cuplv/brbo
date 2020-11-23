@@ -1,8 +1,7 @@
 lib/
 output/
 
-# Created by Jayesh J.
-
+# Intellij
 .bsp/
 *.class
 *.log
