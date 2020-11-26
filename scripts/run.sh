@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # This script should be executed from the root directory of this project via `./scripts/run.sh`
 # Before running this script, please make sure that using javac to compile the target project will not have any compiler errors
@@ -9,7 +9,7 @@ lib_dir="$2"
 
 # Machine-dependent path configurations
 scala_lib="$HOME/.ivy2/cache/org.scala-lang/scala-library/jars/scala-library-2.12.12.jar"
-tool_jar="$HOME/Desktop/brbo.jar"
+tool_jar="$HOME/win_c/Desktop/brbo.jar"
 log4j_api_jar="$HOME/.ivy2/cache/org.apache.logging.log4j/log4j-api/jars/log4j-api-2.11.2.jar"
 log4j_core_jar="$HOME/.ivy2/cache/org.apache.logging.log4j/log4j-core/jars/log4j-core-2.11.2.jar"
 
