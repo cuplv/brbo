@@ -35,12 +35,12 @@ javafiles="java_src_files.txt"
 find "$src_dir" -name "*.java" > $javafiles
 
 echo "Run the bound inference checker"
-time javac -proc:only -Xmaxwarns 10000 -Xmaxerrs 10000 -cp $classpath -processor bndinfchecker.BndinfChecker @$javafiles -d output/ $3
+time javac -proc:only -Xmaxwarns 10000 -Xmaxerrs 10000 -cp $classpath -processor bndinfchecker.BndinfChecker @$javafiles -d . $3
 
 printf  "\n\n\n"
 
 echo "Run the numeric abstraction checker"
-time javac -proc:only -Xmaxwarns 10000 -Xmaxerrs 10000 -cp $classpath -processor numabschecker.NumabsChecker @$javafiles -d output/ $3
+time javac -proc:only -Xmaxwarns 10000 -Xmaxerrs 10000 -cp $classpath -processor numabschecker.NumabsChecker @$javafiles -d . $3
 
 # Clean up
 rm $javafiles

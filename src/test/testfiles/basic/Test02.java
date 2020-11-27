@@ -1,16 +1,16 @@
 class Test02 {
     void f(int n, int m) {
-        int R = 0;
+        int D1 = 0;
         int i = 0;
         while (i < n) {
             i++;
-            R++;
+            D1++;
         }
 
         i = 0;
         while (i < m) {
             i++;
-            R++;
+            D1++;
         }
     }
 }
