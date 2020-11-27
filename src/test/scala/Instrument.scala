@@ -1,4 +1,4 @@
-import bndinfchecker.Instrument
+import common.Instrument
 import org.scalatest.flatspec.AnyFlatSpec
 
 class Instrument extends AnyFlatSpec {

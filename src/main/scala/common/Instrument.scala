@@ -1,6 +1,6 @@
-package bndinfchecker
+package common
 
-import com.sun.source.tree.{AssertTree, AssignmentTree, BlockTree, BreakTree, ClassTree, ContinueTree, DoWhileLoopTree, EmptyStatementTree, EnhancedForLoopTree, ExpressionStatementTree, ForLoopTree, IfTree, LabeledStatementTree, ReturnTree, SwitchTree, SynchronizedTree, ThrowTree, Tree, TryTree, UnaryTree, VariableTree, WhileLoopTree}
+import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.block.Block
@@ -9,7 +9,7 @@ import org.checkerframework.dataflow.cfg.node.{AssignmentNode, Node, NumericalAd
 import scala.collection.JavaConverters._
 
 object Instrument {
-  private val logger = LogManager.getLogger("bndinfchecker.Instrument")
+  private val logger = LogManager.getLogger("common.Instrument")
   private val deltaVariablePattern = """D\d*""".r
 
   def isDeltaVariable(identifier: String): Boolean = {

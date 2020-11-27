@@ -1,5 +1,17 @@
 import org.scalatest.flatspec.AnyFlatSpec
 
 class BndinfVisitor extends AnyFlatSpec {
-  assert(true)
+
+  val sourceCode =
+    """class Test01 {
+      |    void f(int n) {
+      |        int D = 0;
+      |        int i = 0;
+      |        while (i < n) {
+      |            i++;
+      |            D++;
+      |        }
+      |    }
+      |}""".stripMargin
+
 }

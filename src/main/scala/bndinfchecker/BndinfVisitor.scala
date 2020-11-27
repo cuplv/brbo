@@ -2,6 +2,7 @@ package bndinfchecker
 
 import com.sun.source.tree._
 import com.sun.source.util.SourcePositions
+import common.{CFGUtils, Instrument}
 import javax.lang.model.`type`.TypeKind
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.common.basetype.{BaseAnnotatedTypeFactory, BaseTypeChecker, BaseTypeVisitor}
