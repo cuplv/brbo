@@ -13,7 +13,7 @@ object CFGUtils {
   def printPDF(cfg: ControlFlowGraph): Unit = {
     val viz = new DOTCFGVisualizer
     val args = new java.util.HashMap[java.lang.String, Object]
-    args.put("outdir", "./output/")
+    args.put("outdir", "./output/cfg")
     // args.put("verbose", true)
     viz.init(args)
     val res = viz.visualize(cfg, cfg.getEntryBlock, null)

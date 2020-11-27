@@ -7,6 +7,11 @@
 src_dir="$1" # relative path
 lib_dir="$2"
 
+# Create output directory
+mkdir output/
+mkdir output/cfg
+mkdir output/c_files
+
 # Machine-dependent path configurations
 scala_lib="$HOME/.ivy2/cache/org.scala-lang/scala-library/jars/scala-library-2.12.12.jar"
 tool_jar="$HOME/win_c/Desktop/brbo.jar"

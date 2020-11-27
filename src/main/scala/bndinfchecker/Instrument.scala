@@ -4,13 +4,43 @@ import com.sun.source.tree.{AssertTree, AssignmentTree, BlockTree, BreakTree, Cl
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.block.Block
-import org.checkerframework.dataflow.cfg.node.Node
+import org.checkerframework.dataflow.cfg.node.{AssignmentNode, Node, NumericalAdditionNode}
 
 import scala.collection.JavaConverters._
 
 object Instrument {
   private val logger = LogManager.getLogger("bndinfchecker.Instrument")
+  private val deltaVariablePattern = """D\d*""".r
 
+  def isDeltaVariable(identifier: String): Boolean = {
+    identifier match {
+      case deltaVariablePattern() => true
+      case _ => false
+    }
+  }
+
+  def extractDeltaVariableFromAssignment(cfgNode: Node): Option[String] = {
+    cfgNode match {
+      case node: AssignmentNode =>
+        // Must be in the form of d = d + e
+        if (isDeltaVariable(node.getTarget.toString)) {
+          val deltaVariable = node.getTarget.toString
+          node.getExpression match {
+            case node: NumericalAdditionNode =>
+              if (node.getLeftOperand.toString == deltaVariable) Some(deltaVariable)
+              else {
+                logger.warn(s"Assignment to delta variable `$deltaVariable` is not in the form of `$deltaVariable = $deltaVariable + e`!")
+                None
+              }
+            case _ => None
+          }
+        }
+        else None
+      case _ => None
+    }
+  }
+
+  // Insert d = 0 in the AST that maps to targetBlock
   def instrumentTreeByConvertingToString(tree: Tree, deltaVariable: String, targetBlock: Block, indent: Int, cfg: ControlFlowGraph): String = {
     val INDENT = 2
     val spaces = " " * indent
@@ -33,11 +63,11 @@ object Instrument {
             }
           }
           if (cfgNodes.subsetOf(targetBlock.getNodes.asScala.toSet)) {
-            logger.debug(s"AST $tree is mapped to nodes $cfgNodes in target block $targetBlock")
+            logger.debug(s"AST `$tree` is mapped to nodes `$cfgNodes` in target block `$targetBlock`")
             s"\n$spaces$deltaVariable = 0;"
           }
           else ""
-        case _ => assert(assertion = false, s"Tree $tree is not an atomic statement!"); ""
+        case _ => assert(assertion = false, s"Tree `$tree` is not an atomic statement!"); ""
       }
     }
 
