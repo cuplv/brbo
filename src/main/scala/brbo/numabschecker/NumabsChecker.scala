@@ -1,4 +1,4 @@
-package numabschecker
+package brbo.numabschecker
 
 import org.checkerframework.common.basetype.BaseTypeChecker
 

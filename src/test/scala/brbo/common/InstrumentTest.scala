@@ -1,7 +1,8 @@
-import common.Instrument
+package brbo.common
+
 import org.scalatest.flatspec.AnyFlatSpec
 
-class Instrument extends AnyFlatSpec {
+class InstrumentTest extends AnyFlatSpec {
   "Delta variable" should "start with D" in {
     assert(Instrument.isDeltaVariable("D"))
     assert(Instrument.isDeltaVariable("D123"))
@@ -10,6 +11,6 @@ class Instrument extends AnyFlatSpec {
   }
 
   "Instrumenting a basic block" should "be correct" in {
-
+    // TODO: Test
   }
 }

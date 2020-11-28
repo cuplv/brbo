@@ -1,4 +1,4 @@
-package common
+package brbo.common
 
 import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager

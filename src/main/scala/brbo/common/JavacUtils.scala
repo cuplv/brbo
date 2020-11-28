@@ -1,4 +1,4 @@
-package common
+package brbo.common
 
 import java.io.{IOException, OutputStream, PrintStream}
 import java.net.URI
@@ -46,7 +46,11 @@ object JavacUtils {
       javac.compile(List.of(fileObject), List.of(sourceFileName), List.of(processor))
     }
     catch {
-      case _: Throwable => // ok
+      case e: Throwable =>
+        val stackTrace = e.getStackTrace.map(e => e.toString).foldLeft("")({
+          (acc, s) => acc + "\n" + s
+        })
+        logger.debug(s"Exception in running processor ${processor.toString}:\n$stackTrace")
     }
     finally {
       System.setErr(System.err)

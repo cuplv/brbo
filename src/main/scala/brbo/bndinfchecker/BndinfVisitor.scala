@@ -1,8 +1,8 @@
-package bndinfchecker
+package brbo.bndinfchecker
 
+import brbo.common.{CFGUtils, Instrument}
 import com.sun.source.tree._
 import com.sun.source.util.SourcePositions
-import common.{CFGUtils, Instrument}
 import javax.lang.model.`type`.TypeKind
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.common.basetype.{BaseAnnotatedTypeFactory, BaseTypeChecker, BaseTypeVisitor}
@@ -11,7 +11,7 @@ import org.checkerframework.dataflow.cfg.UnderlyingAST.CFGMethod
 import org.checkerframework.dataflow.cfg.block.Block.BlockType
 import org.checkerframework.dataflow.cfg.block._
 import org.checkerframework.dataflow.cfg.builder.CFGBuilder
-import org.checkerframework.dataflow.cfg.node.{AssignmentNode, Node, NumericalAdditionNode}
+import org.checkerframework.dataflow.cfg.node.{AssignmentNode, Node}
 import org.checkerframework.javacutil.TreeUtils
 
 import scala.collection.JavaConverters._

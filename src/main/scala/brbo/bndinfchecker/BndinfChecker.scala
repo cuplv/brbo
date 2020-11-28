@@ -1,4 +1,5 @@
-package bndinfchecker
+package brbo.bndinfchecker
+
 import org.checkerframework.common.basetype.BaseTypeChecker
 
 /**

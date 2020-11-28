@@ -13,10 +13,10 @@ mkdir output/cfg
 mkdir output/c_files
 
 # Machine-dependent path configurations
-scala_lib="$HOME/.ivy2/cache/org.scala-lang/scala-library/jars/scala-library-2.12.12.jar"
-tool_jar="$HOME/win_c/Desktop/brbo.jar"
-log4j_api_jar="$HOME/.ivy2/cache/org.apache.logging.log4j/log4j-api/jars/log4j-api-2.11.2.jar"
-log4j_core_jar="$HOME/.ivy2/cache/org.apache.logging.log4j/log4j-core/jars/log4j-core-2.11.2.jar"
+# scala_lib="$HOME/.ivy2/cache/org.scala-lang/scala-library/jars/scala-library-2.12.12.jar"
+tool_jar="$HOME/win_c/Desktop/brbo-fat.jar"
+# log4j_api_jar="$HOME/.ivy2/cache/org.apache.logging.log4j/log4j-api/jars/log4j-api-2.11.2.jar"
+# log4j_core_jar="$HOME/.ivy2/cache/org.apache.logging.log4j/log4j-core/jars/log4j-core-2.11.2.jar"
 
 # Set up the environment for external tools
 lib="$(pwd)/lib"
@@ -39,13 +39,14 @@ classpath=".:$z3jar:$scala_lib:$tool_jar:$log4j_api_jar:$log4j_core_jar:$target_
 javafiles="java_src_files.txt"
 find "$src_dir" -name "*.java" > $javafiles
 
-echo "Run the bound inference checker"
-time javac -proc:only -Xmaxwarns 10000 -Xmaxerrs 10000 -cp $classpath -processor bndinfchecker.BndinfChecker @$javafiles -d . $3
+echo "Step 1: Numerically abstract"
 
 printf  "\n\n\n"
 
-echo "Run the numeric abstraction checker"
-time javac -proc:only -Xmaxwarns 10000 -Xmaxerrs 10000 -cp $classpath -processor numabschecker.NumabsChecker @$javafiles -d . $3
+echo "Step 2: Infer bounds"
+java -cp $classpath brbo.BrboMain
+
+# time javac -proc:only -Xmaxwarns 10000 -Xmaxerrs 10000 -cp $classpath -processor brbo.numabschecker.NumabsChecker @$javafiles -d . $3
 
 # Clean up
 rm $javafiles

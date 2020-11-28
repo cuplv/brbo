@@ -1,8 +1,9 @@
-import org.scalatest.flatspec.AnyFlatSpec
+package brbo
 
-class BndinfVisitor extends AnyFlatSpec {
+import scala.collection.immutable.HashMap
 
-  val sourceCode =
+object TestFiles {
+  private val sourceCode1 =
     """class Test01 {
       |    void f(int n) {
       |        int D = 0;
@@ -14,4 +15,6 @@ class BndinfVisitor extends AnyFlatSpec {
       |    }
       |}""".stripMargin
 
+  val testFiles = HashMap[String, String]("Test01" -> sourceCode1)
+  // TODO: More test files
 }
