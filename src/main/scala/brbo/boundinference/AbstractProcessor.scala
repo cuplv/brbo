@@ -5,10 +5,14 @@ import com.sun.source.util.{SourcePositions, TreePathScanner, Trees}
 import javax.annotation.processing.SupportedAnnotationTypes
 import javax.lang.model.SourceVersion
 import org.apache.logging.log4j.LogManager
+import org.checkerframework.dataflow.cfg.ControlFlowGraph
+import org.checkerframework.dataflow.cfg.UnderlyingAST.CFGMethod
+import org.checkerframework.dataflow.cfg.builder.CFGBuilder
+import org.checkerframework.dataflow.cfg.node.{AssignmentNode, Node}
 import org.checkerframework.javacutil.BasicTypeProcessor
 
-import scala.collection.immutable.{HashMap, HashSet}
 import scala.collection.JavaConverters._
+import scala.collection.immutable.HashMap
 
 @SupportedAnnotationTypes(Array("*"))
 abstract class AbstractProcessor extends BasicTypeProcessor {
@@ -19,9 +23,9 @@ abstract class AbstractProcessor extends BasicTypeProcessor {
   private var positions: Option[SourcePositions] = None
 
   private var classes = new HashMap[ClassTree, Set[MethodTree]]
-  private var methods = new HashSet[MethodTree]
+  private var methods = new HashMap[MethodTree, ControlFlowGraph]
 
-  private var result: Option[Any] = None
+  protected var result: Option[Any] = None
 
   def runAnalysis(): Unit
 
@@ -45,13 +49,13 @@ abstract class AbstractProcessor extends BasicTypeProcessor {
         if (node.getBody == null || node.getName.toString == "<init>")
           return null
         logger.debug(s"Visiting method `${node.getName}` in file `$getFileName`")
-        methods = methods + node
-        // Stop execution by throwing an exception. This
-        // makes sure that compilation does not proceed, and
-        // thus the AST is not modified by further phases of
-        // the compilation (and we save the work to do the
-        // compilation).
-        // throw new RuntimeException(exceptionMessage)
+
+        val underlyingAST = new CFGMethod(node, getEnclosingClass(node).get)
+        val cfg: ControlFlowGraph = CFGBuilder.build(root, underlyingAST, false, true, processingEnv)
+
+        // CFGUtils.printPDF(cfg)
+
+        methods = methods + (node -> cfg)
         null
       }
     }
@@ -71,6 +75,9 @@ abstract class AbstractProcessor extends BasicTypeProcessor {
 
     super.typeProcessingOver()
 
+    // Stop execution by throwing an exception. This makes sure that compilation
+    // does not proceed, and thus the AST is not modified by further phases of
+    // the compilation (and we save the work to do the compilation).
     throw new EarlyStopException("AbstractProcessor: Stop execution by throwing an exception")
   }
 
@@ -85,7 +92,7 @@ abstract class AbstractProcessor extends BasicTypeProcessor {
     }
   }
 
-  private def getLineNumber(node: Tree): Int = {
+  protected def getLineNumber(node: Tree): Int = {
     def getLineNumber(node: Tree, positions: SourcePositions, root: CompilationUnitTree): Long = {
       root.getLineMap.getLineNumber(positions.getStartPosition(root, node))
     }
@@ -94,4 +101,15 @@ abstract class AbstractProcessor extends BasicTypeProcessor {
   }
 
   private def getFileName: String = rootTree.get.getSourceFile.getName
+
+  def getClasses: HashMap[ClassTree, Set[MethodTree]] = classes
+
+  def getMethods: HashMap[MethodTree, ControlFlowGraph] = methods
+
+  case class AssignmentToDeltaVariable(cfgNode: Node, deltaVariable: String) {
+    assert(cfgNode.isInstanceOf[AssignmentNode])
+
+    override def toString: String = s"delta variable $deltaVariable in stmt $cfgNode at line ${getLineNumber(cfgNode.getTree)}"
+  }
+
 }
