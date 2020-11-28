@@ -2,6 +2,7 @@ package brbo.boundinference
 
 import com.sun.source.tree.{ClassTree, CompilationUnitTree, MethodTree, Tree}
 import com.sun.source.util.{SourcePositions, TreePathScanner, Trees}
+import com.sun.tools.javac.util.Log
 import javax.annotation.processing.SupportedAnnotationTypes
 import javax.lang.model.SourceVersion
 import org.apache.logging.log4j.LogManager
@@ -37,15 +38,18 @@ class BoundInferenceProcessor extends BasicTypeProcessor {
       }
 
       override def visitMethod(node: MethodTree, p: Void): Void = {
+        val exceptionMessage = "BoundInferenceProcessor: Stop execution by throwing an exception"
         if (node.getBody == null || node.getName.toString == "<init>")
-          logger.debug(s"Visiting method `${node.getName}` in file `$getFileName`")
+          return null
+        logger.debug(s"Visiting method `${node.getName}` in file `$getFileName`")
         methods = methods + node
         // Stop execution by throwing an exception. This
         // makes sure that compilation does not proceed, and
         // thus the AST is not modified by further phases of
         // the compilation (and we save the work to do the
         // compilation).
-        throw new RuntimeException("BoundInferenceProcessor: Stop execution by throwing an exception")
+        // throw new RuntimeException(exceptionMessage)
+        null
       }
     }
   }
@@ -53,6 +57,12 @@ class BoundInferenceProcessor extends BasicTypeProcessor {
   override def getSupportedSourceVersion: SourceVersion = SourceVersion.latestSupported
 
   override def typeProcessingOver(): Unit = {
+    val log = getCompilerLog
+    if (log.nerrors > 0) {
+      logger.error(s"Compilation error in file `$getFileName`: ${log.toString}")
+      return
+    }
+
     trees = Some(Trees.instance(processingEnv))
     positions = Some(trees.get.getSourcePositions)
 

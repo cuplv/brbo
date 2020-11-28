@@ -13,10 +13,7 @@ import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.CFGProcessor
 
 object JavacUtils {
-  private val logger = LogManager.getLogger("common.JavacUtils")
-  private val context = new Context
-  Options.instance(context).put("compilePolicy", "ATTR_ONLY")
-  private val javac = new JavaCompiler(context)
+  private val logger = LogManager.getLogger("brbo.common.JavacUtils")
 
   def runCFGProcessor(className: String, methodName: String, sourceFileName: String, sourceCode: String): ControlFlowGraph = {
     val cfgProcessor = new CFGProcessor(className, methodName)
@@ -35,7 +32,9 @@ object JavacUtils {
   }
 
   def runProcessor(sourceFileName: String, sourceCode: String, processor: Processor): Unit = {
-    val fileObject = new JavaSourceFromString(sourceFileName, sourceCode);
+    val context = new Context
+    Options.instance(context).put("compilePolicy", "ATTR_ONLY")
+    val javac = new JavaCompiler(context)
     try {
       // redirect syserr to nothing (and prevent the compiler from issuing
       // warnings about our exception.
@@ -43,14 +42,12 @@ object JavacUtils {
         @throws[IOException]
         def write(b: Int): Unit = {}
       }))
+      val fileObject = new JavaSourceFromString(sourceFileName, sourceCode)
+      // TODO: This will do actual compilation, but we only need to run the processors
       javac.compile(List.of(fileObject), List.of(sourceFileName), List.of(processor))
     }
     catch {
-      case e: Throwable =>
-        val stackTrace = e.getStackTrace.map(e => e.toString).foldLeft("")({
-          (acc, s) => acc + "\n" + s
-        })
-        logger.debug(s"Exception in running processor ${processor.toString}:\n$stackTrace")
+      case e: Throwable => logger.error(s"Exception in running processor ${processor.toString}", e)
     }
     finally {
       System.setErr(System.err)

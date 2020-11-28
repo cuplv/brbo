@@ -8,32 +8,24 @@ src_dir="$1" # relative path
 lib_dir="$2"
 
 # Create output directory
-mkdir output/
-mkdir output/cfg
-mkdir output/c_files
+mkdir -p output/
+mkdir -p output/cfg
+mkdir -p output/c_files
+mkdir -p output/class_files
 
 # Machine-dependent path configurations
-# scala_lib="$HOME/.ivy2/cache/org.scala-lang/scala-library/jars/scala-library-2.12.12.jar"
-tool_jar="$HOME/win_c/Desktop/brbo-fat.jar"
-# log4j_api_jar="$HOME/.ivy2/cache/org.apache.logging.log4j/log4j-api/jars/log4j-api-2.11.2.jar"
-# log4j_core_jar="$HOME/.ivy2/cache/org.apache.logging.log4j/log4j-core/jars/log4j-core-2.11.2.jar"
-
-# Set up the environment for external tools
-lib="$(pwd)/lib"
-
-# Set up paths for Checker Framework
-checker_framework_bin="$lib/checker-framework-3.7.1/checker/bin"
-export PATH=$checker_framework_bin:$PATH # To override the default `javac` with file `javac` in the above directory
+tools_jar="/usr/lib/jvm/jdk1.8.0_271/lib/tools.jar"
+brbo_jar="$HOME/win_c/Desktop/brbo-fat.jar"
 
 # Set up paths for Z3
+lib="$(pwd)/lib"
 z3lib="$lib/z3"
-z3jar="$lib/z3/com.microsoft.z3.jar"
 export LD_LIBRARY_PATH=$z3lib:$LD_LIBRARY_PATH
 export DYLD_LIBRARY_PATH=$z3lib:$DYLD_LIBRARY_PATH
 
 # Find all jar files in directory $lib_dir
 target_project_lib=`find "$lib_dir" -name "*.jar" | tr '\n' ':'`
-classpath=".:$z3jar:$scala_lib:$tool_jar:$log4j_api_jar:$log4j_core_jar:$target_project_lib"
+classpath=".:$brbo_jar:$tools_jar:$target_project_lib"
 
 # Find all source files
 javafiles="java_src_files.txt"
@@ -44,9 +36,7 @@ echo "Step 1: Numerically abstract"
 printf  "\n\n\n"
 
 echo "Step 2: Infer bounds"
-java -cp $classpath brbo.BrboMain
-
-# time javac -proc:only -Xmaxwarns 10000 -Xmaxerrs 10000 -cp $classpath -processor brbo.numabschecker.NumabsChecker @$javafiles -d . $3
+time java -cp $classpath brbo.BrboMain $javafiles
 
 # Clean up
 rm $javafiles
