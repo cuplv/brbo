@@ -1,24 +1,23 @@
 class Test04 {
     void f(int n, int m, int l) {
-        int D1 = 0;
-        int D2 = 0;
+        int R = 0;
         int i = 0;
         while (i < n) {
             int j = 0;
             while (j < m) {
                 j++;
-                D1++;
+                R++;
             }
         }
 
         for (int j = 0; j < l; j++) {
-            D1++;
+            R++;
         }
 
         int k = 0;
         do {
             i++;
-            D2++;
+            R++;
         } while (k < n);
     }
 }

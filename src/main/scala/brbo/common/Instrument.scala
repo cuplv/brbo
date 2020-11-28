@@ -11,10 +11,18 @@ import scala.collection.JavaConverters._
 object Instrument {
   private val logger = LogManager.getLogger("common.Instrument")
   private val deltaVariablePattern = """D\d*""".r
+  private val resourceVariablePattern = """R\d*""".r
 
   def isDeltaVariable(identifier: String): Boolean = {
     identifier match {
       case deltaVariablePattern() => true
+      case _ => false
+    }
+  }
+
+  def isResourceVariable(identifier: String): Boolean = {
+    identifier match {
+      case resourceVariablePattern() => true
       case _ => false
     }
   }

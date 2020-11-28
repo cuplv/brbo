@@ -3,6 +3,7 @@ package brbo.common
 import java.io.{IOException, OutputStream, PrintStream}
 import java.net.URI
 
+import brbo.boundinference.EarlyStopException
 import com.sun.tools.javac.main.JavaCompiler
 import com.sun.tools.javac.util.{Context, List, Options}
 import javax.annotation.processing.Processor
@@ -31,7 +32,7 @@ object JavacUtils {
     res.getCFG
   }
 
-  def runProcessor(sourceFileName: String, sourceCode: String, processor: Processor): Unit = {
+  def runProcessor(compilationUnitName: String, sourceCode: String, processor: Processor): Unit = {
     val context = new Context
     Options.instance(context).put("compilePolicy", "ATTR_ONLY")
     val javac = new JavaCompiler(context)
@@ -42,11 +43,11 @@ object JavacUtils {
         @throws[IOException]
         def write(b: Int): Unit = {}
       }))
-      val fileObject = new JavaSourceFromString(sourceFileName, sourceCode)
-      // TODO: This will do actual compilation, but we only need to run the processors
-      javac.compile(List.of(fileObject), List.of(sourceFileName), List.of(processor))
+      val fileObject = new JavaSourceFromString(compilationUnitName, sourceCode)
+      javac.compile(List.of(fileObject), List.of(compilationUnitName), List.of(processor))
     }
     catch {
+      case _: EarlyStopException => logger.debug(s"Early stop when running processor ${processor.toString}")
       case e: Throwable => logger.error(s"Exception in running processor ${processor.toString}", e)
     }
     finally {
