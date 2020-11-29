@@ -5,6 +5,7 @@ class Test01 {
         while (i < n) {
             i++;
             R++;
+            R = R + 2;
         }
     }
 }

@@ -20,8 +20,4 @@ class InstrumentTest extends AnyFlatSpec {
     assert(!Instrument.isGhostVariable("C123", Resource))
     assert(!Instrument.isGhostVariable("C123", Delta))
   }
-
-  "Instrumenting a basic block" should "be correct" in {
-    // TODO: Test
-  }
 }

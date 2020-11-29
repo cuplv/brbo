@@ -94,7 +94,6 @@ object TestFiles {
         |        assert(1 == 1);
         |    }
         |}""".stripMargin
-
     val assertTestExpected =
       """{
         |  assert (1 == 1);;
@@ -108,7 +107,6 @@ object TestFiles {
         |        }
         |    }
         |}""".stripMargin
-
     val breakTestExpected =
       """{
         |  while ((true))
@@ -125,7 +123,6 @@ object TestFiles {
         |        }
         |    }
         |}""".stripMargin
-
     val continueTestExpected =
       """{
         |  while ((true))
@@ -143,7 +140,6 @@ object TestFiles {
         |        } while (i >= 0);
         |    }
         |}""".stripMargin
-
     val doWhileTestExpected =
       """{
         |  int i = 0;
@@ -160,7 +156,6 @@ object TestFiles {
         |        ;
         |    }
         |}""".stripMargin
-
     val emptyTestExpected =
       """{
         |  ;;
@@ -174,7 +169,6 @@ object TestFiles {
         |        }
         |    }
         |}""".stripMargin
-
     val forLoopTestExpected =
       """{
         |  {// For loop
@@ -197,7 +191,6 @@ object TestFiles {
         |        }
         |    }
         |}""".stripMargin
-
     val ifTestExpected =
       """{
         |  if ((n > 10)) {
@@ -219,7 +212,6 @@ object TestFiles {
         |        i = 1;
         |    }
         |}""".stripMargin
-
     val labelTestExpected =
       """{
         |  int i;
@@ -233,7 +225,6 @@ object TestFiles {
         |        return n;
         |    }
         |}""".stripMargin
-
     val returnTestExpected =
       """{
         |  return n;;
@@ -246,7 +237,6 @@ object TestFiles {
         |        int j;
         |    }
         |}""".stripMargin
-
     val variableTestExpected =
       """{
         |  int i = n + 1;
@@ -262,7 +252,6 @@ object TestFiles {
         |        }
         |    }
         |}""".stripMargin
-
     val whileTestExpected =
       """{
         |  int i = 0;
@@ -284,6 +273,135 @@ object TestFiles {
       TestCase("ReturnTest", returnTest, returnTestExpected),
       TestCase("VariableTest", variableTest, variableTestExpected),
       TestCase("WhileTest", whileTest, whileTestExpected)
+    )
+  }
+
+  val replaceResourceAssignments: HashSet[TestCase] = {
+    val noLoopTest1 =
+      """class NoLoopTest1 {
+        |    void f(int n) {
+        |        int R = 0;
+        |        R = R + n;
+        |        R = 3;
+        |    }
+        |}""".stripMargin
+    val noLoopTest1Expected =
+      """{
+        |  int R = 0;
+        |  D100 = D100 + n;
+        |  R = 3;
+        |}""".stripMargin
+
+    val noLoopTest2 =
+      """class NoLoopTest2 {
+        |    void f(int n) {
+        |        int R = 0;
+        |        R++;
+        |    }
+        |}""".stripMargin
+    val noLoopTest2Expected =
+      """{
+        |  int R = 0;
+        |  D100 = D100 + 1;
+        |}""".stripMargin
+
+    val whileLoopTest1 =
+      """class WhileLoopTest1 {
+        |    void f(int n) {
+        |        int R = 0;
+        |        int i = 0;
+        |        while (i < n) {
+        |            i++;
+        |            R++;
+        |        }
+        |    }
+        |}""".stripMargin
+    val whileLoopTest1Expected =
+      """{
+        |  int R = 0;
+        |  int i = 0;
+        |  while ((i < n))
+        |  {
+        |    i++;;
+        |    D100 = D100 + 1;
+        |  }
+        |}""".stripMargin
+
+    val whileLoopTest2 =
+      """class WhileLoopTest2 {
+        |    void f(int n) {
+        |        int R = 0;
+        |        int i = 0;
+        |        while (i < n) {
+        |            i++;
+        |            R++;
+        |            R = R + 2;
+        |        }
+        |    }
+        |}""".stripMargin
+    val whileLoopTest2Expected =
+      """{
+        |  int R = 0;
+        |  int i = 0;
+        |  while ((i < n))
+        |  {
+        |    i++;;
+        |    D100 = D100 + 1;
+        |    R = R + 2;
+        |  }
+        |}""".stripMargin
+
+    val forLoopTest1 =
+      """class ForLoopTest1 {
+        |    void f(int n) {
+        |        int R = 0;
+        |        for (int i = 0; i < n; i++) {
+        |            R++;
+        |        }
+        |    }
+        |}""".stripMargin
+    val forLoopTest1Expected =
+      """{
+        |  int R = 0;
+        |  {// For loop
+        |    int i = 0;
+        |    while (i < n) {
+        |      D100 = D100 + 1;
+        |      i++;
+        |    }
+        |  }
+        |}""".stripMargin
+
+    val sequenceTest1 =
+      """class SequenceTest1 {
+        |    void f(int n) {
+        |        int R = 0;
+        |        for (int i = 0; i < n; i++) {
+        |            R++;
+        |        }
+        |        R = R + 5;
+        |    }
+        |}""".stripMargin
+    val sequenceTest1Expected =
+      """{
+        |  int R = 0;
+        |  {// For loop
+        |    int i = 0;
+        |    while (i < n) {
+        |      D100 = D100 + 1;
+        |      i++;
+        |    }
+        |  }
+        |  R = R + 5;
+        |}""".stripMargin
+
+    HashSet[TestCase](
+      TestCase("NoLoopTest1", noLoopTest1, noLoopTest1Expected),
+      TestCase("NoLoopTest2", noLoopTest2, noLoopTest2Expected),
+      TestCase("WhileLoopTest1", whileLoopTest1, whileLoopTest1Expected),
+      TestCase("WhileLoopTest2", whileLoopTest2, whileLoopTest2Expected),
+      TestCase("ForLoopTest1", forLoopTest1, forLoopTest1Expected),
+      TestCase("SequenceTest1", sequenceTest1, sequenceTest1Expected),
     )
   }
 
