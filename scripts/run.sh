@@ -4,8 +4,8 @@
 # Before running this script, please make sure that using javac to compile the target project will not have any compiler errors
 
 # Shell arguments
-src_dir="$1" # relative path
-lib_dir="$2"
+src_dir="$1" # Relative path; Each file is compiled separately w.r.t. any other file
+lib_dir="$2" # *.classes or *.jar files that are necessary for compiling source code
 
 # Create output directory
 mkdir -p output/

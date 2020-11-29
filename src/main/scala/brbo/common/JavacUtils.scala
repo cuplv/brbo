@@ -37,12 +37,11 @@ object JavacUtils {
     Options.instance(context).put("compilePolicy", "ATTR_ONLY")
     val javac = new JavaCompiler(context)
     try {
-      // redirect syserr to nothing (and prevent the compiler from issuing
-      // warnings about our exception.
-      System.setErr(new PrintStream(new OutputStream() {
+      // redirect syserr to nothing (and prevent the compiler from issuing warnings about our exception.
+      /*System.setErr(new PrintStream(new OutputStream() {
         @throws[IOException]
         def write(b: Int): Unit = {}
-      }))
+      }))*/
       val fileObject = new JavaSourceFromString(compilationUnitName, sourceCode)
       javac.compile(List.of(fileObject), List.of(compilationUnitName), List.of(processor))
     }
@@ -51,7 +50,7 @@ object JavacUtils {
       case e: Throwable => logger.error(s"Exception in running processor ${processor.toString}", e)
     }
     finally {
-      System.setErr(System.err)
+      // System.setErr(System.err)
     }
   }
 

@@ -1,52 +1,73 @@
 package brbo.boundinference
 
-import brbo.common.Instrument
-import brbo.common.Instrument.InstrumentMode.{AT_MOST_ONCE, ALL}
+import brbo.common.Instrument.InstrumentMode.ALL
+import brbo.common.{Instrument, JavacUtils}
 import javax.annotation.processing.SupportedAnnotationTypes
 import org.apache.logging.log4j.LogManager
 
-import scala.collection.JavaConverters._
+import scala.collection.immutable.HashSet
 
 @SupportedAnnotationTypes(Array("*"))
 class BoundInferenceProcessor extends BasicProcessor {
   private val logger = LogManager.getLogger(classOf[BoundInferenceProcessor])
 
+  private val indent = Instrument.INDENT
+
   override def runAnalysis(): Unit = {
-    getMethods.foreach({
+    assumeOneClassOneMethod()
+
+    // Default decomposition
+    val sourceCodeDeltaUpdates = generateSourceCodeDeltaUpdates()
+    println(sourceCodeDeltaUpdates)
+    val sourceCodeNoResourceUpdates = generateSourceCodeNoResourceUpdates()
+    println(sourceCodeNoResourceUpdates)
+
+    val boundVocabulary = new HashSet[String]
+
+    val upperBoundProcessor = new UpperBoundProcessor(sourceCodeNoResourceUpdates, Instrument.defaultDeltaVariable, boundVocabulary)
+    JavacUtils.runProcessor(getCompilationUnitName, sourceCodeDeltaUpdates, upperBoundProcessor)
+    upperBoundProcessor.runAnalysis()
+  }
+
+  def generateSourceCodeDeltaUpdates(): String = {
+    val instrumented = getMethods.map({
       case (methodTree, cfg) =>
         // Default decomposition
-        val instrumentedSourceCode = {
-          val result = Instrument.substituteAtomicStatements(
+        val result =
+          Instrument.substituteAtomicStatements(
             methodTree.getBody,
             Instrument.defaultResourceAssignment,
-            0,
+            indent,
             cfg,
             getLineNumber,
             ALL
           )
-          // TODO: A very hacky way to insert the declaration at the entry
-          val spaces = " " * Instrument.INDENT
-          result.result.replaceFirst("\\{", s"{\n${spaces}int ${Instrument.defaultDeltaVariable} = 0;")
+        // TODO: A very hacky way to insert the declaration at the entry
+        val newMethodBody = {
+          val spaces = " " * indent
+          result.result.replaceFirst("\\{", s"{\n$spaces${spaces}int ${Instrument.defaultDeltaVariable} = 0;")
         }
+        replaceMethodBody(methodTree, getEnclosingClass(methodTree).get.getSimpleName.toString, newMethodBody)
+    })
+    assert(instrumented.size == 1)
+    instrumented.head
+  }
 
-        println(instrumentedSourceCode)
-
-        val noResourceVariableSourceCode =
+  def generateSourceCodeNoResourceUpdates(): String = {
+    val instrumented = getMethods.map({
+      case (methodTree, cfg) =>
+        val result =
           Instrument.substituteAtomicStatements(
             methodTree.getBody,
             Instrument.removeResourceAssignment,
-            0,
+            indent,
             cfg,
             getLineNumber,
             ALL
-          ).result
-
-        println(noResourceVariableSourceCode)
-
-        cfg.getAllNodes.asScala
-
-      // val upperBoundProcessor = new UpperBoundProcessor(sourceFileContents, "D", ???)
-      // JavacUtils.runProcessor(compilationUnitName, instrumentedSourceCode.result, upperBoundProcessor)
+          )
+        replaceMethodBody(methodTree, getEnclosingClass(methodTree).get.getSimpleName.toString, result.result)
     })
+    assert(instrumented.size == 1)
+    instrumented.head
   }
 }

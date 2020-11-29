@@ -7,6 +7,7 @@ import com.sun.source.tree.{ClassTree, CompilationUnitTree, MethodTree, Tree}
 import com.sun.source.util.{SourcePositions, TreePathScanner, Trees}
 import javax.annotation.processing.SupportedAnnotationTypes
 import javax.lang.model.SourceVersion
+import org.apache.commons.io.FilenameUtils
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.UnderlyingAST.CFGMethod
@@ -22,6 +23,7 @@ class BasicProcessor extends BasicTypeProcessor {
   private val logger = LogManager.getLogger(classOf[BasicProcessor])
 
   private var sourceCode: Option[String] = None
+  private var compilationUnitName: Option[String] = None
 
   private var rootTree: Option[CompilationUnitTree] = None
   private var trees: Option[Trees] = None
@@ -35,6 +37,7 @@ class BasicProcessor extends BasicTypeProcessor {
   override protected def createTreePathScanner(root: CompilationUnitTree): TreePathScanner[_, _] = {
     rootTree = Some(root)
     sourceCode = Some(root.getSourceFile.getCharContent(false).toString)
+    compilationUnitName = Some(FilenameUtils.getBaseName(root.getSourceFile.getName))
 
     new TreePathScanner[Void, Void]() {
       override def visitClass(node: ClassTree, p: Void): Void = {
@@ -84,7 +87,7 @@ class BasicProcessor extends BasicTypeProcessor {
 
   override def getSupportedSourceVersion: SourceVersion = SourceVersion.latestSupported
 
-  private def getEnclosingClass(node: MethodTree): Option[ClassTree] = {
+  protected def getEnclosingClass(node: MethodTree): Option[ClassTree] = {
     classes.find({
       case (_, methods) => methods.contains(node)
     }) match {
@@ -107,6 +110,10 @@ class BasicProcessor extends BasicTypeProcessor {
 
   def getMethods: HashMap[MethodTree, ControlFlowGraph] = methods
 
+  def getCompilationUnitName: String = compilationUnitName.get
+
+  def getSourceCode: String = sourceCode.get
+
   case class AssignmentToDeltaVariable(cfgNode: Node, deltaVariable: String) {
     assert(cfgNode.isInstanceOf[AssignmentNode])
 
@@ -120,5 +127,33 @@ class BasicProcessor extends BasicTypeProcessor {
           Instrument.substituteAtomicStatements(methodTree.getBody, atomicStatementInstrumentation, 0, cfg, getLineNumber, instrumentMode)
         (methodTree, instrumentedSourceCode)
     })
+  }
+
+  def assumeOneClassOneMethod(): Unit = {
+    assert(getClasses.size == 1, s"We should analyze exactly one class. Instead, we have `$getClasses`")
+    assert(getMethods.size == 1, s"We should analyze exactly one class. Instead, we have `$getMethods`")
+  }
+
+  def insertDeclarationAtEntry(): String = {
+    ???
+  }
+
+  def replaceMethodBody(methodTree: MethodTree, className: String, newMethodBody: String): String = {
+    assumeOneClassOneMethod()
+
+    val methodSignature = {
+      // TODO: A very hacky way to get the first line of a method definition
+      val lines = methodTree.toString.split("\n")
+      // https://stackoverflow.com/a/39259747
+      // lines(1).replace(" {", "")
+      var firstLine = lines(1)
+      firstLine = firstLine.replaceAll("\\n", "")
+      firstLine = firstLine.replaceAll("\\r", "")
+      assert(firstLine.endsWith(" {"))
+      firstLine.substring(0, firstLine.length - 2)
+    }
+    val spaces = " " * Instrument.INDENT
+    val newSourceCode = s"class $className {\n$spaces$methodSignature\n$newMethodBody\n}"
+    newSourceCode
   }
 }
