@@ -30,6 +30,8 @@ class BoundInferenceProcessorUnitTest extends AnyFlatSpec {
         assert(results.size == 1, "We should have only 1 method per test class")
         results.foreach({
           case (_, result) =>
+            // println(result.result)
+            // println(testCase.expectedOutput)
             assert(result.result == testCase.expectedOutput, s"${result.result}")
         })
     })

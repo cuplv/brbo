@@ -1,6 +1,7 @@
 package brbo.common
 
 import brbo.common.Instrument.GhostVariable.{Counter, Delta, GhostVariable, Resource}
+import brbo.common.Instrument.InstrumentMode.{AT_MOST_ONCE, InstrumentMode}
 import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
@@ -61,6 +62,11 @@ object Instrument {
   object GhostVariable extends Enumeration {
     type GhostVariable = Value
     val Resource, Delta, Counter = Value
+  }
+
+  object InstrumentMode extends Enumeration {
+    type InstrumentMode = Value
+    val AT_MOST_ONCE, ALL = Value
   }
 
   def isGhostVariable(identifier: String, typ: GhostVariable): Boolean = {
@@ -125,8 +131,11 @@ object Instrument {
     }
   }
 
-  def substituteAllAtomicStatementsWith(tree: Tree, instrumentation: Map[Node, String], indent: Int, cfg: ControlFlowGraph): String = {
-    val spaces = " " * indent
+  def substituteAllAtomicStatements(tree: Tree,
+                                    instrumentation: AtomicStatementInstrumentation,
+                                    indent: Int,
+                                    cfg: ControlFlowGraph,
+                                    getLineNumber: Tree => Int): String = {
     ???
   }
 
@@ -138,23 +147,26 @@ object Instrument {
   case class AtomicStatementInstrumentation(shouldInstrument: Node => Boolean, howToInstrument: Tree => String) {
     def instrument(tree: Tree, state: InstrumentState, indent: Int, cfg: ControlFlowGraph): InstrumentResult = {
       val spaces = " " * indent
-      val original = InstrumentResult(s"$spaces${tree.toString};", InstrumentState(state.needInstrument, hasInstrumented = false))
+      val original = InstrumentResult(s"$spaces${tree.toString};", state.updateHasInstrumented(false))
       if (!state.needInstrument) {
+        assert(!state.hasInstrumented)
         return original
       }
-      if (state.hasInstrumented) {
+      if (state.hasInstrumented && state.instrumentMode == AT_MOST_ONCE) {
         assert(state.needInstrument)
-        val noSemiColon =
-          tree match {
-            case expressionStatementTree : ExpressionStatementTree =>
-              expressionStatementTree.getExpression match {
-                case _@(_: UnaryTree | _: AssignmentTree) => true
-                case _ => false
-              }
-            case _ => false
+        val optionalSemicolon = {
+          val noSemiColon =
+            tree match {
+              case expressionStatementTree : ExpressionStatementTree =>
+                expressionStatementTree.getExpression match {
+                  case _@(_: UnaryTree | _: AssignmentTree) => true
+                  case _ => false
+                }
+              case _ => false
+            }
+          if (noSemiColon) "" else ";"
         }
-        val optionalSemicolon = if (noSemiColon) "" else ";"
-        return InstrumentResult(s"$spaces${tree.toString}$optionalSemicolon", InstrumentState(needInstrument = true, hasInstrumented = true))
+        return InstrumentResult(s"$spaces${tree.toString}$optionalSemicolon", state)
       }
       tree match {
         case atomicStatement@(_: ExpressionStatementTree | _: VariableTree |
@@ -177,7 +189,7 @@ object Instrument {
             logger.debug(s"AST `$tree` is mapped to nodes `$cfgNodes` and all nodes satisfy instrumentation")
             InstrumentResult(
               s"$spaces${howToInstrument(tree)};",
-              InstrumentState(state.needInstrument, hasInstrumented = true)
+              state.updateHasInstrumented(true)
             )
           }
           else original
@@ -195,92 +207,104 @@ object Instrument {
     assert(!result.contains("InstrumentResult"))
   }
 
-  case class InstrumentState(needInstrument: Boolean, hasInstrumented: Boolean) {
+  case class InstrumentState(needInstrument: Boolean,
+                             hasInstrumented: Boolean, // The only mutable thing in a state
+                             instrumentMode: InstrumentMode,
+                             instrumentation: AtomicStatementInstrumentation,
+                             cfg: ControlFlowGraph,
+                             getLineNumber: Tree => Int) {
     assert(if (hasInstrumented) needInstrument else true)
+
+    def updateHasInstrumented(newHasInstrumented: Boolean): InstrumentState = {
+      InstrumentState(needInstrument, newHasInstrumented, instrumentMode, instrumentation, cfg, getLineNumber)
+    }
   }
 
   private def errorInstrumentResult(errorMessage: String): InstrumentResult = throw new RuntimeException(errorMessage)
+
+  private def substituteAtomicStatementInSequences(statementTrees: Iterable[Tree], state: InstrumentState, indent: Int): InstrumentResult = {
+    statementTrees.foldLeft(InstrumentResult("", state))({
+      (acc, statementTree) =>
+        val result = substituteAtomicStatementHelper(statementTree, acc.state, indent)
+        InstrumentResult(acc.result + "\n" + result.result, result.state)
+    })
+  }
+
+  private def substituteAtomicStatementHelper(tree: Tree, state: InstrumentState, indent: Int): InstrumentResult = {
+    val instrumentation = state.instrumentation
+    val cfg = state.cfg
+    val getLineNumber = state.getLineNumber
+    val spaces = " " * indent
+
+    tree match {
+      case _: AssertTree => instrumentation.instrument(tree, state, indent, cfg)
+      case tree3: BlockTree =>
+        val result = substituteAtomicStatementInSequences(tree3.getStatements.asScala, state, indent + INDENT)
+        InstrumentResult(s"$spaces{${result.result}\n$spaces}", result.state)
+      case _: BreakTree => instrumentation.instrument(tree, state, indent, cfg)
+      case _: ClassTree => errorInstrumentResult(s"Cannot instrument a class tree at line ${getLineNumber(tree)}")
+      case _: ContinueTree => instrumentation.instrument(tree, state, indent, cfg)
+      case tree3: DoWhileLoopTree =>
+        val result = substituteAtomicStatementHelper(tree3.getStatement, state, indent)
+        InstrumentResult(
+          s"${spaces}do\n${result.result}\n${spaces}while (${tree3.getCondition.toString});",
+          result.state)
+      case _: EmptyStatementTree => instrumentation.instrument(tree, state, indent, cfg)
+      case _: EnhancedForLoopTree => errorInstrumentResult(s"Not yet support enhanced for loop at line ${getLineNumber(tree)}")
+      /*s"${spaces}for (${tree.getVariable} : ${tree.getExpression}) {\n" +
+        printTreeInstrumentedAtBlock(tree.getStatement, deltaVariable, block, indent + INDENT) +
+        s"\n$spaces}"*/
+      case _: ExpressionStatementTree => instrumentation.instrument(tree, state, indent, cfg)
+      case tree3: ForLoopTree =>
+        assert(tree3.getInitializer.size() <= 1)
+        assert(tree3.getUpdate.size() <= 1)
+        val result1 = substituteAtomicStatementInSequences(tree3.getInitializer.asScala, state, indent + INDENT)
+        val result2 = {
+          val body = tree3.getStatement match {
+            case blockTree: BlockTree =>
+              substituteAtomicStatementInSequences(blockTree.getStatements.asScala, result1.state, indent + INDENT + INDENT)
+            case _ => errorInstrumentResult("Unreachable")
+          }
+          val updates = substituteAtomicStatementInSequences(tree3.getUpdate.asScala, body.state, indent + INDENT + INDENT)
+          val extraIndent = " " * INDENT
+          InstrumentResult(
+            s"$spaces${extraIndent}while (${tree3.getCondition}) {" +
+              s"${body.result}${updates.result}\n$spaces$extraIndent}"
+            , updates.state)
+        }
+        InstrumentResult(
+          s"$spaces{// For loop${result1.result}\n${result2.result}\n$spaces}",
+          result2.state
+        )
+      case tree3: IfTree =>
+        val result1 = substituteAtomicStatementHelper(tree3.getThenStatement, state, indent + INDENT)
+        val result2 = substituteAtomicStatementHelper(tree3.getElseStatement, result1.state, indent + INDENT)
+        InstrumentResult(
+          s"${spaces}if (${tree3.getCondition}) {\n${result1.result}\n$spaces" +
+            s"} else {\n${result2.result}\n$spaces}",
+          result2.state)
+      case tree3: LabeledStatementTree =>
+        val result = substituteAtomicStatementHelper(tree3.getStatement, state, indent)
+        InstrumentResult(s"$spaces${tree3.getLabel.toString}:\n${result.result}", result.state)
+      case _: ReturnTree => instrumentation.instrument(tree, state, indent, cfg)
+      case _: SwitchTree => errorInstrumentResult(s"Not yet support switch tree at line ${getLineNumber(tree)}")
+      // s"${spaces}switch (${tree.getExpression}) {" + s"\n$spaces}"
+      case _: SynchronizedTree => errorInstrumentResult(s"Not yet support synchronized tree at line ${getLineNumber(tree)}")
+      case _: ThrowTree => errorInstrumentResult(s"Not yet support throw tree at line ${getLineNumber(tree)}")
+      case _: TryTree => errorInstrumentResult(s"Not yet support try tree at line ${getLineNumber(tree)}")
+      case _: VariableTree => instrumentation.instrument(tree, state, indent, cfg)
+      case tree: WhileLoopTree =>
+        val result = substituteAtomicStatementHelper(tree.getStatement, state, indent)
+        InstrumentResult(s"${spaces}while (${tree.getCondition})\n${result.result}", result.state)
+    }
+  }
 
   def substituteAtMostOneAtomicStatement(tree: Tree,
                                          instrumentation: AtomicStatementInstrumentation,
                                          indent: Int,
                                          cfg: ControlFlowGraph,
                                          getLineNumber: Tree => Int): InstrumentResult = {
-
-    def substituteAtMostOneAtomicStatementInSequences(statementTrees: Iterable[Tree], state: InstrumentState, indent2: Int): InstrumentResult = {
-      statementTrees.foldLeft(InstrumentResult("", state))({
-        (acc, statementTree) =>
-          val result = substituteAtMostOneAtomicStatementHelper(statementTree, acc.state, indent2)
-          InstrumentResult(acc.result + "\n" + result.result, result.state)
-      })
-    }
-
-    def substituteAtMostOneAtomicStatementHelper(tree2: Tree, state: InstrumentState, indent2: Int): InstrumentResult = {
-      val spaces = " " * indent2
-      tree2 match {
-        case _: AssertTree => instrumentation.instrument(tree2, state, indent2, cfg)
-        case tree3: BlockTree =>
-          val result = substituteAtMostOneAtomicStatementInSequences(tree3.getStatements.asScala, state, indent2 + INDENT)
-          InstrumentResult(s"$spaces{${result.result}\n$spaces}", result.state)
-        case _: BreakTree => instrumentation.instrument(tree2, state, indent2, cfg)
-        case _: ClassTree => errorInstrumentResult(s"Cannot instrument a class tree at line ${getLineNumber(tree2)}")
-        case _: ContinueTree => instrumentation.instrument(tree2, state, indent2, cfg)
-        case tree3: DoWhileLoopTree =>
-          val result = substituteAtMostOneAtomicStatementHelper(tree3.getStatement, state, indent2)
-          InstrumentResult(
-            s"${spaces}do\n${result.result}\n${spaces}while (${tree3.getCondition.toString});",
-            result.state)
-        case _: EmptyStatementTree => instrumentation.instrument(tree2, state, indent2, cfg)
-        case _: EnhancedForLoopTree => errorInstrumentResult(s"Not yet support enhanced for loop at line ${getLineNumber(tree2)}")
-        /*s"${spaces}for (${tree.getVariable} : ${tree.getExpression}) {\n" +
-          printTreeInstrumentedAtBlock(tree.getStatement, deltaVariable, block, indent + INDENT) +
-          s"\n$spaces}"*/
-        case _: ExpressionStatementTree => instrumentation.instrument(tree2, state, indent2, cfg)
-        case tree3: ForLoopTree =>
-          assert(tree3.getInitializer.size() <= 1)
-          assert(tree3.getUpdate.size() <= 1)
-          val result1 = substituteAtMostOneAtomicStatementInSequences(tree3.getInitializer.asScala, state, indent2 + INDENT)
-          val result2 = {
-            val body = tree3.getStatement match {
-              case blockTree: BlockTree =>
-                substituteAtMostOneAtomicStatementInSequences(blockTree.getStatements.asScala, result1.state, indent2 + INDENT + INDENT)
-              case _ => errorInstrumentResult("Unreachable")
-            }
-            val updates = substituteAtMostOneAtomicStatementInSequences(tree3.getUpdate.asScala, body.state, indent2 + INDENT + INDENT)
-            val extraIndent = " " * INDENT
-            InstrumentResult(
-              s"$spaces${extraIndent}while (${tree3.getCondition}) {" +
-                s"${body.result}${updates.result}\n$spaces$extraIndent}"
-              , updates.state)
-          }
-          InstrumentResult(
-            s"$spaces{// For loop${result1.result}\n${result2.result}\n$spaces}",
-            result2.state
-          )
-        case tree3: IfTree =>
-          val result1 = substituteAtMostOneAtomicStatementHelper(tree3.getThenStatement, state, indent2 + INDENT)
-          val result2 = substituteAtMostOneAtomicStatementHelper(tree3.getElseStatement, result1.state, indent2 + INDENT)
-          InstrumentResult(
-            s"${spaces}if (${tree3.getCondition}) {\n${result1.result}\n$spaces" +
-              s"} else {\n${result2.result}\n$spaces}",
-            result2.state)
-        case tree3: LabeledStatementTree =>
-          val result = substituteAtMostOneAtomicStatementHelper(tree3.getStatement, state, indent2)
-          InstrumentResult(s"$spaces${tree3.getLabel.toString}:\n${result.result}", result.state)
-        case _: ReturnTree => instrumentation.instrument(tree2, state, indent2, cfg)
-        case _: SwitchTree => errorInstrumentResult(s"Not yet support switch tree at line ${getLineNumber(tree2)}")
-        // s"${spaces}switch (${tree.getExpression}) {" + s"\n$spaces}"
-        case _: SynchronizedTree => errorInstrumentResult(s"Not yet support synchronized tree at line ${getLineNumber(tree2)}")
-        case _: ThrowTree => errorInstrumentResult(s"Not yet support throw tree at line ${getLineNumber(tree2)}")
-        case _: TryTree => errorInstrumentResult(s"Not yet support try tree at line ${getLineNumber(tree2)}")
-        case _: VariableTree => instrumentation.instrument(tree2, state, indent2, cfg)
-        case tree: WhileLoopTree =>
-          val result = substituteAtMostOneAtomicStatementHelper(tree.getStatement, state, indent2)
-          InstrumentResult(s"${spaces}while (${tree.getCondition})\n${result.result}", result.state)
-      }
-    }
-
-    substituteAtMostOneAtomicStatementHelper(tree, InstrumentState(needInstrument = true, hasInstrumented = false), indent)
+    substituteAtomicStatementHelper(tree, InstrumentState(needInstrument = true, hasInstrumented = false, AT_MOST_ONCE, instrumentation, cfg, getLineNumber), indent)
   }
 
   // Insert d = 0 in the AST that maps to targetBlock
