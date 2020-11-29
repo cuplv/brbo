@@ -1,12 +1,8 @@
 package brbo.boundinference
 
 import brbo.common.Instrument
-import brbo.common.Instrument.AtomicStatementInstrumentation
-import brbo.common.Instrument.GhostVariable.Resource
-import com.sun.source.tree.{AssignmentTree, ExpressionStatementTree, Tree, UnaryTree}
 import javax.annotation.processing.SupportedAnnotationTypes
 import org.apache.logging.log4j.LogManager
-import org.checkerframework.dataflow.cfg.node.Node
 
 import scala.collection.JavaConverters._
 
@@ -23,19 +19,33 @@ class BoundInferenceProcessor(compilationUnitName: String, sourceFileContents: S
     getMethods.foreach({
       case (methodTree, cfg) =>
         // Default decomposition
-        // Insert d = 0 at the entry
-        cfg.getAllNodes.asScala
-
-        val instrumentedSourceCode =
-          Instrument.substituteAtMostOneAtomicStatement(
+        val instrumentedSourceCode = {
+          val result = Instrument.substituteAtMostOneAtomicStatement(
             methodTree.getBody,
             Instrument.defaultResourceAssignment,
             0,
             cfg,
             getLineNumber
           )
+          // TODO: A very hacky way to insert the declaration at the entry
+          val spaces = " " * Instrument.INDENT
+          result.result.replaceFirst("\\{", s"{\n${spaces}int ${Instrument.defaultDeltaVariable} = 0;")
+        }
 
-        println(instrumentedSourceCode.result)
+        println(instrumentedSourceCode)
+
+        /*val noResourceVariableSourceCode =
+          Instrument.substituteAtMostOneAtomicStatement( // TODO: Should be substitute all
+            methodTree.getBody,
+            Instrument.removeResourceAssignment,
+            0,
+            cfg,
+            getLineNumber
+          ).result
+
+        println(noResourceVariableSourceCode)*/
+
+        cfg.getAllNodes.asScala
 
       // val upperBoundProcessor = new UpperBoundProcessor(sourceFileContents, "D", ???)
       // JavacUtils.runProcessor(compilationUnitName, instrumentedSourceCode.result, upperBoundProcessor)

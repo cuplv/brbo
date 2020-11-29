@@ -24,12 +24,13 @@ class BoundInferenceProcessorUnitTest extends AnyFlatSpec {
       testCase =>
         val boundInferenceProcessor = new BoundInferenceProcessor(testCase.name + ".java", testCase.sourceCode)
         JavacUtils.runProcessor(testCase.name, testCase.sourceCode, boundInferenceProcessor)
-        
+
         val results = boundInferenceProcessor.testInstrumentation(Instrument.defaultResourceAssignment)
 
         assert(results.size == 1, "We should have only 1 method per test class")
         results.foreach({
-          case (_, result) => assert(result.result == testCase.expectedOutput, s"${result.result}")
+          case (_, result) =>
+            assert(result.result == testCase.expectedOutput, s"${result.result}")
         })
     })
   }

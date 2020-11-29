@@ -372,6 +372,29 @@ object TestFiles {
         |  }
         |}""".stripMargin
 
+    val forLoopTest2 =
+      """class ForLoopTest2 {
+        |    void f(int n) {
+        |        int R = 0;
+        |        for (int i = 0; i < n; i++) {
+        |            R++;
+        |        }
+        |        R = R + 7;
+        |    }
+        |}""".stripMargin
+    val forLoopTest2Expected =
+      """{
+        |  int R = 0;
+        |  {// For loop
+        |    int i = 0;
+        |    while (i < n) {
+        |      D100 = D100 + 1;
+        |      i++;
+        |    }
+        |  }
+        |  R = R + 7;
+        |}""".stripMargin
+
     val sequenceTest1 =
       """class SequenceTest1 {
         |    void f(int n) {
@@ -379,7 +402,9 @@ object TestFiles {
         |        for (int i = 0; i < n; i++) {
         |            R++;
         |        }
-        |        R = R + 5;
+        |        for (int i = 0; i < n; i++) {
+        |            R = R + 3;
+        |        }
         |    }
         |}""".stripMargin
     val sequenceTest1Expected =
@@ -392,7 +417,13 @@ object TestFiles {
         |      i++;
         |    }
         |  }
-        |  R = R + 5;
+        |  {// For loop
+        |    int i = 0;
+        |    while (i < n) {
+        |      R = R + 3;
+        |      i++;
+        |    }
+        |  }
         |}""".stripMargin
 
     HashSet[TestCase](
@@ -401,6 +432,7 @@ object TestFiles {
       TestCase("WhileLoopTest1", whileLoopTest1, whileLoopTest1Expected),
       TestCase("WhileLoopTest2", whileLoopTest2, whileLoopTest2Expected),
       TestCase("ForLoopTest1", forLoopTest1, forLoopTest1Expected),
+      TestCase("ForLoopTest2", forLoopTest2, forLoopTest2Expected),
       TestCase("SequenceTest1", sequenceTest1, sequenceTest1Expected),
     )
   }

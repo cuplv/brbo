@@ -14,34 +14,49 @@ object Instrument {
   private val deltaVariablePattern = """D\d*""".r
   private val resourceVariablePattern = """R\d*""".r
   private val counterVariablePattern = """C\d*""".r
-  private val INDENT = 2
+  val INDENT = 2
 
   val defaultDeltaVariable = "D100"
-  val defaultResourceAssignment: AtomicStatementInstrumentation = {
-    AtomicStatementInstrumentation( // Replace R = R + e with d = d + e
+  val defaultResourceAssignment: AtomicStatementInstrumentation =
+    AtomicStatementInstrumentation( // Replace `R = R + e` with `d = d + e`
       {
         node: Node => Instrument.extractGhostVariableFromAssignment(node, Resource).nonEmpty
       },
       {
-        tree: Tree =>
-          tree match {
-            case expressionStatement: ExpressionStatementTree =>
-              expressionStatement.getExpression match {
-                case assignmentTree: AssignmentTree =>
-                  val update = Instrument.extractGhostVariableFromAssignment(assignmentTree, Resource)
-                  s"$defaultDeltaVariable = $defaultDeltaVariable + ${update.get.update}"
-                case unaryTree: UnaryTree =>
-                  unaryTree.getKind match {
-                    case Tree.Kind.PREFIX_DECREMENT | Tree.Kind.POSTFIX_DECREMENT => s"$defaultDeltaVariable = $defaultDeltaVariable - 1"
-                    case Tree.Kind.PREFIX_INCREMENT | Tree.Kind.POSTFIX_INCREMENT => s"$defaultDeltaVariable = $defaultDeltaVariable + 1"
-                    case _ => throw new RuntimeException(s"Unknown unary tree operator `$tree`")
-                  }
-                case _ => throw new RuntimeException(s"Instrumenting non assignment statement `$tree` (Kind: ${tree.getKind})")
+        case expressionStatement: ExpressionStatementTree =>
+          expressionStatement.getExpression match {
+            case assignmentTree: AssignmentTree =>
+              val update = Instrument.extractGhostVariableFromAssignment(assignmentTree, Resource)
+              s"$defaultDeltaVariable = $defaultDeltaVariable + ${update.get.update}"
+            case unaryTree: UnaryTree =>
+              unaryTree.getKind match {
+                case Tree.Kind.PREFIX_DECREMENT | Tree.Kind.POSTFIX_DECREMENT => s"$defaultDeltaVariable = $defaultDeltaVariable - 1"
+                case Tree.Kind.PREFIX_INCREMENT | Tree.Kind.POSTFIX_INCREMENT => s"$defaultDeltaVariable = $defaultDeltaVariable + 1"
+                case tree@_ => throw new RuntimeException(s"Unknown unary tree operator `$tree`")
               }
-            case _ => throw new RuntimeException(s"Instrumenting non expression statement `$tree` (Kind: ${tree.getKind})")
+            case tree@_ => throw new RuntimeException(s"Instrumenting non assignment statement `$tree` (Kind: ${tree.getKind})")
           }
+        case tree@_ => throw new RuntimeException(s"Instrumenting non expression statement `$tree` (Kind: ${tree.getKind})")
       })
-  }
+  val removeResourceAssignment: AtomicStatementInstrumentation =
+    AtomicStatementInstrumentation( // Replace `R = R + e` with `;`
+      {
+        node: Node => Instrument.extractGhostVariableFromAssignment(node, Resource).nonEmpty
+      },
+      {
+        case expressionStatement: ExpressionStatementTree =>
+          expressionStatement.getExpression match {
+            case assignmentTree: AssignmentTree => ";"
+            case unaryTree: UnaryTree =>
+              unaryTree.getKind match {
+                case Tree.Kind.PREFIX_DECREMENT | Tree.Kind.POSTFIX_DECREMENT => ";"
+                case Tree.Kind.PREFIX_INCREMENT | Tree.Kind.POSTFIX_INCREMENT => ";"
+                case tree@_ => throw new RuntimeException(s"Unknown unary tree operator `$tree`")
+              }
+            case tree@_ => throw new RuntimeException(s"Instrumenting non assignment statement `$tree` (Kind: ${tree.getKind})")
+          }
+        case tree@_ => throw new RuntimeException(s"Instrumenting non expression statement `$tree` (Kind: ${tree.getKind})")
+      })
 
   object GhostVariable extends Enumeration {
     type GhostVariable = Value
@@ -127,6 +142,20 @@ object Instrument {
       if (!state.needInstrument) {
         return original
       }
+      if (state.hasInstrumented) {
+        assert(state.needInstrument)
+        val noSemiColon =
+          tree match {
+            case expressionStatementTree : ExpressionStatementTree =>
+              expressionStatementTree.getExpression match {
+                case _@(_: UnaryTree | _: AssignmentTree) => true
+                case _ => false
+              }
+            case _ => false
+        }
+        val optionalSemicolon = if (noSemiColon) "" else ";"
+        return InstrumentResult(s"$spaces${tree.toString}$optionalSemicolon", InstrumentState(needInstrument = true, hasInstrumented = true))
+      }
       tree match {
         case atomicStatement@(_: ExpressionStatementTree | _: VariableTree |
                               _: AssertTree | _: BreakTree | _: ContinueTree | _: EmptyStatementTree | _: ReturnTree) =>
@@ -179,14 +208,10 @@ object Instrument {
                                          getLineNumber: Tree => Int): InstrumentResult = {
 
     def substituteAtMostOneAtomicStatementInSequences(statementTrees: Iterable[Tree], state: InstrumentState, indent2: Int): InstrumentResult = {
-      val spaces = " " * indent2
       statementTrees.foldLeft(InstrumentResult("", state))({
         (acc, statementTree) =>
-          if (acc.state.hasInstrumented) InstrumentResult(acc.result + s"\n$spaces" + statementTree.toString, acc.state)
-          else {
-            val result = substituteAtMostOneAtomicStatementHelper(statementTree, state, indent2)
-            InstrumentResult(acc.result + "\n" + result.result, result.state)
-          }
+          val result = substituteAtMostOneAtomicStatementHelper(statementTree, acc.state, indent2)
+          InstrumentResult(acc.result + "\n" + result.result, result.state)
       })
     }
 
