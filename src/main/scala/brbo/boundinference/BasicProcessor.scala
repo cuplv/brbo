@@ -1,6 +1,7 @@
 package brbo.boundinference
 
 import brbo.common.Instrument
+import brbo.common.Instrument.InstrumentMode.InstrumentMode
 import brbo.common.Instrument.{AtomicStatementInstrumentation, InstrumentResult}
 import com.sun.source.tree.{ClassTree, CompilationUnitTree, MethodTree, Tree}
 import com.sun.source.util.{SourcePositions, TreePathScanner, Trees}
@@ -17,8 +18,8 @@ import scala.collection.JavaConverters._
 import scala.collection.immutable.HashMap
 
 @SupportedAnnotationTypes(Array("*"))
-abstract class AbstractProcessor extends BasicTypeProcessor {
-  private val logger = LogManager.getLogger(classOf[AbstractProcessor])
+class BasicProcessor extends BasicTypeProcessor {
+  private val logger = LogManager.getLogger(classOf[BasicProcessor])
 
   private var rootTree: Option[CompilationUnitTree] = None
   private var trees: Option[Trees] = None
@@ -27,7 +28,7 @@ abstract class AbstractProcessor extends BasicTypeProcessor {
   private var classes = new HashMap[ClassTree, Set[MethodTree]]
   private var methods = new HashMap[MethodTree, ControlFlowGraph]
 
-  def runAnalysis(): Unit
+  def runAnalysis(): Unit = {}
 
   override protected def createTreePathScanner(root: CompilationUnitTree): TreePathScanner[_, _] = {
     rootTree = Some(root)
@@ -108,17 +109,11 @@ abstract class AbstractProcessor extends BasicTypeProcessor {
     override def toString: String = s"delta variable $deltaVariable in stmt $cfgNode at line ${getLineNumber(cfgNode.getTree)}"
   }
 
-  def testInstrumentation(atomicStatementInstrumentation: AtomicStatementInstrumentation): Map[MethodTree, InstrumentResult] = {
+  def testInstrumentation(atomicStatementInstrumentation: AtomicStatementInstrumentation, instrumentMode: InstrumentMode): Map[MethodTree, InstrumentResult] = {
     getMethods.map({
       case (methodTree, cfg) =>
         val instrumentedSourceCode =
-          Instrument.substituteAtMostOneAtomicStatement(
-            methodTree.getBody,
-            atomicStatementInstrumentation,
-            0,
-            cfg,
-            getLineNumber
-          )
+          Instrument.substituteAtomicStatements(methodTree.getBody, atomicStatementInstrumentation, 0, cfg, getLineNumber, instrumentMode)
         (methodTree, instrumentedSourceCode)
     })
   }

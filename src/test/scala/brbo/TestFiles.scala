@@ -276,7 +276,7 @@ object TestFiles {
     )
   }
 
-  val replaceResourceAssignments: HashSet[TestCase] = {
+  val replaceResourceAssignmentsAtMostOnce: HashSet[TestCase] = {
     val noLoopTest1 =
       """class NoLoopTest1 {
         |    void f(int n) {
@@ -422,6 +422,168 @@ object TestFiles {
         |    while (i < n) {
         |      R = R + 3;
         |      i++;
+        |    }
+        |  }
+        |}""".stripMargin
+
+    HashSet[TestCase](
+      TestCase("NoLoopTest1", noLoopTest1, noLoopTest1Expected),
+      TestCase("NoLoopTest2", noLoopTest2, noLoopTest2Expected),
+      TestCase("WhileLoopTest1", whileLoopTest1, whileLoopTest1Expected),
+      TestCase("WhileLoopTest2", whileLoopTest2, whileLoopTest2Expected),
+      TestCase("ForLoopTest1", forLoopTest1, forLoopTest1Expected),
+      TestCase("ForLoopTest2", forLoopTest2, forLoopTest2Expected),
+      TestCase("SequenceTest1", sequenceTest1, sequenceTest1Expected),
+    )
+  }
+
+  val replaceResourceAssignmentsAll: HashSet[TestCase] = {
+    val noLoopTest1 =
+      """class NoLoopTest1 {
+        |    void f(int n) {
+        |        int R = 0;
+        |        R = R + n;
+        |        R = 3;
+        |    }
+        |}""".stripMargin
+    // TODO: Not instrumenting resets to resource variables
+    val noLoopTest1Expected =
+      """{
+        |  int R = 0;
+        |  D100 = D100 + n;
+        |  R = 3;;
+        |}""".stripMargin
+
+    val noLoopTest2 =
+      """class NoLoopTest2 {
+        |    void f(int n) {
+        |        int R = 0;
+        |        R++;
+        |    }
+        |}""".stripMargin
+    val noLoopTest2Expected =
+      """{
+        |  int R = 0;
+        |  D100 = D100 + 1;
+        |}""".stripMargin
+
+    val whileLoopTest1 =
+      """class WhileLoopTest1 {
+        |    void f(int n) {
+        |        int R = 0;
+        |        int i = 0;
+        |        while (i < n) {
+        |            i++;
+        |            R++;
+        |        }
+        |    }
+        |}""".stripMargin
+    val whileLoopTest1Expected =
+      """{
+        |  int R = 0;
+        |  int i = 0;
+        |  while ((i < n))
+        |  {
+        |    i++;;
+        |    D100 = D100 + 1;
+        |  }
+        |}""".stripMargin
+
+    val whileLoopTest2 =
+      """class WhileLoopTest2 {
+        |    void f(int n) {
+        |        int R = 0;
+        |        int i = 0;
+        |        while (i < n) {
+        |            i++;
+        |            R++;
+        |            R = R + 2;
+        |        }
+        |    }
+        |}""".stripMargin
+    val whileLoopTest2Expected =
+      """{
+        |  int R = 0;
+        |  int i = 0;
+        |  while ((i < n))
+        |  {
+        |    i++;;
+        |    D100 = D100 + 1;
+        |    D100 = D100 + 2;
+        |  }
+        |}""".stripMargin
+
+    val forLoopTest1 =
+      """class ForLoopTest1 {
+        |    void f(int n) {
+        |        int R = 0;
+        |        for (int i = 0; i < n; i++) {
+        |            R++;
+        |        }
+        |    }
+        |}""".stripMargin
+    val forLoopTest1Expected =
+      """{
+        |  int R = 0;
+        |  {// For loop
+        |    int i = 0;
+        |    while (i < n) {
+        |      D100 = D100 + 1;
+        |      i++;;
+        |    }
+        |  }
+        |}""".stripMargin
+
+    val forLoopTest2 =
+      """class ForLoopTest2 {
+        |    void f(int n) {
+        |        int R = 0;
+        |        for (int i = 0; i < n; i++) {
+        |            R++;
+        |        }
+        |        R = R + 7;
+        |    }
+        |}""".stripMargin
+    val forLoopTest2Expected =
+      """{
+        |  int R = 0;
+        |  {// For loop
+        |    int i = 0;
+        |    while (i < n) {
+        |      D100 = D100 + 1;
+        |      i++;;
+        |    }
+        |  }
+        |  D100 = D100 + 7;
+        |}""".stripMargin
+
+    val sequenceTest1 =
+      """class SequenceTest1 {
+        |    void f(int n) {
+        |        int R = 0;
+        |        for (int i = 0; i < n; i++) {
+        |            R++;
+        |        }
+        |        for (int i = 0; i < n; i++) {
+        |            R = R + 3;
+        |        }
+        |    }
+        |}""".stripMargin
+    val sequenceTest1Expected =
+      """{
+        |  int R = 0;
+        |  {// For loop
+        |    int i = 0;
+        |    while (i < n) {
+        |      D100 = D100 + 1;
+        |      i++;;
+        |    }
+        |  }
+        |  {// For loop
+        |    int i = 0;
+        |    while (i < n) {
+        |      D100 = D100 + 3;
+        |      i++;;
         |    }
         |  }
         |}""".stripMargin

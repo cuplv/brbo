@@ -10,7 +10,7 @@ import org.apache.logging.log4j.LogManager
  * @param inputVariables     The vocabulary used in the upper bound
  */
 @SupportedAnnotationTypes(Array("*"))
-class UpperBoundProcessor(originalSourceCode: String, ghostVariable: String, inputVariables: Set[String]) extends AbstractProcessor {
+class UpperBoundProcessor(originalSourceCode: String, ghostVariable: String, inputVariables: Set[String]) extends BasicProcessor {
   private val logger = LogManager.getLogger(classOf[UpperBoundProcessor])
 
   private def inferVariableUpperBound(instrumentedSourceCode: String): String = {

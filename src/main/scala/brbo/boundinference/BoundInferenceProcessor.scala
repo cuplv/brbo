@@ -1,6 +1,7 @@
 package brbo.boundinference
 
 import brbo.common.Instrument
+import brbo.common.Instrument.InstrumentMode.{AT_MOST_ONCE, ALL}
 import javax.annotation.processing.SupportedAnnotationTypes
 import org.apache.logging.log4j.LogManager
 
@@ -12,7 +13,7 @@ import scala.collection.JavaConverters._
  * @param sourceFileContents The source code from which this processor runs on
  */
 @SupportedAnnotationTypes(Array("*"))
-class BoundInferenceProcessor(compilationUnitName: String, sourceFileContents: String) extends AbstractProcessor {
+class BoundInferenceProcessor(compilationUnitName: String, sourceFileContents: String) extends BasicProcessor {
   private val logger = LogManager.getLogger(classOf[BoundInferenceProcessor])
 
   override def runAnalysis(): Unit = {
@@ -20,12 +21,13 @@ class BoundInferenceProcessor(compilationUnitName: String, sourceFileContents: S
       case (methodTree, cfg) =>
         // Default decomposition
         val instrumentedSourceCode = {
-          val result = Instrument.substituteAtMostOneAtomicStatement(
+          val result = Instrument.substituteAtomicStatements(
             methodTree.getBody,
             Instrument.defaultResourceAssignment,
             0,
             cfg,
-            getLineNumber
+            getLineNumber,
+            ALL
           )
           // TODO: A very hacky way to insert the declaration at the entry
           val spaces = " " * Instrument.INDENT
@@ -34,16 +36,17 @@ class BoundInferenceProcessor(compilationUnitName: String, sourceFileContents: S
 
         println(instrumentedSourceCode)
 
-        /*val noResourceVariableSourceCode =
-          Instrument.substituteAtMostOneAtomicStatement( // TODO: Should be substitute all
+        val noResourceVariableSourceCode =
+          Instrument.substituteAtomicStatements(
             methodTree.getBody,
             Instrument.removeResourceAssignment,
             0,
             cfg,
-            getLineNumber
+            getLineNumber,
+            ALL
           ).result
 
-        println(noResourceVariableSourceCode)*/
+        println(noResourceVariableSourceCode)
 
         cfg.getAllNodes.asScala
 

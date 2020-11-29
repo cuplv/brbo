@@ -1,7 +1,7 @@
 package brbo.common
 
 import brbo.common.Instrument.GhostVariable.{Counter, Delta, GhostVariable, Resource}
-import brbo.common.Instrument.InstrumentMode.{AT_MOST_ONCE, InstrumentMode}
+import brbo.common.Instrument.InstrumentMode.{ALL, AT_MOST_ONCE, InstrumentMode}
 import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
@@ -11,7 +11,7 @@ import org.checkerframework.dataflow.cfg.node.{AssignmentNode, Node, NumericalAd
 import scala.collection.JavaConverters._
 
 object Instrument {
-  private val logger = LogManager.getLogger("common.Instrument")
+  private val logger = LogManager.getLogger("brbo.common.Instrument")
   private val deltaVariablePattern = """D\d*""".r
   private val resourceVariablePattern = """R\d*""".r
   private val counterVariablePattern = """C\d*""".r
@@ -131,12 +131,16 @@ object Instrument {
     }
   }
 
-  def substituteAllAtomicStatements(tree: Tree,
-                                    instrumentation: AtomicStatementInstrumentation,
-                                    indent: Int,
-                                    cfg: ControlFlowGraph,
-                                    getLineNumber: Tree => Int): String = {
-    ???
+  def substituteAtomicStatements(tree: Tree,
+                                 instrumentation: AtomicStatementInstrumentation,
+                                 indent: Int,
+                                 cfg: ControlFlowGraph,
+                                 getLineNumber: Tree => Int,
+                                 instrumentMode: InstrumentMode): InstrumentResult = {
+    instrumentMode match {
+      case ALL => substituteAtomicStatementHelper(tree, InstrumentState(needInstrument = true, hasInstrumented = false, ALL, instrumentation, cfg, getLineNumber), indent)
+      case AT_MOST_ONCE => substituteAtomicStatementHelper(tree, InstrumentState(needInstrument = true, hasInstrumented = false, AT_MOST_ONCE, instrumentation, cfg, getLineNumber), indent)
+    }
   }
 
   /**
@@ -157,7 +161,7 @@ object Instrument {
         val optionalSemicolon = {
           val noSemiColon =
             tree match {
-              case expressionStatementTree : ExpressionStatementTree =>
+              case expressionStatementTree: ExpressionStatementTree =>
                 expressionStatementTree.getExpression match {
                   case _@(_: UnaryTree | _: AssignmentTree) => true
                   case _ => false
@@ -297,14 +301,6 @@ object Instrument {
         val result = substituteAtomicStatementHelper(tree.getStatement, state, indent)
         InstrumentResult(s"${spaces}while (${tree.getCondition})\n${result.result}", result.state)
     }
-  }
-
-  def substituteAtMostOneAtomicStatement(tree: Tree,
-                                         instrumentation: AtomicStatementInstrumentation,
-                                         indent: Int,
-                                         cfg: ControlFlowGraph,
-                                         getLineNumber: Tree => Int): InstrumentResult = {
-    substituteAtomicStatementHelper(tree, InstrumentState(needInstrument = true, hasInstrumented = false, AT_MOST_ONCE, instrumentation, cfg, getLineNumber), indent)
   }
 
   // Insert d = 0 in the AST that maps to targetBlock
