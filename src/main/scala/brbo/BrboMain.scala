@@ -31,6 +31,7 @@ object BrboMain {
         logger.info(s"Inferring bound for file `$sourceFileLocation`")
         val boundInferenceProcessor = new BoundInferenceProcessor(FilenameUtils.getName(sourceFileLocation), sourceFileContents)
         JavacUtils.runProcessor(FilenameUtils.getBaseName(sourceFileLocation), sourceFileContents, boundInferenceProcessor)
+        boundInferenceProcessor.runAnalysis()
     })
   }
 }

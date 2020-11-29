@@ -1,5 +1,7 @@
 package brbo.boundinference
 
+import brbo.common.Instrument
+import brbo.common.Instrument.{AtomicStatementInstrumentation, InstrumentResult}
 import com.sun.source.tree.{ClassTree, CompilationUnitTree, MethodTree, Tree}
 import com.sun.source.util.{SourcePositions, TreePathScanner, Trees}
 import javax.annotation.processing.SupportedAnnotationTypes
@@ -25,11 +27,7 @@ abstract class AbstractProcessor extends BasicTypeProcessor {
   private var classes = new HashMap[ClassTree, Set[MethodTree]]
   private var methods = new HashMap[MethodTree, ControlFlowGraph]
 
-  protected var result: Option[Any] = None
-
   def runAnalysis(): Unit
-
-  def getResult: Option[Any] = result
 
   override protected def createTreePathScanner(root: CompilationUnitTree): TreePathScanner[_, _] = {
     rootTree = Some(root)
@@ -71,8 +69,6 @@ abstract class AbstractProcessor extends BasicTypeProcessor {
     trees = Some(Trees.instance(processingEnv))
     positions = Some(trees.get.getSourcePositions)
 
-    runAnalysis()
-
     super.typeProcessingOver()
 
     // Stop execution by throwing an exception. This makes sure that compilation
@@ -112,4 +108,18 @@ abstract class AbstractProcessor extends BasicTypeProcessor {
     override def toString: String = s"delta variable $deltaVariable in stmt $cfgNode at line ${getLineNumber(cfgNode.getTree)}"
   }
 
+  def testInstrumentation(atomicStatementInstrumentation: AtomicStatementInstrumentation): Map[MethodTree, InstrumentResult] = {
+    getMethods.map({
+      case (methodTree, cfg) =>
+        val instrumentedSourceCode =
+          Instrument.substituteAtMostOneAtomicStatement(
+            methodTree.getBody,
+            atomicStatementInstrumentation,
+            0,
+            cfg,
+            getLineNumber
+          )
+        (methodTree, instrumentedSourceCode)
+    })
+  }
 }

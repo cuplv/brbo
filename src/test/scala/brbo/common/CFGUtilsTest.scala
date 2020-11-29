@@ -18,6 +18,5 @@ class CFGUtilsTest extends AnyFlatSpec {
   "CFG processor" should "produce CFGs" in {
     val cfg = JavacUtils.runCFGProcessor("Test01", "f", "Test01", sourceCode1)
     assert(cfg != null)
-    println(cfg)
   }
 }
