@@ -29,7 +29,7 @@ object BrboMain {
     sourceFiles.foreach({
       case (sourceFileLocation, sourceFileContents) =>
         logger.info(s"Inferring bound for file `$sourceFileLocation`")
-        val boundInferenceProcessor = new BoundInferenceProcessor(FilenameUtils.getName(sourceFileLocation), sourceFileContents)
+        val boundInferenceProcessor = new BoundInferenceProcessor
         JavacUtils.runProcessor(FilenameUtils.getBaseName(sourceFileLocation), sourceFileContents, boundInferenceProcessor)
         boundInferenceProcessor.runAnalysis()
     })

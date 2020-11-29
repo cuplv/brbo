@@ -7,13 +7,8 @@ import org.apache.logging.log4j.LogManager
 
 import scala.collection.JavaConverters._
 
-/**
- *
- * @param compilationUnitName
- * @param sourceFileContents The source code from which this processor runs on
- */
 @SupportedAnnotationTypes(Array("*"))
-class BoundInferenceProcessor(compilationUnitName: String, sourceFileContents: String) extends BasicProcessor {
+class BoundInferenceProcessor extends BasicProcessor {
   private val logger = LogManager.getLogger(classOf[BoundInferenceProcessor])
 
   override def runAnalysis(): Unit = {

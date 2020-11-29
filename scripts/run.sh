@@ -37,6 +37,7 @@ printf  "\n\n\n"
 
 echo "Step 2: Infer bounds"
 time java -cp $classpath brbo.BrboMain $javafiles
+# time java -jar target/scala-2.12/brbo-impl-assembly-0.1.jar $javafiles
 
 # Clean up
 rm $javafiles

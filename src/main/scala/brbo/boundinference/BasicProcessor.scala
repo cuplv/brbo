@@ -21,6 +21,8 @@ import scala.collection.immutable.HashMap
 class BasicProcessor extends BasicTypeProcessor {
   private val logger = LogManager.getLogger(classOf[BasicProcessor])
 
+  private var sourceCode: Option[String] = None
+
   private var rootTree: Option[CompilationUnitTree] = None
   private var trees: Option[Trees] = None
   private var positions: Option[SourcePositions] = None
@@ -32,6 +34,8 @@ class BasicProcessor extends BasicTypeProcessor {
 
   override protected def createTreePathScanner(root: CompilationUnitTree): TreePathScanner[_, _] = {
     rootTree = Some(root)
+    sourceCode = Some(root.getSourceFile.getCharContent(false).toString)
+
     new TreePathScanner[Void, Void]() {
       override def visitClass(node: ClassTree, p: Void): Void = {
         val members = node.getMembers.asScala.toSet
