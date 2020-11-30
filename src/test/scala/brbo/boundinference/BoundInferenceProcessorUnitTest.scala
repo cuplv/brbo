@@ -11,7 +11,7 @@ class BoundInferenceProcessorUnitTest extends AnyFlatSpec {
     BoundInferenceProcessorUnitTest.sourceCodeDeltaUpdatesTests.foreach({
       testCase =>
         val boundInferenceProcessor = new BoundInferenceProcessor
-        JavacUtils.runProcessor(testCase.name, testCase.sourceCode, boundInferenceProcessor)
+        JavacUtils.runProcessor(testCase.name, testCase.input, boundInferenceProcessor)
         val result = boundInferenceProcessor.generateSourceCodeDeltaUpdates()
         // println(result)
         // println(testCase.expectedOutput)
@@ -23,7 +23,7 @@ class BoundInferenceProcessorUnitTest extends AnyFlatSpec {
     BoundInferenceProcessorUnitTest.sourceCodeNoResourceUpdatesTests.foreach({
       testCase =>
         val boundInferenceProcessor = new BoundInferenceProcessor
-        JavacUtils.runProcessor(testCase.name, testCase.sourceCode, boundInferenceProcessor)
+        JavacUtils.runProcessor(testCase.name, testCase.input, boundInferenceProcessor)
         val result = boundInferenceProcessor.generateSourceCodeNoResourceUpdates()
         // println(result)
         // println(testCase.expectedOutput)

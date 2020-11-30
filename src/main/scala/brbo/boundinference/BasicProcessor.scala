@@ -134,7 +134,10 @@ class BasicProcessor extends BasicTypeProcessor {
     ???
   }
 
-  def replaceMethodBody(methodTree: MethodTree, className: String, newMethodBody: String, fileFormat: FileFormat): String = {
+  def replaceMethodBodyAndGenerateSourceCode(methodTree: MethodTree,
+                                             className: String,
+                                             newMethodBody: String,
+                                             fileFormat: FileFormat): String = {
     assumeOneClassOneMethod()
 
     val cFilePrefix =
@@ -168,11 +171,13 @@ class BasicProcessor extends BasicTypeProcessor {
       assert(firstLine.endsWith(" {"))
       firstLine.substring(0, firstLine.length - 2)
     }
-    val spaces = " " * indent
     fileFormat match {
-      case JAVA_FORMAT => s"class $className {\n$spaces$methodSignature\n$newMethodBody\n}"
+      case JAVA_FORMAT =>
+        val spaces = " " * indent
+        s"class $className {\n$spaces$methodSignature\n$newMethodBody\n}"
       case C_FORMAT =>
         val replaceMethodSignature = {
+          // ICRA requires there exists a method named as `main`
           val startIndex = methodSignature.indexOf(" ")
           val endIndex = methodSignature.indexOf("(")
           s"${methodSignature.substring(0, startIndex + 1)}main${methodSignature.substring(endIndex)}"

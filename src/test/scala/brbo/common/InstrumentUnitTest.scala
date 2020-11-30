@@ -31,7 +31,7 @@ class InstrumentUnitTest extends AnyFlatSpec {
     InstrumentUnitTest.noInstrumentUnitTests.foreach({
       testCase =>
         val basicProcessor = new BasicProcessor
-        JavacUtils.runProcessor(testCase.name, testCase.sourceCode, basicProcessor)
+        JavacUtils.runProcessor(testCase.name, testCase.input, basicProcessor)
         val results = basicProcessor.testInstrumentation(AtomicStatementInstrumentation(_ => false, tree => tree.toString), AT_MOST_ONCE)
         assert(results.size == 1, "We should have only 1 method per test class")
         results.foreach({
@@ -44,7 +44,7 @@ class InstrumentUnitTest extends AnyFlatSpec {
     InstrumentUnitTest.replaceResourceAssignmentsAtMostOnce.foreach({
       testCase =>
         val basicProcessor = new BasicProcessor
-        JavacUtils.runProcessor(testCase.name, testCase.sourceCode, basicProcessor)
+        JavacUtils.runProcessor(testCase.name, testCase.input, basicProcessor)
         val results = basicProcessor.testInstrumentation(Instrument.defaultResourceAssignment, AT_MOST_ONCE)
 
         assert(results.size == 1, "We should have exactly 1 method per test class")
@@ -61,7 +61,7 @@ class InstrumentUnitTest extends AnyFlatSpec {
     InstrumentUnitTest.replaceResourceAssignmentsAll.foreach({
       testCase =>
         val basicProcessor = new BasicProcessor
-        JavacUtils.runProcessor(testCase.name, testCase.sourceCode, basicProcessor)
+        JavacUtils.runProcessor(testCase.name, testCase.input, basicProcessor)
         val results = basicProcessor.testInstrumentation(Instrument.defaultResourceAssignment, ALL)
 
         assert(results.size == 1, "We should have exactly 1 method per test class")

@@ -4,6 +4,7 @@ import java.io.PrintWriter
 import java.nio.file.Files
 
 import org.apache.logging.log4j.LogManager
+import com.microsoft.z3._
 
 import scala.sys.process.{ProcessLogger, _}
 
@@ -42,5 +43,9 @@ object Icra {
       val removeFile = s"rm $file"
       removeFile.!!
     }
+  }
+
+  def parseInvariants(icraOutput: String): Set[AST] = {
+    ???
   }
 }

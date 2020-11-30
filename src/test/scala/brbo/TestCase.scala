@@ -1,3 +1,3 @@
 package brbo
 
-case class TestCase(name: String, sourceCode: String, expectedOutput: String)
+case class TestCase(name: String, input: String, expectedOutput: String)

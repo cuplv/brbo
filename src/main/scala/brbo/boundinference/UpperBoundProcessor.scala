@@ -31,10 +31,17 @@ class UpperBoundProcessor(sourceCodeNoResourceUpdates: String, targetGhostVariab
     assumeOneClassOneMethod()
 
     // For each d = d + e, generate a file with d = 0 inserted and another file with c = 0 and c = c + 1 inserted
-    val attempts = placeAccumulationContexts()
-    attempts.foreach({
+    val methodBodies = {
+      val methodBodies = placeAccumulationContexts()
+      getMethods.head match {
+        case (methodTree, _) =>
+          val className = getEnclosingClass(methodTree).get.getSimpleName.toString
+          methodBodies.map(methodBody => replaceMethodBodyAndGenerateSourceCode(methodTree, className, methodBody, C_FORMAT))
+      }
+    }
+
+    methodBodies.foreach({
       attempt =>
-        println(attempt)
         Icra.run(attempt)
     })
   }
@@ -91,7 +98,7 @@ class UpperBoundProcessor(sourceCodeNoResourceUpdates: String, targetGhostVariab
         })
 
         // The order of instrumented code is useful for matching `d = 0` with `c = c + 1`
-        val methodBodies = potentialAccumulationContexts.foldLeft(List[String]())({
+        potentialAccumulationContexts.foldLeft(List[String]())({
           case (acc, (ghostVariable, potentialBlocks)) =>
             if (potentialBlocks.nonEmpty) {
               logger.debug(s"Inserting accumulation contexts for ghost variable `$ghostVariable`")
@@ -122,8 +129,6 @@ class UpperBoundProcessor(sourceCodeNoResourceUpdates: String, targetGhostVariab
               acc
             }
         })
-        val className = getEnclosingClass(methodTree).get.getSimpleName.toString
-        methodBodies.map(methodBody => replaceMethodBody(methodTree, className, methodBody, C_FORMAT))
     }
   }
 }
