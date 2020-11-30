@@ -1,9 +1,10 @@
 package brbo.boundinference
 
+import brbo.boundinference.FileFormat.C_FORMAT
 import brbo.common.Instrument.AtomicStatementInstrumentation
 import brbo.common.Instrument.GhostVariable.{Counter, Delta}
 import brbo.common.Instrument.InstrumentMode.AT_MOST_ONCE
-import brbo.common.{CFGUtils, Instrument}
+import brbo.common.{CFGUtils, Icra, Instrument}
 import com.sun.source.tree.Tree
 import javax.annotation.processing.SupportedAnnotationTypes
 import javax.lang.model.`type`.TypeKind
@@ -30,7 +31,12 @@ class UpperBoundProcessor(sourceCodeNoResourceUpdates: String, targetGhostVariab
     assumeOneClassOneMethod()
 
     // For each d = d + e, generate a file with d = 0 inserted and another file with c = 0 and c = c + 1 inserted
-    placeAccumulationContexts()
+    val attempts = placeAccumulationContexts()
+    attempts.foreach({
+      attempt =>
+        println(attempt)
+        Icra.run(attempt)
+    })
   }
 
   def placeAccumulationContexts(): List[String] = {
@@ -85,7 +91,7 @@ class UpperBoundProcessor(sourceCodeNoResourceUpdates: String, targetGhostVariab
         })
 
         // The order of instrumented code is useful for matching `d = 0` with `c = c + 1`
-        potentialAccumulationContexts.foldLeft(List[String]())({
+        val methodBodies = potentialAccumulationContexts.foldLeft(List[String]())({
           case (acc, (ghostVariable, potentialBlocks)) =>
             if (potentialBlocks.nonEmpty) {
               logger.debug(s"Inserting accumulation contexts for ghost variable `$ghostVariable`")
@@ -99,7 +105,7 @@ class UpperBoundProcessor(sourceCodeNoResourceUpdates: String, targetGhostVariab
                         node: Node => potentialBlock.getNodes.contains(node)
                       },
                       {
-                        tree: Tree => s"${tree.toString}; $ghostVariable = 0;"
+                        tree: Tree => s"${tree.toString}; $ghostVariable = 0; assert(1);"
                       }
                     ),
                     indent,
@@ -116,6 +122,8 @@ class UpperBoundProcessor(sourceCodeNoResourceUpdates: String, targetGhostVariab
               acc
             }
         })
+        val className = getEnclosingClass(methodTree).get.getSimpleName.toString
+        methodBodies.map(methodBody => replaceMethodBody(methodTree, className, methodBody, C_FORMAT))
     }
   }
 }

@@ -1,5 +1,6 @@
 package brbo.boundinference
 
+import brbo.boundinference.FileFormat.{C_FORMAT, FileFormat, JAVA_FORMAT}
 import brbo.common.Instrument
 import brbo.common.Instrument.InstrumentMode.InstrumentMode
 import brbo.common.Instrument.{AtomicStatementInstrumentation, InstrumentResult}
@@ -31,7 +32,7 @@ class BasicProcessor extends BasicTypeProcessor {
   private var classes = new HashMap[ClassTree, Set[MethodTree]]
   private var methods = new HashMap[MethodTree, ControlFlowGraph]
 
-  protected val indent = Instrument.INDENT
+  protected val indent: Int = Instrument.INDENT
 
   def runAnalysis(): Unit = {}
 
@@ -133,8 +134,28 @@ class BasicProcessor extends BasicTypeProcessor {
     ???
   }
 
-  def replaceMethodBody(methodTree: MethodTree, className: String, newMethodBody: String): String = {
+  def replaceMethodBody(methodTree: MethodTree, className: String, newMethodBody: String, fileFormat: FileFormat): String = {
     assumeOneClassOneMethod()
+
+    val cFilePrefix =
+      """extern void __VERIFIER_error() __attribute__((noreturn));
+        |extern void __VERIFIER_assume (int);
+        |extern int __VERIFIER_nondet_int ();
+        |#define static_assert __VERIFIER_assert
+        |#define assume __VERIFIER_assume
+        |#define LARGE_INT 1000000
+        |void __VERIFIER_assert(int cond) {
+        |  if (!(cond)) {
+        |    ERROR: __VERIFIER_error();
+        |  }
+        |  return;
+        |}
+        |void assert(int cond) {
+        |  if (!(cond)) {
+        |    ERROR: __VERIFIER_error();
+        |  }
+        |  return;
+        |}""".stripMargin
 
     val methodSignature = {
       // TODO: A very hacky way to get the first line of a method definition
@@ -147,8 +168,16 @@ class BasicProcessor extends BasicTypeProcessor {
       assert(firstLine.endsWith(" {"))
       firstLine.substring(0, firstLine.length - 2)
     }
-    val spaces = " " * Instrument.INDENT
-    val newSourceCode = s"class $className {\n$spaces$methodSignature\n$newMethodBody\n}"
-    newSourceCode
+    val spaces = " " * indent
+    fileFormat match {
+      case JAVA_FORMAT => s"class $className {\n$spaces$methodSignature\n$newMethodBody\n}"
+      case C_FORMAT =>
+        val replaceMethodSignature = {
+          val startIndex = methodSignature.indexOf(" ")
+          val endIndex = methodSignature.indexOf("(")
+          s"${methodSignature.substring(0, startIndex + 1)}main${methodSignature.substring(endIndex)}"
+        }
+        s"$cFilePrefix\n$replaceMethodSignature\n$newMethodBody"
+    }
   }
 }

@@ -1,5 +1,6 @@
 package brbo.boundinference
 
+import brbo.boundinference.FileFormat.JAVA_FORMAT
 import brbo.common.Instrument.InstrumentMode.ALL
 import brbo.common.TypeUtils.BrboType.INT
 import brbo.common.{Instrument, JavacUtils, TypeUtils}
@@ -50,7 +51,7 @@ class BoundInferenceProcessor extends BasicProcessor {
           val spaces = " " * indent
           result.result.replaceFirst("\\{", s"{\n$spaces${spaces}int ${Instrument.defaultDeltaVariable} = 0;")
         }
-        replaceMethodBody(methodTree, getEnclosingClass(methodTree).get.getSimpleName.toString, newMethodBody)
+        replaceMethodBody(methodTree, getEnclosingClass(methodTree).get.getSimpleName.toString, newMethodBody, JAVA_FORMAT)
     }
   }
 
@@ -66,7 +67,7 @@ class BoundInferenceProcessor extends BasicProcessor {
             getLineNumber,
             ALL
           )
-        replaceMethodBody(methodTree, getEnclosingClass(methodTree).get.getSimpleName.toString, result.result)
+        replaceMethodBody(methodTree, getEnclosingClass(methodTree).get.getSimpleName.toString, result.result, JAVA_FORMAT)
     }
   }
 
