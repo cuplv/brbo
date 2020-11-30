@@ -35,7 +35,7 @@ class InstrumentUnitTest extends AnyFlatSpec {
         val results = basicProcessor.testInstrumentation(AtomicStatementInstrumentation(_ => false, tree => tree.toString), AT_MOST_ONCE)
         assert(results.size == 1, "We should have only 1 method per test class")
         results.foreach({
-          case (_, result) => assert(result.result == testCase.expectedOutput, s"${result.result}")
+          case (_, result) => assert(result.result == testCase.expectedOutput, s"Test ${testCase.name} failed!")
         })
     })
   }
@@ -52,7 +52,7 @@ class InstrumentUnitTest extends AnyFlatSpec {
           case (_, result) =>
             // println(result.result)
             // println(testCase.expectedOutput)
-            assert(result.result == testCase.expectedOutput, s"${result.result}")
+            assert(result.result == testCase.expectedOutput, s"Test ${testCase.name} failed!")
         })
     })
   }
@@ -69,7 +69,7 @@ class InstrumentUnitTest extends AnyFlatSpec {
           case (_, result) =>
             // println(result.result)
             // println(testCase.expectedOutput)
-            assert(result.result == testCase.expectedOutput, s"${result.result}")
+            assert(result.result == testCase.expectedOutput, s"Test ${testCase.name} failed!")
         })
     })
   }
@@ -98,7 +98,7 @@ object InstrumentUnitTest {
         |}""".stripMargin
     val breakTestExpected =
       """{
-        |  while ((true))
+        |  while (true)
         |  {
         |    break;;
         |  }
@@ -114,7 +114,7 @@ object InstrumentUnitTest {
         |}""".stripMargin
     val continueTestExpected =
       """{
-        |  while ((true))
+        |  while (true)
         |  {
         |    continue;;
         |  }
@@ -136,7 +136,7 @@ object InstrumentUnitTest {
         |  {
         |    i++;;
         |  }
-        |  while ((i >= 0));
+        |  while (i >= 0);
         |}""".stripMargin
 
     val emptyTest =
@@ -182,7 +182,7 @@ object InstrumentUnitTest {
         |}""".stripMargin
     val ifTestExpected =
       """{
-        |  if ((n > 10)) {
+        |  if (n > 10) {
         |    {
         |      int a = n + 1;
         |    }
@@ -244,7 +244,7 @@ object InstrumentUnitTest {
     val whileTestExpected =
       """{
         |  int i = 0;
-        |  while ((i < n))
+        |  while (i < n)
         |  {
         |    i--;;
         |  }
@@ -309,7 +309,7 @@ object InstrumentUnitTest {
       """{
         |  int R = 0;
         |  int i = 0;
-        |  while ((i < n))
+        |  while (i < n)
         |  {
         |    i++;;
         |    D100 = D100 + 1;
@@ -332,7 +332,7 @@ object InstrumentUnitTest {
       """{
         |  int R = 0;
         |  int i = 0;
-        |  while ((i < n))
+        |  while (i < n)
         |  {
         |    i++;;
         |    D100 = D100 + 1;
@@ -471,7 +471,7 @@ object InstrumentUnitTest {
       """{
         |  int R = 0;
         |  int i = 0;
-        |  while ((i < n))
+        |  while (i < n)
         |  {
         |    i++;;
         |    D100 = D100 + 1;
@@ -494,7 +494,7 @@ object InstrumentUnitTest {
       """{
         |  int R = 0;
         |  int i = 0;
-        |  while ((i < n))
+        |  while (i < n)
         |  {
         |    i++;;
         |    D100 = D100 + 1;

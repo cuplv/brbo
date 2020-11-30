@@ -15,7 +15,7 @@ class BoundInferenceProcessorUnitTest extends AnyFlatSpec {
         val result = boundInferenceProcessor.generateSourceCodeDeltaUpdates()
         // println(result)
         // println(testCase.expectedOutput)
-        assert(result == testCase.expectedOutput)
+        assert(result == testCase.expectedOutput, s"Test ${testCase.name} failed!")
     })
   }
 
@@ -27,7 +27,7 @@ class BoundInferenceProcessorUnitTest extends AnyFlatSpec {
         val result = boundInferenceProcessor.generateSourceCodeNoResourceUpdates()
         // println(result)
         // println(testCase.expectedOutput)
-        assert(result == testCase.expectedOutput)
+        assert(result == testCase.expectedOutput, s"Test ${testCase.name} failed!")
     })
   }
 }
@@ -52,7 +52,7 @@ object BoundInferenceProcessorUnitTest {
         |    int D100 = 0;
         |    int R = 0;
         |    int i = 0;
-        |    while ((i < n))
+        |    while (i < n)
         |    {
         |      i++;;
         |      D100 = D100 + 1;
@@ -84,13 +84,13 @@ object BoundInferenceProcessorUnitTest {
         |    int D100 = 0;
         |    int R = 0;
         |    int i = 0;
-        |    while ((i < n))
+        |    while (i < n)
         |    {
         |      i++;;
         |      D100 = D100 + 1;
         |    }
         |    i = 0;;
-        |    while ((i < m))
+        |    while (i < m)
         |    {
         |      i++;;
         |      D100 = D100 + 1;
@@ -121,11 +121,11 @@ object BoundInferenceProcessorUnitTest {
         |    int D100 = 0;
         |    int R = 0;
         |    int i = 0;
-        |    while ((i < n))
+        |    while (i < n)
         |    {
         |      int j;
         |      j = 0;;
-        |      while ((j < m))
+        |      while (j < m)
         |      {
         |        j++;;
         |        D100 = D100 + 1;
@@ -157,10 +157,10 @@ object BoundInferenceProcessorUnitTest {
         |    int D100 = 0;
         |    int R = 0;
         |    int i = 0;
-        |    while ((i < n))
+        |    while (i < n)
         |    {
         |      int j = 0;
-        |      while ((j < m))
+        |      while (j < m)
         |      {
         |        j++;;
         |        D100 = D100 + 1;
@@ -196,7 +196,7 @@ object BoundInferenceProcessorUnitTest {
         |  {
         |    int R = 0;
         |    int i = 0;
-        |    while ((i < n))
+        |    while (i < n)
         |    {
         |      i++;;
         |      ;;
@@ -227,13 +227,13 @@ object BoundInferenceProcessorUnitTest {
         |  {
         |    int R = 0;
         |    int i = 0;
-        |    while ((i < n))
+        |    while (i < n)
         |    {
         |      i++;;
         |      ;;
         |    }
         |    i = 0;;
-        |    while ((i < m))
+        |    while (i < m)
         |    {
         |      i++;;
         |      ;;
@@ -263,11 +263,11 @@ object BoundInferenceProcessorUnitTest {
         |  {
         |    int R = 0;
         |    int i = 0;
-        |    while ((i < n))
+        |    while (i < n)
         |    {
         |      int j;
         |      j = 0;;
-        |      while ((j < m))
+        |      while (j < m)
         |      {
         |        j++;;
         |        ;;
@@ -298,10 +298,10 @@ object BoundInferenceProcessorUnitTest {
         |  {
         |    int R = 0;
         |    int i = 0;
-        |    while ((i < n))
+        |    while (i < n)
         |    {
         |      int j = 0;
-        |      while ((j < m))
+        |      while (j < m)
         |      {
         |        j++;;
         |        ;;

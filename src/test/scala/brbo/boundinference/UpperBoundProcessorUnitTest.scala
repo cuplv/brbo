@@ -18,7 +18,7 @@ class UpperBoundProcessorUnitTest extends AnyFlatSpec {
         }
         // println(result)
         // println(testCase.expectedOutput)
-        assert(result == testCase.expectedOutput)
+        assert(result == testCase.expectedOutput, s"Test ${testCase.name} failed!")
     })
   }
 }
@@ -66,12 +66,12 @@ object UpperBoundProcessorUnitTest {
         |    int D100 = 0;
         |    int R = 0;
         |    int i = 0;
-        |    while ((i < n))
+        |    while (i < n)
         |    {
         |      int j;
         |      j = 0;;
         |      ;;
-        |      while ((j < m))
+        |      while (j < m)
         |      {
         |        j++;;
         |        D100 = D100 + 1;;
@@ -83,12 +83,12 @@ object UpperBoundProcessorUnitTest {
         |    int D100 = 0;
         |    int R = 0;
         |    int i = 0;
-        |    while ((i < n))
+        |    while (i < n)
         |    {
         |      int j; D100 = 0;;
         |      j = 0;
         |      ;;
-        |      while ((j < m))
+        |      while (j < m)
         |      {
         |        j++;
         |        D100 = D100 + 1;
@@ -128,17 +128,17 @@ object UpperBoundProcessorUnitTest {
         |    int D100 = 0;
         |    int R = 0;
         |    int i = 0;
-        |    while ((i < n))
+        |    while (i < n)
         |    {
         |      int j;
         |      j = 0;;
-        |      while ((j < m))
+        |      while (j < m)
         |      {
         |        j = j + 4;;
         |        D100 = D100 + 1;;
         |      }
         |      j = 3;;
-        |      while ((j < m))
+        |      while (j < m)
         |      {
         |        j++;;
         |        D100 = D100 + 2;;
@@ -150,17 +150,17 @@ object UpperBoundProcessorUnitTest {
         |    int D100 = 0;
         |    int R = 0;
         |    int i = 0;
-        |    while ((i < n))
+        |    while (i < n)
         |    {
         |      int j;
         |      j = 0;;
-        |      while ((j < m))
+        |      while (j < m)
         |      {
         |        j = j + 4;;
         |        D100 = D100 + 1;;
         |      }
         |      j = 3;;
-        |      while ((j < m))
+        |      while (j < m)
         |      {
         |        j++;; D100 = 0;;
         |        D100 = D100 + 2;
@@ -172,17 +172,17 @@ object UpperBoundProcessorUnitTest {
         |    int D100 = 0;
         |    int R = 0;
         |    int i = 0;
-        |    while ((i < n))
+        |    while (i < n)
         |    {
         |      int j;
         |      j = 0;;
-        |      while ((j < m))
+        |      while (j < m)
         |      {
         |        j = j + 4;;
         |        D100 = D100 + 1;;
         |      }
         |      j = 3;; D100 = 0;;
-        |      while ((j < m))
+        |      while (j < m)
         |      {
         |        j++;
         |        D100 = D100 + 2;
@@ -194,17 +194,17 @@ object UpperBoundProcessorUnitTest {
         |    int D100 = 0;
         |    int R = 0;
         |    int i = 0;
-        |    while ((i < n))
+        |    while (i < n)
         |    {
         |      int j;
         |      j = 0;;
-        |      while ((j < m))
+        |      while (j < m)
         |      {
         |        j = j + 4;; D100 = 0;;
         |        D100 = D100 + 1;
         |      }
         |      j = 3;
-        |      while ((j < m))
+        |      while (j < m)
         |      {
         |        j++;
         |        D100 = D100 + 2;
@@ -216,17 +216,17 @@ object UpperBoundProcessorUnitTest {
         |    int D100 = 0;
         |    int R = 0;
         |    int i = 0;
-        |    while ((i < n))
+        |    while (i < n)
         |    {
         |      int j; D100 = 0;;
         |      j = 0;
-        |      while ((j < m))
+        |      while (j < m)
         |      {
         |        j = j + 4;
         |        D100 = D100 + 1;
         |      }
         |      j = 3;
-        |      while ((j < m))
+        |      while (j < m)
         |      {
         |        j++;
         |        D100 = D100 + 2;
@@ -259,10 +259,10 @@ object UpperBoundProcessorUnitTest {
         |    int D100 = 0;
         |    int R = 0;
         |    int i = 0;
-        |    while ((i < n))
+        |    while (i < n)
         |    {
         |      int j = 0; D100 = 0;;
-        |      while ((j < m))
+        |      while (j < m)
         |      {
         |        j++;
         |        ;;

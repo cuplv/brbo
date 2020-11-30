@@ -261,7 +261,7 @@ object Instrument {
       case tree3: DoWhileLoopTree =>
         val result = substituteAtomicStatementHelper(tree3.getStatement, state, indent)
         InstrumentResult(
-          s"${spaces}do\n${result.result}\n${spaces}while (${tree3.getCondition.toString});",
+          s"${spaces}do\n${result.result}\n${spaces}while ${tree3.getCondition.toString};",
           result.state)
       case _: EmptyStatementTree => instrumentation.instrument(tree, state, indent, cfg)
       case _: EnhancedForLoopTree => errorInstrumentResult(s"Not yet support enhanced for loop at line ${getLineNumber(tree)}")
@@ -294,7 +294,7 @@ object Instrument {
         val result1 = substituteAtomicStatementHelper(tree3.getThenStatement, state, indent + INDENT)
         val result2 = substituteAtomicStatementHelper(tree3.getElseStatement, result1.state, indent + INDENT)
         InstrumentResult(
-          s"${spaces}if (${tree3.getCondition}) {\n${result1.result}\n$spaces" +
+          s"${spaces}if ${tree3.getCondition} {\n${result1.result}\n$spaces" +
             s"} else {\n${result2.result}\n$spaces}",
           result2.state)
       case tree3: LabeledStatementTree =>
@@ -309,7 +309,7 @@ object Instrument {
       case _: VariableTree => instrumentation.instrument(tree, state, indent, cfg)
       case tree: WhileLoopTree =>
         val result = substituteAtomicStatementHelper(tree.getStatement, state, indent)
-        InstrumentResult(s"${spaces}while (${tree.getCondition})\n${result.result}", result.state)
+        InstrumentResult(s"${spaces}while ${tree.getCondition}\n${result.result}", result.state)
     }
   }
 
