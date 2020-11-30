@@ -1,28 +1,31 @@
 package brbo.boundinference
 
 import brbo.common.Instrument.InstrumentMode.ALL
-import brbo.common.{Instrument, JavacUtils}
+import brbo.common.TypeUtils.BrboType.INT
+import brbo.common.{Instrument, JavacUtils, TypeUtils}
 import javax.annotation.processing.SupportedAnnotationTypes
+import javax.lang.model.`type`.TypeMirror
 import org.apache.logging.log4j.LogManager
+import org.checkerframework.javacutil.TreeUtils
 
-import scala.collection.immutable.HashSet
+import scala.collection.JavaConverters._
+import scala.collection.immutable.{HashMap, HashSet}
 
 @SupportedAnnotationTypes(Array("*"))
 class BoundInferenceProcessor extends BasicProcessor {
   private val logger = LogManager.getLogger(classOf[BoundInferenceProcessor])
-
-  private val indent = Instrument.INDENT
 
   override def runAnalysis(): Unit = {
     assumeOneClassOneMethod()
 
     // Default decomposition
     val sourceCodeDeltaUpdates = generateSourceCodeDeltaUpdates()
-    println(sourceCodeDeltaUpdates)
+    // println(sourceCodeDeltaUpdates)
     val sourceCodeNoResourceUpdates = generateSourceCodeNoResourceUpdates()
-    println(sourceCodeNoResourceUpdates)
+    // println(sourceCodeNoResourceUpdates)
 
-    val boundVocabulary = new HashSet[String]
+    val boundVocabulary = generateBoundVocabulary()
+    logger.info(s"Inferring bounds with vocabulary `$boundVocabulary`")
 
     val upperBoundProcessor = new UpperBoundProcessor(sourceCodeNoResourceUpdates, Instrument.defaultDeltaVariable, boundVocabulary)
     JavacUtils.runProcessor(getCompilationUnitName, sourceCodeDeltaUpdates, upperBoundProcessor)
@@ -30,7 +33,7 @@ class BoundInferenceProcessor extends BasicProcessor {
   }
 
   def generateSourceCodeDeltaUpdates(): String = {
-    val instrumented = getMethods.map({
+    getMethods.head match {
       case (methodTree, cfg) =>
         // Default decomposition
         val result =
@@ -48,13 +51,11 @@ class BoundInferenceProcessor extends BasicProcessor {
           result.result.replaceFirst("\\{", s"{\n$spaces${spaces}int ${Instrument.defaultDeltaVariable} = 0;")
         }
         replaceMethodBody(methodTree, getEnclosingClass(methodTree).get.getSimpleName.toString, newMethodBody)
-    })
-    assert(instrumented.size == 1)
-    instrumented.head
+    }
   }
 
   def generateSourceCodeNoResourceUpdates(): String = {
-    val instrumented = getMethods.map({
+    getMethods.head match {
       case (methodTree, cfg) =>
         val result =
           Instrument.substituteAtomicStatements(
@@ -66,8 +67,18 @@ class BoundInferenceProcessor extends BasicProcessor {
             ALL
           )
         replaceMethodBody(methodTree, getEnclosingClass(methodTree).get.getSimpleName.toString, result.result)
-    })
-    assert(instrumented.size == 1)
-    instrumented.head
+    }
+  }
+
+  def generateBoundVocabulary(): HashSet[String] = {
+    getMethods.head match {
+      case (methodTree, _) =>
+        val parameters = methodTree.getParameters.asScala.foldLeft(HashMap[String, TypeMirror]())({
+          (acc, param) => acc + (param.getName.toString -> TreeUtils.typeOf(param.getType))
+        })
+        TypeUtils.typeMapTranslation(parameters).foldLeft(new HashSet[String])({
+          case (acc, (name, typ)) => if (typ == INT) acc + name else acc
+        })
+    }
   }
 }

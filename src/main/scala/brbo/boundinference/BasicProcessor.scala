@@ -12,7 +12,6 @@ import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.UnderlyingAST.CFGMethod
 import org.checkerframework.dataflow.cfg.builder.CFGBuilder
-import org.checkerframework.dataflow.cfg.node.{AssignmentNode, Node}
 import org.checkerframework.javacutil.BasicTypeProcessor
 
 import scala.collection.JavaConverters._
@@ -31,6 +30,8 @@ class BasicProcessor extends BasicTypeProcessor {
 
   private var classes = new HashMap[ClassTree, Set[MethodTree]]
   private var methods = new HashMap[MethodTree, ControlFlowGraph]
+
+  protected val indent = Instrument.INDENT
 
   def runAnalysis(): Unit = {}
 
@@ -113,12 +114,6 @@ class BasicProcessor extends BasicTypeProcessor {
   def getCompilationUnitName: String = compilationUnitName.get
 
   def getSourceCode: String = sourceCode.get
-
-  case class AssignmentToDeltaVariable(cfgNode: Node, deltaVariable: String) {
-    assert(cfgNode.isInstanceOf[AssignmentNode])
-
-    override def toString: String = s"delta variable $deltaVariable in stmt $cfgNode at line ${getLineNumber(cfgNode.getTree)}"
-  }
 
   def testInstrumentation(atomicStatementInstrumentation: AtomicStatementInstrumentation, instrumentMode: InstrumentMode): Map[MethodTree, InstrumentResult] = {
     getMethods.map({

@@ -110,6 +110,16 @@ object Instrument {
     }
   }
 
+  def extractGhostVariableFromAssignment(cfgNode: Node, types: Iterable[GhostVariable]): Option[GhostVariableUpdateNode] = {
+    types.foldLeft(None: Option[GhostVariableUpdateNode])({
+      (acc, typ) =>
+        acc match {
+          case Some(_) => acc
+          case None => extractGhostVariableFromAssignment(cfgNode, typ)
+        }
+    })
+  }
+
   def extractGhostVariableFromAssignment(tree: Tree, typ: GhostVariable): Option[GhostVariableUpdateTree] = {
     tree match {
       case tree: AssignmentTree =>
@@ -190,7 +200,7 @@ object Instrument {
           }
           if (cfgNodes.isEmpty) original
           else if (cfgNodes.forall(node => shouldInstrument(node))) {
-            logger.debug(s"AST `$tree` is mapped to nodes `$cfgNodes` and all nodes satisfy instrumentation")
+            logger.debug(s"AST `$tree` is instrumented into `${howToInstrument(tree)}`, because its corresponding nodes `$cfgNodes` all satisfy the guard of instrumentation")
             InstrumentResult(
               s"$spaces${howToInstrument(tree)};",
               state.updateHasInstrumented(true)
