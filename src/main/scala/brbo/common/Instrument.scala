@@ -291,11 +291,11 @@ object Instrument {
           result2.state
         )
       case tree3: IfTree =>
-        val result1 = substituteAtomicStatementHelper(tree3.getThenStatement, state, indent + INDENT)
-        val result2 = substituteAtomicStatementHelper(tree3.getElseStatement, result1.state, indent + INDENT)
+        val result1 = substituteAtomicStatementHelper(tree3.getThenStatement, state, indent)
+        val result2 = substituteAtomicStatementHelper(tree3.getElseStatement, result1.state, indent)
         InstrumentResult(
-          s"${spaces}if ${tree3.getCondition} {\n${result1.result}\n$spaces" +
-            s"} else {\n${result2.result}\n$spaces}",
+          s"${spaces}if ${tree3.getCondition}\n${result1.result}\n$spaces" +
+            s"else\n${result2.result}",
           result2.state)
       case tree3: LabeledStatementTree =>
         val result = substituteAtomicStatementHelper(tree3.getStatement, state, indent)

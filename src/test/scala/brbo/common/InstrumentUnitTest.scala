@@ -182,14 +182,13 @@ object InstrumentUnitTest {
         |}""".stripMargin
     val ifTestExpected =
       """{
-        |  if (n > 10) {
-        |    {
-        |      int a = n + 1;
-        |    }
-        |  } else {
-        |    {
-        |      int b = n;
-        |    }
+        |  if (n > 10)
+        |  {
+        |    int a = n + 1;
+        |  }
+        |  else
+        |  {
+        |    int b = n;
         |  }
         |}""".stripMargin
 
