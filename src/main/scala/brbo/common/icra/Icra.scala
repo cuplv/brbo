@@ -1,15 +1,15 @@
-package brbo.common
+package brbo.common.icra
 
 import java.io.PrintWriter
 import java.nio.file.Files
 
+import com.microsoft.z3.AST
 import org.apache.logging.log4j.LogManager
-import com.microsoft.z3._
 
-import scala.sys.process.{ProcessLogger, _}
+import scala.sys.process._
 
 object Icra {
-  private val logger = LogManager.getLogger("brbo.common.Icra")
+  private val logger = LogManager.getLogger("brbo.common.icra.Icra")
   private val icraPath = s"${System.getProperty("user.home")}/Documents/workspace/icra/icra"
 
   def run(sourceCode: String): Unit = {
@@ -18,7 +18,8 @@ object Icra {
 
     val file = Files.createTempFile("prefix-", ".c")
     new PrintWriter(file.toAbsolutePath.toString) {
-      write(sourceCode); close()
+      write(sourceCode);
+      close()
     }
 
     val cmd = s"$icraPath ${file.toAbsolutePath}"

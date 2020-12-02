@@ -14,6 +14,8 @@ libraryDependencies += "org.apache.logging.log4j" % "log4j-core" % "2.14.0"
 
 libraryDependencies += "commons-io" % "commons-io" % "2.5"
 
+libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2"
+
 // Add tools.jar such that sbt can find it
 unmanagedJars in Compile ~= {uj =>
   Seq(Attributed.blank(file(System.getProperty("java.home").dropRight(3)+"lib/tools.jar"))) ++ uj

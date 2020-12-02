@@ -4,7 +4,8 @@ import brbo.boundinference.FileFormat.C_FORMAT
 import brbo.common.Instrument.AtomicStatementInstrumentation
 import brbo.common.Instrument.GhostVariable.{Counter, Delta}
 import brbo.common.Instrument.InstrumentMode.AT_MOST_ONCE
-import brbo.common.{CFGUtils, Icra, Instrument}
+import brbo.common.icra.Icra
+import brbo.common.{CFGUtils, Instrument}
 import com.sun.source.tree.Tree
 import javax.annotation.processing.SupportedAnnotationTypes
 import javax.lang.model.`type`.TypeKind
