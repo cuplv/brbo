@@ -7,37 +7,73 @@ object IcraLexer extends RegexParsers {
 
   sealed trait IcraToken
 
-  case class IDENTIFIER(identifier: String) extends IcraToken
+  case class IDENTIFIER(identifier: String) extends IcraToken {
+    override def toString: String = identifier
+  }
 
-  case class NUMBER(number: Int) extends IcraToken
+  case class NUMBER(number: Int) extends IcraToken {
+    override def toString: String = number.toString
+  }
 
-  case class AND() extends IcraToken
+  object AND extends IcraToken {
+    override def toString: String = """/\"""
+  }
 
-  case class OR() extends IcraToken
+  object OR extends IcraToken {
+    override def toString: String = """\/"""
+  }
 
-  case class NEGATION() extends IcraToken
+  object NEGATION extends IcraToken {
+    override def toString: String = "!"
+  }
 
-  case class PLUS() extends IcraToken
+  object PLUS extends IcraToken {
+    override def toString: String = "+"
+  }
 
-  case class MINUS() extends IcraToken
+  object MINUS extends IcraToken {
+    override def toString: String = "-"
+  }
 
-  case class MULTIPLICATION() extends IcraToken
+  object MULTIPLICATION extends IcraToken {
+    override def toString: String = "*"
+  }
 
-  case class LEFT_BRACKET() extends IcraToken
+  object DIVISION extends IcraToken {
+    override def toString: String = """/"""
+  }
 
-  case class RIGHT_BRACKET() extends IcraToken
+  object LEFT_BRACKET extends IcraToken {
+    override def toString: String = "("
+  }
 
-  case class EQUAL() extends IcraToken
+  object RIGHT_BRACKET extends IcraToken {
+    override def toString: String = ")"
+  }
 
-  case class LESS_THAN() extends IcraToken
+  object EQUAL extends IcraToken {
+    override def toString: String = "="
+  }
 
-  case class LESS_THAN_OR_EQUAL_TO() extends IcraToken
+  object LESS_THAN extends IcraToken {
+    override def toString: String = "<"
+  }
 
-  case class GREATER_THAN() extends IcraToken
+  object LESS_THAN_OR_EQUAL_TO extends IcraToken {
+    override def toString: String = "<="
+  }
 
-  case class GREATER_THAN_OR_EQUAL_TO() extends IcraToken
+  object GREATER_THAN extends IcraToken {
+    override def toString: String = ">"
+  }
 
-  case class ASSIGNMENT() extends IcraToken
+  object GREATER_THAN_OR_EQUAL_TO extends IcraToken {
+    override def toString: String = ">="
+  }
+
+  object ASSIGNMENT extends IcraToken {
+    override def toString: String = ":="
+  }
 
   override def skipWhitespace = true
 
@@ -49,47 +85,53 @@ object IcraLexer extends RegexParsers {
   }
 
   private def number: Parser[NUMBER] = {
-    s"[0-9]+".r ^^ { string => NUMBER(string.toInt) }
+    s"(\\d+)".r ^^ { string => NUMBER(string.toInt) }
   }
 
-  private def and = """/\""" ^^ (_ => AND)
+  private def and: Parser[IcraToken] = """/\""" ^^ (_ => AND)
 
-  private def or = """\/""" ^^ (_ => OR)
+  private def or: Parser[IcraToken] = """\/""" ^^ (_ => OR)
 
-  private def negation = """!""" ^^ (_ => NEGATION)
+  private def negation: Parser[IcraToken] = """!""" ^^ (_ => NEGATION)
 
-  private def plus = """+""" ^^ (_ => PLUS)
+  private def plus: Parser[IcraToken] = """+""" ^^ (_ => PLUS)
 
-  private def minus = """-""" ^^ (_ => MINUS)
+  private def minus: Parser[IcraToken] = """-""" ^^ (_ => MINUS)
 
-  private def multiplication = """*""" ^^ (_ => MULTIPLICATION)
+  private def multiplication : Parser[IcraToken]= """*""" ^^ (_ => MULTIPLICATION)
 
-  private def leftBracket = """(""" ^^ (_ => LEFT_BRACKET)
+  private def division : Parser[IcraToken]= """*""" ^^ (_ => DIVISION)
 
-  private def rightBracket = """)""" ^^ (_ => RIGHT_BRACKET)
+  private def leftBracket: Parser[IcraToken] = """(""" ^^ (_ => LEFT_BRACKET)
 
-  private def equal = """=""" ^^ (_ => EQUAL)
+  private def rightBracket: Parser[IcraToken] = """)""" ^^ (_ => RIGHT_BRACKET)
 
-  private def lessThan = """<""" ^^ (_ => LESS_THAN)
+  private def equal: Parser[IcraToken] = """=""" ^^ (_ => EQUAL)
 
-  private def lessThanOrEqualTo = """<=""" ^^ (_ => LESS_THAN_OR_EQUAL_TO)
+  private def lessThan: Parser[IcraToken] = """<""" ^^ (_ => LESS_THAN)
 
-  private def greaterThan = """>""" ^^ (_ => GREATER_THAN)
+  private def lessThanOrEqualTo: Parser[IcraToken] = """<=""" ^^ (_ => LESS_THAN_OR_EQUAL_TO)
 
-  private def greaterThanOrEqualTo = """>=""" ^^ (_ => GREATER_THAN_OR_EQUAL_TO)
+  private def greaterThan: Parser[IcraToken] = """>""" ^^ (_ => GREATER_THAN)
 
-  private def assignment = """:=""" ^^ (_ => ASSIGNMENT)
+  private def greaterThanOrEqualTo : Parser[IcraToken]= """>=""" ^^ (_ => GREATER_THAN_OR_EQUAL_TO)
 
-  private def tokens: Parser[List[Object]] = {
-    phrase(rep1(and | or | negation | plus | minus | multiplication | leftBracket | rightBracket
+  private def assignment : Parser[IcraToken]= """:=""" ^^ (_ => ASSIGNMENT)
+
+  private def tokens: Parser[List[IcraToken]] = {
+    phrase(
+      rep1(
+        and | or | negation | plus | minus | multiplication | division | leftBracket | rightBracket
       | lessThanOrEqualTo | greaterThanOrEqualTo | lessThan | greaterThan
       | assignment | equal
-      | number | identifier))
+      | number | identifier
+      )
+    )
   }
 
-  def parse(code: String): List[Object] = {
+  def parse(code: String): List[IcraToken] = {
     parse(tokens, code) match {
-      case NoSuccess(msg, next) => throw new RuntimeException(s"Error when applying a lexer on invariant string `$code`: $msg")
+      case NoSuccess(message, next) => throw new RuntimeException(s"Error when applying a lexer on string `$code`: $message")
       case Success(result, next) => result
     }
   }
