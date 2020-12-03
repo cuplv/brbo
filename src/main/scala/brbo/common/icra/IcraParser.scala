@@ -252,17 +252,7 @@ object IcraParser extends Parsers {
   }
 
   private def expression: Parser[IcraAST] = {
-    (PLUS ~ term ~ expressionPrime | MINUS ~ term ~ expressionPrime | term ~ expressionPrime) ^^ {
-      case PLUS ~ (term: IcraAST) ~ (expressionPrime: IcraAST) =>
-        expressionPrime match {
-          case EmptyAST => term
-          case _ => Addition(term, expressionPrime)
-        }
-      case MINUS ~ (term: IcraAST) ~ (expressionPrime: IcraAST) =>
-        expressionPrime match {
-          case EmptyAST => Negative(term)
-          case _ => Subtraction(term, expressionPrime)
-        }
+    term ~ expressionPrime ^^ {
       case (term: IcraAST) ~ (expressionPrime: IcraAST) =>
         expressionPrime match {
           case EmptyAST => term
@@ -328,8 +318,10 @@ object IcraParser extends Parsers {
   }
 
   private def factor: Parser[IcraAST] = {
-    primary ^^ {
-      primary: IcraAST => primary
+    (primary | PLUS ~ factor | MINUS ~ factor) ^^ {
+      case PLUS ~ (factor: IcraAST) => factor
+      case MINUS ~ (factor: IcraAST) => Negative(factor)
+      case primary: IcraAST => primary
     }
   }
 
