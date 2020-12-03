@@ -97,16 +97,6 @@ case class ToMultiply(right: IcraAST) extends IcraAST
 
 case class ToDivide(right: IcraAST) extends IcraAST
 
-case class ToLessThan(right: IcraAST) extends IcraAST
-
-case class ToLessThanOrEqualTo(right: IcraAST) extends IcraAST
-
-case class ToGreaterThan(right: IcraAST) extends IcraAST
-
-case class ToGreaterThanOrEqualTo(right: IcraAST) extends IcraAST
-
-case class ToEqual(right: IcraAST) extends IcraAST
-
 case class ToAnd(right: IcraAST) extends IcraAST
 
 case class ToOr(right: IcraAST) extends IcraAST
@@ -180,22 +170,53 @@ object IcraParser extends Parsers {
 
   private def boolExpression: Parser[IcraAST] = {
     boolTerm ^^ {
-      case boolTerm: IcraAST => boolTerm
+      boolTerm: IcraAST => boolTerm
     }
   }
 
   private def boolTerm: Parser[IcraAST] = {
-    (boolFactor | boolTerm ~ OR ~ boolFactor) ^^ {
-      case (left: IcraAST) ~ OR ~ (right: IcraAST) => Or(left, right)
-      case boolFactor: IcraAST => boolFactor
+    (boolFactor ~ boolTermPrime) ^^ {
+      case (boolFactor: IcraAST) ~ (boolTermPrime: IcraAST) =>
+        boolTermPrime match {
+          case EmptyAST => boolFactor
+          case ToOr(right) => Or(boolFactor, right)
+        }
+    }
+  }
+
+  private def boolTermPrime: Parser[IcraAST] = {
+    opt(OR ~ boolFactor ~ boolTermPrime) ^^ {
+      case Some(OR ~ (boolFactor: IcraAST) ~ (boolTermPrime: IcraAST)) =>
+        val thisFactor =
+          boolTermPrime match {
+            case EmptyAST => boolFactor
+            case ToOr(right) => Or(boolFactor, right)
+          }
+        ToOr(thisFactor)
+      case None => EmptyAST
     }
   }
 
   private def boolFactor: Parser[IcraAST] = {
-    (boolSecondary |
-      boolFactor ~ AND ~ boolSecondary) ^^ {
-      case (left: IcraAST) ~ AND ~ (right: IcraAST) => And(left, right)
-      case boolSecondary: IcraAST => boolSecondary
+    (boolSecondary ~ boolFactorPrime) ^^ {
+      case (boolSecondary: IcraAST) ~ (boolFactorPrime: IcraAST) =>
+        boolFactorPrime match {
+          case EmptyAST => boolSecondary
+          case ToAnd(right) => And(boolSecondary, right)
+        }
+    }
+  }
+
+  private def boolFactorPrime: Parser[IcraAST] = {
+    opt(AND ~ boolSecondary ~ boolFactorPrime) ^^ {
+      case Some(AND ~ (boolSecondary: IcraAST) ~ (boolFactorPrime: IcraAST)) =>
+        val thisFactor =
+          boolFactorPrime match {
+            case EmptyAST => boolSecondary
+            case ToAnd(right) => And(boolSecondary, right)
+          }
+        ToAnd(thisFactor)
+      case None => EmptyAST
     }
   }
 
@@ -207,10 +228,9 @@ object IcraParser extends Parsers {
   }
 
   private def boolPrimary: Parser[IcraAST] = {
-    (identifier |
-      // TODO: Boolean literals
-      relational |
-      LEFT_BRACKET ~ boolExpression ~ RIGHT_BRACKET) ^^ {
+    (relational | // TODO: Boolean literals
+      LEFT_BRACKET ~ boolExpression ~ RIGHT_BRACKET |
+      expression) ^^ {
       case identifier: Identifier => identifier
       case relational: IcraAST => relational
       case LEFT_BRACKET ~ (boolExpression: IcraAST) ~ RIGHT_BRACKET => boolExpression
@@ -233,12 +253,12 @@ object IcraParser extends Parsers {
 
   private def expression: Parser[IcraAST] = {
     (PLUS ~ term ~ expressionPrime | MINUS ~ term ~ expressionPrime | term ~ expressionPrime) ^^ {
-      case PLUS ~ (term: IcraAST) ~ expressionPrime =>
+      case PLUS ~ (term: IcraAST) ~ (expressionPrime: IcraAST) =>
         expressionPrime match {
           case EmptyAST => term
           case _ => Addition(term, expressionPrime)
         }
-      case MINUS ~ (term: IcraAST) ~ expressionPrime =>
+      case MINUS ~ (term: IcraAST) ~ (expressionPrime: IcraAST) =>
         expressionPrime match {
           case EmptyAST => Negative(term)
           case _ => Subtraction(term, expressionPrime)
@@ -330,9 +350,13 @@ object IcraParser extends Parsers {
   }
 }
 
+// What is implemented is:
+// - Remove direct left recursion: https://en.wikipedia.org/wiki/Left_recursion#Removing_direct_left_recursion
+// - Algol 60 grammar: https://www.cs.unc.edu/~plaisted/comp455/Algol60.pdf
+
+// Other helpful resources:
 // Bool and arithmetic expression: https://compilers.iecc.com/crenshaw/tutor6.txt
 // Bool expression: http://www.cs.unb.ca/~wdu/cs4613/a2ans.htm
 // Arithmetic expression: https://stackoverflow.com/a/34603099
-// Other helpful answers:
 // https://stackoverflow.com/a/2976708
 // https://stackoverflow.com/a/43971433

@@ -7,20 +7,28 @@ import org.scalatest.flatspec.AnyFlatSpec
 import scala.collection.immutable.HashSet
 
 class IcraUnitTest extends AnyFlatSpec {
-  "Parser" should "correctly parse boolean expressions from ICRA's outputs" in {
+  "Parser" should "correctly parse boolean expressions from ICRA's outputs (unit tests)" in {
     IcraUnitTest.parserUnitTestBoolExpressions.foreach({
       testCase =>
-        // println(IcraLexer.parse(testCase.input))
         val expression = IcraParser.parseBoolExpression(testCase.input)
-        println(expression)
+        // println(expression)
+        assert(expression.toString == testCase.expectedOutput)
     })
   }
 
-  it should "correctly parse arithmetic expressions from ICRA's outputs" in {
+  it should "correctly parse arithmetic expressions from ICRA's outputs (unit tests)" in {
     IcraUnitTest.parserUnitTestArithmeticExpressions.foreach({
       testCase =>
-        // println(IcraLexer.parse(testCase.input))
         val expression = IcraParser.parseArithmeticExpression(testCase.input)
+        // println(expression)
+        assert(expression.toString == testCase.expectedOutput)
+    })
+  }
+
+  it should "correctly parse boolean expressions from ICRA's outputs (integration tests)" in {
+    IcraUnitTest.parserIntegrationTestBoolExpressions.foreach({
+      testCase =>
+        val expression = IcraParser.parseBoolExpression(testCase.input)
         println(expression)
     })
   }
@@ -55,7 +63,7 @@ class IcraUnitTest extends AnyFlatSpec {
           rawInvariant =>
             // val declarations = IcraParser.parseDeclarations(rawInvariant.declarations)
             // println(declarations)
-            // val invariant = IcraParser.parseInvariant(IcraLexer.parse(rawInvariant.invariant))
+            // val invariant = IcraParser.parseInvariant(rawInvariant.invariant)
             // println(invariant)
         })
     })
@@ -79,7 +87,7 @@ object IcraUnitTest {
 
   private val unitAddition = "1 + i':92"
 
-  private val unitSubtraction = "K:91 + i':92"
+  private val unitSubtraction = "K:91 - i':92"
 
   private val unitMultiplication = "K:91 * i':92"
 
@@ -101,6 +109,26 @@ object IcraUnitTest {
 
   private val unitOr = """K:91 \/ i':92"""
 
+  private val integrationTest1 = """((0 <= K:97 /\ K:97 <= 0))"""
+
+  private val integrationTest2 = """!((0 <= K:97 /\ K:97 <= 0))"""
+
+  // private val integrationTest3 = """(!((0 <= K:97 /\ K:97 <= 0)) \/ (D100':98 + -j':99) = -j:2)"""
+
+  // private val integrationTest3 = """((D100':98 + -j':99) = -j:2)"""
+
+  private val integrationTest3 = """((D100':98 + -j':99) = -j:2)"""
+
+  private val integrationTest4 = """(!(1 <= K:97) \/ (D100':98 + -j':99) = 0)"""
+
+  private val integrationTest5 = """(K:97 = 0 /\ j:2 = j':99 /\ 0 = D100':98)"""
+
+  private val integrationTest6 = """(1 <= K:97 /\ 0 <= (-1 + param0:15)"""
+
+  private val integrationTest7 = """(-j':99 + D100':98) = 0 /\ 0 <= (-1 + param0:15)                     /\ 0 <= (j':99 + -param1:18) /\ 0 <= j':99)"""
+
+  private val integrationTest8 = """0 <= K:97 /\ 0 <= D100':98 /\ 0 < param0:15"""
+
   private val test01 =
     """<Unique State Name, 38> -> <Unique State Name, 37>      Base relation: {when cond:48 = 0}       <Unique State Name, 38> -> <Unique State Name, 39>      Base relation: {when !(cond:48 = 0)}    <Unique State Name, 9> -> <Unique State Name, 14>   Base relation: {j := 0 when i:0 < n:1}  <Unique State Name, 9> -> <Unique State Name, 60>       Base relation: {return := havoc:16 return@pos := type_err:17 return@width := type_err:18 when n:1 <= i:0}       <Unique State Name, 5> -> <Unique State Name, 62>   Base relation: {when (D100:4 = 0 /\ 0 <= i:0 /\ D100:4 = 0)}    <Unique State Name, 60> -> <Unique State Name, >        Base relation: {}       <Unique State Name, 46> -> <Unique State Name, 48>  Base relation: {when false}     <Unique State Name, 55> -> <Unique State Name, 38>      Base relation: {cond := param0:12}      <Unique State Name, 54> -> <Unique State Name, 47>      Base relation: {cond := param0:12}  <Unique State Name, 56> -> <Unique State Name, 5>       Base relation: {D100 := 0 i := 0 n := param0:12 m := param1:15} <Unique State Name, 47> -> <Unique State Name, 46>      Base relation: {when cond:58 = 0}       <Unique State Name, 47> -> <Unique State Name, 48>  Base relation: {when !(cond:58 = 0)}    <Unique State Name, 37> -> <Unique State Name, 39>      Base relation: {when false}     <Unique State Name, 14> -> <Unique State Name, 61> Base relation: {when (0 <= D100:4 /\ 0 <= j:2 /\ (-j:2 + D100:4) = 0)}   <Unique State Name, 39> -> <Unique State Name, 59>      Base relation: {return := havoc:49 return@pos := type_err:52 return@width := type_err:53}       <Unique State Name, 48> -> <Unique State Name, 58>  Base relation: {return := havoc:59 return@pos := type_err:62 return@width := type_err:63}       <Unique State Name, 61> -> <Unique State Name, 18>      Base relation: {}       <Unique State Name, 62> -> <Unique State Name, 9>   Base relation: {}       <Unique State Name, 29> -> <Unique State Name, 5>       Base relation: {}       <Unique State Name, 18> -> <Unique State Name, 14>      Base relation: {D100 := (D100:4 + 1) j := (j:2 + 1) when j:2 < m:3} <Unique State Name, 18> -> <Unique State Name, 29>      Base relation: {D100 := 0 i := (i:0 + 1) when m:3 <= j:2}       #################################################################           Beginning Interprocedural Anaylsis (with regexp=IRE)  Step 1: =========================================================Step 2: =========================================================Step 3: =========================================================        Converting to IRE regular expressions(Not performing widening.)alphaHatStar {**** body value: Base relation: {D100 := (D100:4 + 1) j := (j:2 + 1) when (0 <= D100:4 /\ 0 <= j:2 /\ (-j:2 + D100:4) = 0 /\ j:2 < m:3)}**** alpha hat:   {(j':69) = (1)*(j:2) + 1    (D100':68) = (1)*(j:2) + 1        pre:      [|-j:2+D100:4=0; -j:2+m:3-1>=0; j:2>=0|]    post:      [|-D100':68+j':69=0; -D100':68+m:3>=0; D100':68-1>=0|]}**** star transition:   {D100 := D100':68   j := j':69   when ((!(0 <= K:75) \/ j':69 = (j:2 + K:75))           /\ (!((0 <= K:75 /\ K:75 <= 0)) \/ D100':68 = (D100:4 + K:75))           /\ (!(1 <= K:75) \/ D100':68 = (j:2 + K:75))           /\ ((K:75 = 0 /\ j:2 = j':69 /\ D100:4 = D100':68)                 \/ (1 <= K:75 /\ (-j:2 + D100:4) = 0                       /\ 0 <= (-1 + -j:2 + m:3) /\ 0 <= j:2                       /\ (-D100':68 + j':69) = 0 /\ 0 <= (-D100':68 + m:3)                       /\ 0 <= (-1 + D100':68))) /\ 0 <= K:75)}}(Not performing widening.)alphaHatStar {**** body value: Base relation: {D100 := 0 i := (i:0 + 1) j := j':80 when (D100:4 = 0 /\ 0 <= i:0 /\ D100:4 = 0 /\ i:0 < n:1         /\ (!(0 <= K:79) \/ j':80 = K:79)         /\ (!((0 <= K:79 /\ K:79 <= 0)) \/ D100':81 = (D100:4 + K:79))         /\ (!(1 <= K:79) \/ D100':81 = K:79)         /\ ((K:79 = 0 /\ 0 = j':80 /\ D100:4 = D100':81)               \/ (1 <= K:79 /\ D100:4 = 0 /\ 0 <= (-1 + m:3)                     /\ (-D100':81 + j':80) = 0 /\ 0 <= (-D100':81 + m:3)                     /\ 0 <= (-1 + D100':81))) /\ 0 <= K:79 /\ 0 <= D100':81         /\ 0 <= j':80 /\ (-j':80 + D100':81) = 0 /\ m:3 <= j':80)}**** alpha hat:   {(D100':68) = 0    (i':82) = (1)*(i:0) + 1        pre:      [|D100:4=0; -i:0+n:1-1>=0; i:0>=0|]    post:      [|D100':68=0; -i':82+n:1>=0; j':69-m:3>=0; j':69>=0; i':82-1>=0|]}**** star transition:   {D100 := D100':68   i := i':82   j := j':69   when ((!((0 <= K:90 /\ K:90 <= 0)) \/ D100':68 = D100:4)           /\ (!(1 <= K:90) \/ D100':68 = 0)           /\ (!(0 <= K:90) \/ i':82 = (i:0 + K:90))           /\ ((K:90 = 0 /\ j:2 = j':69 /\ i:0 = i':82 /\ D100:4 = D100':68)                 \/ (1 <= K:90 /\ D100:4 = 0 /\ 0 <= (-1 + -i:0 + n:1)                       /\ 0 <= i:0 /\ D100':68 = 0 /\ 0 <= (-i':82 + n:1)                       /\ 0 <= (j':69 + -m:3) /\ 0 <= j':69                       /\ 0 <= (-1 + i':82))) /\ 0 <= K:90)}}Step 4: =========================================================The procedure (i.e., variable) numbers are: 7  New-style (IRE) regular expression in IREregExpMap for reID=7: Weight(Base relation:   {D100 := D100':92   i := i':93   j := j':94   n := param0:12   m := param1:15   return := havoc:104   return@pos := type_err:105   return@width := type_err:106   when ((!((0 <= K:91 /\ K:91 <= 0)) \/ D100':92 = 0)           /\ (!(1 <= K:91) \/ D100':92 = 0)           /\ (!(0 <= K:91) \/ i':93 = K:91)           /\ ((K:91 = 0 /\ j:2 = j':94 /\ 0 = i':93 /\ 0 = D100':92)                 \/ (1 <= K:91 /\ 0 <= (-1 + param0:12) /\ D100':92 = 0                       /\ 0 <= (-i':93 + param0:12)                       /\ 0 <= (j':94 + -param1:15) /\ 0 <= j':94                       /\ 0 <= (-1 + i':93))) /\ 0 <= K:91 /\ D100':92 = 0           /\ 0 <= i':93 /\ D100':92 = 0 /\ param0:12 <= i':93)})Performing Gaussian Elimination.  ------------------------------ Working on variable 7  New-style (IRE) regular expression for 7 just before isolating it: Weight(Base relation:   {return := havoc:104   return@pos := type_err:105   return@width := type_err:106   when ((!((0 <= K:91 /\ K:91 <= 0)) \/ D100':92 = 0)           /\ (!(1 <= K:91) \/ D100':92 = 0)           /\ (!(0 <= K:91) \/ i':93 = K:91)           /\ ((K:91 = 0 /\ j:107 = j':94 /\ 0 = i':93 /\ 0 = D100':92)                 \/ (1 <= K:91 /\ 0 <= (-1 + param0:12) /\ D100':92 = 0                       /\ 0 <= (-i':93 + param0:12)                       /\ 0 <= (j':94 + -param1:15) /\ 0 <= j':94                       /\ 0 <= (-1 + i':93))) /\ 0 <= K:91 /\ D100':92 = 0           /\ 0 <= i':93 /\ D100':92 = 0 /\ param0:12 <= i':93)}) ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  Finished Gaussian Elimination.New-style (IRE) regular expression in IREregExpsAfterIsolation for reID=7: Weight(Base relation:   {return := havoc:104   return@pos := type_err:105   return@width := type_err:106   when ((!((0 <= K:91 /\ K:91 <= 0)) \/ D100':92 = 0)           /\ (!(1 <= K:91) \/ D100':92 = 0)           /\ (!(0 <= K:91) \/ i':93 = K:91)           /\ ((K:91 = 0 /\ j:107 = j':94 /\ 0 = i':93 /\ 0 = D100':92)                 \/ (1 <= K:91 /\ 0 <= (-1 + param0:12) /\ D100':92 = 0                       /\ 0 <= (-i':93 + param0:12)                       /\ 0 <= (j':94 + -param1:15) /\ 0 <= j':94                       /\ 0 <= (-1 + i':93))) /\ 0 <= K:91 /\ D100':92 = 0           /\ 0 <= i':93 /\ D100':92 = 0 /\ param0:12 <= i':93)})Step 5: =========================================================[Newton] Running Newton-------------------------------------------------------------------------------Round 0:Evaluating variable number 7 (using IRE)   The IRE-evaluated value on this round is: Base relation: {return := havoc:104 return@pos := type_err:105 return@width := type_err:106 when ((!((0 <= K:91 /\ K:91 <= 0)) \/ D100':92 = 0)         /\ (!(1 <= K:91) \/ D100':92 = 0) /\ (!(0 <= K:91) \/ i':93 = K:91)         /\ ((K:91 = 0 /\ j:107 = j':94 /\ 0 = i':93 /\ 0 = D100':92)               \/ (1 <= K:91 /\ 0 <= (-1 + param0:12) /\ D100':92 = 0                     /\ 0 <= (-i':93 + param0:12)                     /\ 0 <= (j':94 + -param1:15) /\ 0 <= j':94                     /\ 0 <= (-1 + i':93))) /\ 0 <= K:91 /\ D100':92 = 0         /\ 0 <= i':93 /\ D100':92 = 0 /\ param0:12 <= i':93)}    (IRE-tc) Checking termination condition.    (IRE-tc)     >> All star bodies equivalent.NumRnds: 1Step 6: =========================================================##### Question automaton as FWPDS##### QUERY2WFA -  Initial State : __pstate  Q: {__pstate, __done}  F: {__done}    ( __pstate , accept , __done )     Base relation: {}Weights on states: __pstate 0x55d5ca7d12b0:    Weight: Base relation: {when false} Accept: Base relation: {when false}__done 0x55d5ca7d10c0:       Weight: Base relation: {when false}     Accept: Base relation: {}##### ANSWFA -  Initial State : __pstate  Q: {__pstate, __done}  F: {__done}    ( __pstate , accept , __done )     Base relation: {}Weights on states: __pstate 0x55d5ca7d0ed0:    Weight: Base relation: {when false}     Accept: Base relation: {when false}__done 0x55d5ca7d0bd0:       Weight: Base relation: {when false} Accept: Base relation: {}================================================Procedure Summaries------------------------------------------------Procedure summary for mainBase relation: {D100 := D100':92 i := i':93 j := j':94 n := param0:12 m := param1:15 return := havoc:104 return@pos := type_err:105 return@width := type_err:106 when ((!((0 <= K:91 /\ K:91 <= 0)) \/ D100':92 = 0)         /\ (!(1 <= K:91) \/ D100':92 = 0) /\ (!(0 <= K:91) \/ i':93 = K:91)         /\ ((K:91 = 0 /\ j:2 = j':94 /\ 0 = i':93 /\ 0 = D100':92)               \/ (1 <= K:91 /\ 0 <= (-1 + param0:12) /\ D100':92 = 0                     /\ 0 <= (-i':93 + param0:12)                     /\ 0 <= (j':94 + -param1:15) /\ 0 <= j':94                     /\ 0 <= (-1 + i':93))) /\ 0 <= K:91 /\ D100':92 = 0         /\ 0 <= i':93 /\ D100':92 = 0 /\ param0:12 <= i':93)}================================================Assertion Checking at Error PointsChecking assertion at vertex 9, line 35Base relation: {when false}contextWeight = Base relation: {}intraproceduralWeight = Base relation: {D100 := 0 i := (i':93 + 1) j := j':96 n := param0:12 m := param1:15 when ((!((0 <= K:91 /\ K:91 <= 0)) \/ D100':92 = 0)         /\ (!(1 <= K:91) \/ D100':92 = 0) /\ (!(0 <= K:91) \/ i':93 = K:91)         /\ ((K:91 = 0 /\ j:2 = j':94 /\ 0 = i':93 /\ 0 = D100':92)               \/ (1 <= K:91 /\ 0 <= (-1 + param0:12) /\ D100':92 = 0                     /\ 0 <= (-i':93 + param0:12)                     /\ 0 <= (j':94 + -param1:15) /\ 0 <= j':94                     /\ 0 <= (-1 + i':93))) /\ 0 <= K:91 /\ D100':92 = 0         /\ 0 <= i':93 /\ D100':92 = 0 /\ i':93 < param0:12         /\ (!(0 <= K:95) \/ j':96 = K:95)         /\ (!((0 <= K:95 /\ K:95 <= 0)) \/ D100':97 = (D100':92 + K:95))         /\ (!(1 <= K:95) \/ D100':97 = K:95)         /\ ((K:95 = 0 /\ 0 = j':96 /\ D100':92 = D100':97)               \/ (1 <= K:95 /\ D100':92 = 0 /\ 0 <= (-1 + param1:15)                     /\ (-D100':97 + j':96) = 0                     /\ 0 <= (-D100':97 + param1:15) /\ 0 <= (-1 + D100':97)))         /\ 0 <= K:95 /\ 0 <= D100':97 /\ 0 <= j':96         /\ (-j':96 + D100':97) = 0 /\ param1:15 <= j':96)}*******************************************(declare-const j Int)(declare-const |D100'0| Int)(declare-const K Int)(declare-const |j'0| Int)(declare-const param1 Int)(declare-const |i'| Int)(declare-const K0 Int)(declare-const |j'| Int)(declare-const param0 Int)(declare-const |D100'| Int)(assert (and (or (not (and (<= 0 K) (<= K 0))) (= |D100'| 0))               (or (not (<= 1 K)) (= |D100'| 0))               (or (not (<= 0 K)) (= |i'| K))               (or (and (= K 0) (= j |j'|) (= 0 |i'|) (= 0 |D100'|))                     (and (<= 1 K) (<= 0 (+ -1 param0)) (= |D100'| 0)                            (<= 0 (+ (- |i'|) param0))                            (<= 0 (+ |j'| (- param1))) (<= 0 |j'|)                            (<= 0 (+ -1 |i'|)))) (<= 0 K) (= |D100'| 0)               (<= 0 |i'|) (= |D100'| 0) (< |i'| param0)               (or (not (<= 0 K0)) (= |j'0| K0))               (or (not (and (<= 0 K0) (<= K0 0)))                     (= |D100'0| (+ |D100'| K0)))               (or (not (<= 1 K0)) (= |D100'0| K0))               (or (and (= K0 0) (= 0 |j'0|) (= |D100'| |D100'0|))                     (and (<= 1 K0) (= |D100'| 0) (<= 0 (+ -1 param1))                            (= (+ (- |D100'0|) |j'0|) 0)                            (<= 0 (+ (- |D100'0|) param1))                            (<= 0 (+ -1 |D100'0|)))) (<= 0 K0)               (<= 0 |D100'0|) (<= 0 |j'0|) (= (+ (- |j'0|) |D100'0|) 0)               (<= param1 |j'0|)))(check-sat)contextWeight extend intraproceduralWeight = Base relation: {D100 := 0 i := (i':93 + 1) j := j':96 n := param0:12 m := param1:15 when ((!((0 <= K:91 /\ K:91 <= 0)) \/ D100':92 = 0)         /\ (!(1 <= K:91) \/ D100':92 = 0) /\ (!(0 <= K:91) \/ i':93 = K:91)         /\ ((K:91 = 0 /\ j:2 = j':94 /\ 0 = i':93 /\ 0 = D100':92)               \/ (1 <= K:91 /\ 0 <= (-1 + param0:12) /\ D100':92 = 0                     /\ 0 <= (-i':93 + param0:12)                     /\ 0 <= (j':94 + -param1:15) /\ 0 <= j':94                     /\ 0 <= (-1 + i':93))) /\ 0 <= K:91 /\ D100':92 = 0         /\ 0 <= i':93 /\ D100':92 = 0 /\ i':93 < param0:12         /\ (!(0 <= K:95) \/ j':96 = K:95)         /\ (!((0 <= K:95 /\ K:95 <= 0)) \/ D100':97 = (D100':92 + K:95))         /\ (!(1 <= K:95) \/ D100':97 = K:95)         /\ ((K:95 = 0 /\ 0 = j':96 /\ D100':92 = D100':97)               \/ (1 <= K:95 /\ D100':92 = 0 /\ 0 <= (-1 + param1:15)                     /\ (-D100':97 + j':96) = 0                     /\ 0 <= (-D100':97 + param1:15) /\ 0 <= (-1 + D100':97)))         /\ 0 <= K:95 /\ 0 <= D100':97 /\ 0 <= j':96         /\ (-j':96 + D100':97) = 0 /\ param1:15 <= j':96)}Is not SAT! (Assertion on line 35 PASSED)---------------------------------------------================================================Bounds on Variables================================================Finished!"""
 
@@ -120,30 +148,43 @@ object IcraUnitTest {
 
   val parserUnitTestBoolExpressions: HashSet[TestCase] = {
     HashSet[TestCase](
-      TestCase("UnitIdentifier", unitIdentifier, ""),
-      TestCase("UnitBracket", unitBracket, ""),
-      // TestCase("UnitNegation", unitNegation, ""),
-      // TestCase("UnitLessThan", unitLessThan, ""),
-      // TestCase("UnitLessThanOrEqualTo", unitLessThanOrEqualTo, ""),
-      // TestCase("UnitGreaterThan", unitGreaterThan, ""),
-      // TestCase("UnitGreaterThanOrEqualTo", unitGreaterThanOrEqualTo, ""),
-      // TestCase("UnitGreaterThanOrEqualTo", unitGreaterThanOrEqualTo, ""),
-      // TestCase("UnitEqual", unitEqual, ""),
-      // TestCase("UnitAnd", unitAnd, ""),
-      // TestCase("UnitOr", unitOr, "")
+      TestCase("UnitIdentifier", unitIdentifier, "Identifier(j':99)"),
+      TestCase("UnitBracket", unitBracket, "Identifier(D100':92)"),
+      TestCase("UnitNegation", unitNegation, "Negation(Identifier(D100':92))"),
+      TestCase("UnitLessThan", unitLessThan, "LessThan(Identifier(K:91),Identifier(i':92))"),
+      TestCase("UnitLessThanOrEqualTo", unitLessThanOrEqualTo, "LessThanOrEqualTo(Identifier(K:91),Identifier(i':92))"),
+      TestCase("UnitGreaterThan", unitGreaterThan, "GreaterThan(Identifier(K:91),Identifier(i':92))"),
+      TestCase("UnitGreaterThanOrEqualTo", unitGreaterThanOrEqualTo, "GreaterThanOrEqualTo(Identifier(K:91),Identifier(i':92))"),
+      TestCase("UnitEqual", unitEqual, "Equal(Identifier(K:91),Identifier(i':92))"),
+      TestCase("UnitEqual2", unitEqual2, "Equal(Identifier(K:91),Negative(Identifier(i':92)))"),
+      TestCase("UnitAnd", unitAnd, "And(Identifier(K:91),Identifier(i':92))"),
+      TestCase("UnitOr", unitOr, "Or(Identifier(K:91),Identifier(i':92))")
+    )
+  }
+
+  val parserIntegrationTestBoolExpressions: HashSet[TestCase] = {
+    HashSet[TestCase](
+      TestCase("integrationTest1", integrationTest1, ""),
+      TestCase("integrationTest2", integrationTest2, ""),
+      TestCase("integrationTest3", integrationTest3, ""),
+      // TestCase("integrationTest4", integrationTest4, ""),
+      // TestCase("integrationTest5", integrationTest5, ""),
+      // TestCase("integrationTest6", integrationTest6, ""),
+      // TestCase("integrationTest7", integrationTest7, ""),
+      // TestCase("integrationTest8", integrationTest8, "")
     )
   }
 
   val parserUnitTestArithmeticExpressions: HashSet[TestCase] = {
     HashSet[TestCase](
-      TestCase("UnitIdentifier", unitIdentifier, ""),
-      TestCase("UnitNumber", unitNumber, ""),
-      TestCase("UnitBracket", unitBracket, ""),
-      TestCase("UnitNegative", unitNegative, ""),
-      TestCase("UnitAddition", unitAddition, ""),
-      TestCase("UnitSubtraction", unitSubtraction, ""),
-      TestCase("UnitMultiplication", unitMultiplication, ""),
-      TestCase("UnitDivision", unitDivision, ""),
+      TestCase("UnitIdentifier", unitIdentifier, "Identifier(j':99)"),
+      TestCase("UnitNumber", unitNumber, "Number(145875)"),
+      TestCase("UnitBracket", unitBracket, "Identifier(D100':92)"),
+      TestCase("UnitNegative", unitNegative, "Negative(Identifier(D100':92))"),
+      TestCase("UnitAddition", unitAddition, "Addition(Number(1),Identifier(i':92))"),
+      TestCase("UnitSubtraction", unitSubtraction, "Subtraction(Identifier(K:91),Identifier(i':92))"),
+      TestCase("UnitMultiplication", unitMultiplication, "Multiplication(Identifier(K:91),Identifier(i':92))"),
+      TestCase("UnitDivision", unitDivision, "Division(Identifier(K:91),Identifier(i':92))"),
     )
   }
 }
