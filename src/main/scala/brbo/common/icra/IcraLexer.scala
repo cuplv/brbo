@@ -100,7 +100,7 @@ object IcraLexer extends RegexParsers {
 
   private def multiplication : Parser[IcraToken]= """*""" ^^ (_ => MULTIPLICATION)
 
-  private def division : Parser[IcraToken]= """*""" ^^ (_ => DIVISION)
+  private def division : Parser[IcraToken]= """/""" ^^ (_ => DIVISION)
 
   private def leftBracket: Parser[IcraToken] = """(""" ^^ (_ => LEFT_BRACKET)
 

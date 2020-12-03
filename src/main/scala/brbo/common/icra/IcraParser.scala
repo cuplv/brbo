@@ -59,11 +59,11 @@ class IcraParser(input: String) {
 
 sealed trait IcraAST
 
+object EmptyAST extends IcraAST
+
 case class Identifier(identifier: String) extends IcraAST
 
 case class Number(number: Int) extends IcraAST
-
-case class Bracket(expression: IcraAST) extends IcraAST
 
 case class Addition(left: IcraAST, right: IcraAST) extends IcraAST
 
@@ -88,6 +88,28 @@ case class Equal(left: IcraAST, right: IcraAST) extends IcraAST
 case class And(left: IcraAST, right: IcraAST) extends IcraAST
 
 case class Or(left: IcraAST, right: IcraAST) extends IcraAST
+
+case class ToAdd(right: IcraAST) extends IcraAST
+
+case class ToSubtract(right: IcraAST) extends IcraAST
+
+case class ToMultiply(right: IcraAST) extends IcraAST
+
+case class ToDivide(right: IcraAST) extends IcraAST
+
+case class ToLessThan(right: IcraAST) extends IcraAST
+
+case class ToLessThanOrEqualTo(right: IcraAST) extends IcraAST
+
+case class ToGreaterThan(right: IcraAST) extends IcraAST
+
+case class ToGreaterThanOrEqualTo(right: IcraAST) extends IcraAST
+
+case class ToEqual(right: IcraAST) extends IcraAST
+
+case class ToAnd(right: IcraAST) extends IcraAST
+
+case class ToOr(right: IcraAST) extends IcraAST
 
 case class Negation(expression: IcraAST) extends IcraAST
 
@@ -210,26 +232,78 @@ object IcraParser extends Parsers {
   }
 
   private def expression: Parser[IcraAST] = {
-    (term |
-      PLUS ~ term |
-      MINUS ~ term |
-      expression ~ PLUS ~ term |
-      expression ~ MINUS ~ term) ^^ {
-      case (left: IcraAST) ~ PLUS ~ (right: IcraAST) => Addition(left, right)
-      case (left: IcraAST) ~ MINUS ~ (right: IcraAST) => Subtraction(left, right)
-      case PLUS ~ (term: IcraAST) => term
-      case MINUS ~ (term: IcraAST) => Negative(term)
-      case term: IcraAST => term
+    (PLUS ~ term ~ expressionPrime | MINUS ~ term ~ expressionPrime | term ~ expressionPrime) ^^ {
+      case PLUS ~ (term: IcraAST) ~ expressionPrime =>
+        expressionPrime match {
+          case EmptyAST => term
+          case _ => Addition(term, expressionPrime)
+        }
+      case MINUS ~ (term: IcraAST) ~ expressionPrime =>
+        expressionPrime match {
+          case EmptyAST => Negative(term)
+          case _ => Subtraction(term, expressionPrime)
+        }
+      case (term: IcraAST) ~ (expressionPrime: IcraAST) =>
+        expressionPrime match {
+          case EmptyAST => term
+          case ToAdd(right) => Addition(term, right)
+          case ToSubtract(right) => Subtraction(term, right)
+        }
+    }
+  }
+
+  private def expressionPrime: Parser[IcraAST] = {
+    opt(PLUS ~ term ~ expressionPrime | MINUS ~ term ~ expressionPrime) ^^ {
+      case Some(PLUS ~ (term: IcraAST) ~ (expressionPrime: IcraAST)) =>
+        val thisTerm =
+          expressionPrime match {
+            case EmptyAST => term
+            case ToAdd(right) => Addition(term, right)
+            case ToSubtract(right) => Subtraction(term, right)
+          }
+        ToAdd(thisTerm)
+      case Some(MINUS ~ (term: IcraAST) ~ (expressionPrime: IcraAST)) =>
+        val thisTerm =
+          expressionPrime match {
+            case EmptyAST => term
+            case ToAdd(right) => Addition(term, right)
+            case ToSubtract(right) => Subtraction(term, right)
+          }
+        ToSubtract(thisTerm)
+      case None => EmptyAST
     }
   }
 
   private def term: Parser[IcraAST] = {
-    (factor |
-      term ~ MULTIPLICATION ~ factor |
-      term ~ DIVISION ~ factor) ^^ {
-      case (term: IcraAST) ~ MULTIPLICATION ~ (factor: IcraAST) => Multiplication(term, factor)
-      case (term: IcraAST) ~ DIVISION ~ (factor: IcraAST) => Division(term, factor)
-      case factor: IcraAST => factor
+    (factor ~ termPrime) ^^ {
+      case (factor: IcraAST) ~ (termPrime: IcraAST) =>
+        termPrime match {
+          case EmptyAST => factor
+          case ToMultiply(right) => Multiplication(factor, right)
+          case ToDivide(right) => Division(factor, right)
+        }
+    }
+  }
+
+  private def termPrime: Parser[IcraAST] = {
+    opt(MULTIPLICATION ~ factor ~ termPrime | DIVISION ~ factor ~ termPrime) ^^ {
+      case Some(MULTIPLICATION ~ (factor: IcraAST) ~ (termPrime: IcraAST)) =>
+        val thisFactor =
+          termPrime match {
+            case EmptyAST => factor
+            case ToMultiply(right) => Multiplication(factor, right)
+            case ToDivide(right) => Division(factor, right)
+          }
+        ToMultiply(thisFactor)
+      case Some(DIVISION ~ (factor: IcraAST) ~ (termPrime: IcraAST)) =>
+        val thisFactor =
+          termPrime match {
+            case EmptyAST => factor
+            case ToMultiply(right) => Multiplication(factor, right)
+            case ToDivide(right) => Division(factor, right)
+          }
+        ToDivide(thisFactor)
+      case None => EmptyAST
     }
   }
 

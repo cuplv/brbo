@@ -140,9 +140,10 @@ object IcraUnitTest {
       TestCase("UnitNumber", unitNumber, ""),
       TestCase("UnitBracket", unitBracket, ""),
       TestCase("UnitNegative", unitNegative, ""),
-      // TestCase("UnitAddition", unitAddition, ""),
-      // TestCase("UnitSubtraction", unitSubtraction, ""),
-      // TestCase("UnitMultiplication", unitMultiplication, ""),
+      TestCase("UnitAddition", unitAddition, ""),
+      TestCase("UnitSubtraction", unitSubtraction, ""),
+      TestCase("UnitMultiplication", unitMultiplication, ""),
+      TestCase("UnitDivision", unitDivision, ""),
     )
   }
 }
