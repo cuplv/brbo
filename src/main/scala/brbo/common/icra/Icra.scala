@@ -3,7 +3,7 @@ package brbo.common.icra
 import java.io.PrintWriter
 import java.nio.file.Files
 
-import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT}
+import brbo.common.TypeUtils.BrboType._
 import brbo.common.Z3Solver
 import com.microsoft.z3.AST
 import org.apache.logging.log4j.LogManager
@@ -52,13 +52,17 @@ object Icra {
     ???
   }
 
+  object IcraAstType extends Enumeration {
+    type IcraAstType = Value
+    val INT, BOOL, UNKNOWN = Value
+  }
+
   def translateToZ3(icraAST: IcraAST, typ: BrboType, solver: Z3Solver): AST = {
     icraAST match {
-      case EmptyAST => throw new RuntimeException(s"IcraAST should never contain $EmptyAST after parsing")
       case Identifier(identifier) =>
         typ match {
           case INT => solver.mkIntVar(identifier)
-          case BOOL => solver.mkBoolVar(identifier)
+          case BOOL => throw new RuntimeException(s"Did not expect ICRA to define bool-typed variable $identifier in invariants!")
         }
       case Number(number) => solver.mkIntVal(number)
       case Addition(left, right) => solver.mkAdd(translateToZ3(left, INT, solver), translateToZ3(right, INT, solver))
@@ -70,21 +74,11 @@ object Icra {
       case LessThanOrEqualTo(left, right) => solver.mkLe(translateToZ3(left, INT, solver), translateToZ3(right, INT, solver))
       case GreaterThan(left, right) => solver.mkGt(translateToZ3(left, INT, solver), translateToZ3(right, INT, solver))
       case GreaterThanOrEqualTo(left, right) => solver.mkGe(translateToZ3(left, INT, solver), translateToZ3(right, INT, solver))
-      case Equal(left, right) =>
-        var leftTyp = INT
-        var leftAST: Option[AST] = None
-        try {
-          leftAST = Some(translateToZ3(left, INT, solver))
-        } catch {
-          case _: MatchError =>
-            leftAST = Some(translateToZ3(left, BOOL, solver))
-            leftTyp = BOOL
-        }
-        // solver.mkEq(, translateToZ3(right, INT, solver))
-        ???
+      case Equal(left, right) => solver.mkGe(translateToZ3(left, INT, solver), translateToZ3(right, INT, solver))
       case And(left, right) => solver.mkAnd(translateToZ3(left, BOOL, solver), translateToZ3(right, BOOL, solver))
       case Or(left, right) => solver.mkOr(translateToZ3(left, BOOL, solver), translateToZ3(right, BOOL, solver))
       case Negation(expression) => solver.mkNot(translateToZ3(expression, BOOL, solver))
+      case _ => throw new RuntimeException(s"IcraAST should never contain $icraAST after parsing")
     }
   }
 }

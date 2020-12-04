@@ -187,6 +187,7 @@ object IcraParser extends Parsers {
         boolTermPrime match {
           case EmptyAST => boolFactor
           case ToOr(right) => Or(boolFactor, right)
+          case x@_ => throw new RuntimeException(s"$x is unexpected during parsing")
         }
     }
   }
@@ -198,9 +199,11 @@ object IcraParser extends Parsers {
           boolTermPrime match {
             case EmptyAST => boolFactor
             case ToOr(right) => Or(boolFactor, right)
+            case x@_ => throw new RuntimeException(s"$x is unexpected during parsing")
           }
         ToOr(thisFactor)
       case None => EmptyAST
+      case x@_ => throw new RuntimeException(s"$x is unexpected during parsing")
     }
   }
 
@@ -210,6 +213,7 @@ object IcraParser extends Parsers {
         boolFactorPrime match {
           case EmptyAST => boolSecondary
           case ToAnd(right) => And(boolSecondary, right)
+          case x@_ => throw new RuntimeException(s"$x is unexpected during parsing")
         }
     }
   }
@@ -221,9 +225,11 @@ object IcraParser extends Parsers {
           boolFactorPrime match {
             case EmptyAST => boolSecondary
             case ToAnd(right) => And(boolSecondary, right)
+            case x@_ => throw new RuntimeException(s"$x is unexpected during parsing")
           }
         ToAnd(thisFactor)
       case None => EmptyAST
+      case x@_ => throw new RuntimeException(s"$x is unexpected during parsing")
     }
   }
 
@@ -265,7 +271,9 @@ object IcraParser extends Parsers {
           case EmptyAST => term
           case ToAdd(right) => Addition(term, right)
           case ToSubtract(right) => Subtraction(term, right)
+          case x@_ => throw new RuntimeException(s"$x is unexpected during parsing")
         }
+      case x@_ => throw new RuntimeException(s"$x is unexpected during parsing")
     }
   }
 
@@ -277,6 +285,7 @@ object IcraParser extends Parsers {
             case EmptyAST => term
             case ToAdd(right) => Addition(term, right)
             case ToSubtract(right) => Subtraction(term, right)
+            case x@_ => throw new RuntimeException(s"$x is unexpected during parsing")
           }
         ToAdd(thisTerm)
       case Some(MINUS ~ (term: IcraAST) ~ (expressionPrime: IcraAST)) =>
@@ -285,9 +294,11 @@ object IcraParser extends Parsers {
             case EmptyAST => term
             case ToAdd(right) => Addition(term, right)
             case ToSubtract(right) => Subtraction(term, right)
+            case x@_ => throw new RuntimeException(s"$x is unexpected during parsing")
           }
         ToSubtract(thisTerm)
       case None => EmptyAST
+      case x@_ => throw new RuntimeException(s"$x is unexpected during parsing")
     }
   }
 
@@ -298,7 +309,9 @@ object IcraParser extends Parsers {
           case EmptyAST => factor
           case ToMultiply(right) => Multiplication(factor, right)
           case ToDivide(right) => Division(factor, right)
+          case x@_ => throw new RuntimeException(s"$x is unexpected during parsing")
         }
+      case x@_ => throw new RuntimeException(s"$x is unexpected during parsing")
     }
   }
 
@@ -310,6 +323,7 @@ object IcraParser extends Parsers {
             case EmptyAST => factor
             case ToMultiply(right) => Multiplication(factor, right)
             case ToDivide(right) => Division(factor, right)
+            case x@_ => throw new RuntimeException(s"$x is unexpected during parsing")
           }
         ToMultiply(thisFactor)
       case Some(DIVISION ~ (factor: IcraAST) ~ (termPrime: IcraAST)) =>
@@ -318,9 +332,11 @@ object IcraParser extends Parsers {
             case EmptyAST => factor
             case ToMultiply(right) => Multiplication(factor, right)
             case ToDivide(right) => Division(factor, right)
+            case x@_ => throw new RuntimeException(s"$x is unexpected during parsing")
           }
         ToDivide(thisFactor)
       case None => EmptyAST
+      case x@_ => throw new RuntimeException(s"$x is unexpected during parsing")
     }
   }
 

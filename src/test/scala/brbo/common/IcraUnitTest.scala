@@ -1,7 +1,8 @@
 package brbo.common
 
 import brbo.TestCase
-import brbo.common.icra.{IcraLexer, IcraParser}
+import brbo.common.TypeUtils.BrboType._
+import brbo.common.icra.{Icra, IcraLexer, IcraParser}
 import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.collection.immutable.HashSet
@@ -75,8 +76,13 @@ class IcraUnitTest extends AnyFlatSpec {
     })
   }
 
-  it should "correctly extract Z3 Expr from ICRA's outputs" in {
-
+  it should "correctly generate Z3 AST from IcraAST" in {
+    IcraUnitTest.generateZ3ASTUnitTest.foreach({
+      testCase =>
+        val expression = IcraParser.parseBoolExpression(testCase.input)
+        val solver = new Z3Solver
+        println(Icra.translateToZ3(expression, BOOL, solver))
+    })
   }
 }
 
@@ -218,6 +224,24 @@ object IcraUnitTest {
       TestCase("UnitSubtraction", unitSubtraction, "Subtraction(Identifier(K:91),Identifier(i':92))"),
       TestCase("UnitMultiplication", unitMultiplication, "Multiplication(Identifier(K:91),Identifier(i':92))"),
       TestCase("UnitDivision", unitDivision, "Division(Identifier(K:91),Identifier(i':92))"),
+    )
+  }
+
+  val generateZ3ASTUnitTest: HashSet[TestCase] = {
+    HashSet[TestCase](
+      TestCase("", "j':99 + K:91", ""),
+      TestCase("", "j':99 - K:91", ""),
+      TestCase("", "j':99 * K:91", ""),
+      TestCase("", "j':99 / K:91", ""),
+      TestCase("", "- K:91", ""),
+      TestCase("", "j':99 < K:91", ""),
+      TestCase("", "j':99 <= K:91", ""),
+      TestCase("", "j':99 > K:91", ""),
+      TestCase("", "j':99 >= K:91", ""),
+      TestCase("", "j':99 = K:91", ""),
+      TestCase("", """j':99 /\ K:91""", ""),
+      TestCase("", """j':99 \/ K:91""", ""),
+      TestCase("", "! K:91", ""),
     )
   }
 }
