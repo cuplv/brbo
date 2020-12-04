@@ -1,16 +1,15 @@
 package brbo.common
 
+import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT}
+import brbo.common.icra._
 import com.microsoft.z3._
 import org.apache.logging.log4j.LogManager
-import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT}
-
-import scala.collection.immutable.HashMap
 
 class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
   private val context: Context = Z3Solver.createContext
   private val solver: Solver = Z3Solver.createSolverUnderContext(context)
 
-  private var variablesToASTs = new HashMap[String, AST]
+  // private var variablesToASTs = new HashMap[String, Variable]
 
   private val TRUE = "true"
   private val FALSE = "false"
@@ -31,15 +30,15 @@ class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
 
   def pop(): Unit = solver.pop()
 
-  def getVariableAST(identifier: String): AST = {
+  /*def getIntVariableAST(identifier: String): AST = {
     variablesToASTs.get(identifier) match {
-      case Some(v) => v
+      case Some(variable) => variable.ast
       case None =>
         val ast = mkIntVar(identifier)
-        variablesToASTs += (identifier -> ast)
+        variablesToASTs += (identifier -> Variable(identifier, INT, ast))
         ast
     }
-  }
+  }*/
 
   def mkAssert(assertion: AST): Unit = solver.add(assertion.asInstanceOf[BoolExpr])
 
@@ -101,11 +100,11 @@ class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
     "(" + ASSERT + " " + addBrackets(assertion) + ")"
   }
 
-  def getAssertions: String = {
+  /*def getAssertions: String = {
     // TODO: Should consider variables with other types
     val variableDeclarations = variablesToASTs.foldLeft("") { case (acc, (name, _)) => acc + generateIntegerVariableDeclaration(name) + "\n" }
     solver.getAssertions.foldLeft(variableDeclarations) { (acc, assertion) => acc + generateAssertion(assertion.toString) + "\n" }
-  }
+  }*/
 }
 
 object Z3Solver {
@@ -121,7 +120,7 @@ object Z3Solver {
 
   def getNumberOfQueries: Int = numberOfQueries
 
-  def createSolverUnderContext(context: Context): Solver = {
+  private def createSolverUnderContext(context: Context): Solver = {
     val solver = context.mkSolver
     val parameters = context.mkParams()
     parameters.add("timeout", 10000)
@@ -129,15 +128,25 @@ object Z3Solver {
     solver
   }
 
-  def createContext: Context = new Context(configuration)
+  private def createContext: Context = new Context(configuration)
 
-  def solverCheck(solver: Solver): Boolean = {
+  private def solverCheck(solver: Solver): Boolean = {
     val start = System.nanoTime()
-    val result = interpretSolverOutput(solver.check())
+    val result = {
+      solver.check() match {
+        case Status.UNSATISFIABLE => false
+        case Status.SATISFIABLE => true
+        case Status.UNKNOWN => throw new RuntimeException("Status.UNKNOWN: Z3 decidability or timeout issue")
+      }
+    }
     val end = System.nanoTime()
     Z3Solver.timeUsage += (end - start).toDouble / 1000000000
     Z3Solver.numberOfQueries += 1
     result
+  }
+
+  def assert(icraAST: IcraAST, solver: Z3Solver): Unit = {
+    solver.mkAssert(Icra.translateToZ3(icraAST, BOOL, solver))
   }
 
   def check(assertion: BoolExpr): Boolean = {
@@ -164,11 +173,6 @@ object Z3Solver {
     else context.mkAnd(parseSMTLIB2StringToArray(string, context): _*)
   }
 
-  def interpretSolverOutput(status: Status): Boolean = status match {
-    case Status.UNSATISFIABLE => false
-    case Status.SATISFIABLE => true
-    case Status.UNKNOWN => throw new RuntimeException("Status.UNKNOWN: Z3 decidability or timeout issue")
-  }
-
   case class Variable(identifier: String, typ: BrboType, ast: AST)
+
 }

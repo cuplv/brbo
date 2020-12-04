@@ -11,24 +11,29 @@ class IcraParser(input: String) {
   private val prefix = "intraproceduralWeight = Base relation: {"
   private val suffix = "*******************************************"
 
-  case class Invariant(declarations: String, invariant: String)
+  case class RawInvariant(declarations: String, invariant: String)
 
-  def parseInvariant(invariant: Invariant): IcraAST = {
-    ???
+  case class ParsedInvariant(declarations: List[IcraAST], invariant: IcraAST)
+
+  def parseInvariant(rawInvariant: RawInvariant): ParsedInvariant = {
+    ParsedInvariant(
+      IcraParser.parseDeclarations(rawInvariant.declarations),
+      IcraParser.parseInvariant(rawInvariant.invariant)
+    )
   }
 
-  def extractRawInvariants: List[Invariant] = {
-    def parseInvariant(invariant: String): Invariant = {
+  def extractRawInvariants: List[RawInvariant] = {
+    def parseInvariant(invariant: String): RawInvariant = {
       logger.trace(s"Parsing invariant: $invariant")
       val keywordWhen = " when "
       val indexOfWhen = invariant.indexOf(keywordWhen)
       val part1 = invariant.substring(0, indexOfWhen)
       val part2 = invariant.substring(indexOfWhen + keywordWhen.length)
       logger.trace(s"Declarations: $part1; Invariant$part2")
-      Invariant(part1, part2)
+      RawInvariant(part1, part2)
     }
 
-    var rawInvariants: List[Invariant] = Nil
+    var rawInvariants: List[RawInvariant] = Nil
     var prefixSearchIndex = 0
     var suffixSearchIndex = 0
     var prefixIndex = 0
@@ -59,9 +64,11 @@ class IcraParser(input: String) {
 
 sealed trait IcraAST
 
-object EmptyAST extends IcraAST
+object EmptyAST extends IcraAST // Intermediate AST
 
 case class Identifier(identifier: String) extends IcraAST
+
+// case class BoolIdentifier(identifier: String) extends IcraAST
 
 case class Number(number: Int) extends IcraAST
 
@@ -89,17 +96,17 @@ case class And(left: IcraAST, right: IcraAST) extends IcraAST
 
 case class Or(left: IcraAST, right: IcraAST) extends IcraAST
 
-case class ToAdd(right: IcraAST) extends IcraAST
+case class ToAdd(right: IcraAST) extends IcraAST // Intermediate AST
 
-case class ToSubtract(right: IcraAST) extends IcraAST
+case class ToSubtract(right: IcraAST) extends IcraAST // Intermediate AST
 
-case class ToMultiply(right: IcraAST) extends IcraAST
+case class ToMultiply(right: IcraAST) extends IcraAST // Intermediate AST
 
-case class ToDivide(right: IcraAST) extends IcraAST
+case class ToDivide(right: IcraAST) extends IcraAST // Intermediate AST
 
-case class ToAnd(right: IcraAST) extends IcraAST
+case class ToAnd(right: IcraAST) extends IcraAST // Intermediate AST
 
-case class ToOr(right: IcraAST) extends IcraAST
+case class ToOr(right: IcraAST) extends IcraAST // Intermediate AST
 
 case class Negation(expression: IcraAST) extends IcraAST
 
@@ -231,7 +238,7 @@ object IcraParser extends Parsers {
     (relational | // TODO: Boolean literals
       LEFT_BRACKET ~ boolExpression ~ RIGHT_BRACKET |
       expression) ^^ {
-      case identifier: Identifier => identifier
+      // case identifier: Identifier => identifier // TODO: Do we need this???
       case relational: IcraAST => relational
       case LEFT_BRACKET ~ (boolExpression: IcraAST) ~ RIGHT_BRACKET => boolExpression
     }
@@ -345,10 +352,13 @@ object IcraParser extends Parsers {
 // What is implemented is:
 // - Remove direct left recursion: https://en.wikipedia.org/wiki/Left_recursion#Removing_direct_left_recursion
 // - Algol 60 grammar: https://www.cs.unc.edu/~plaisted/comp455/Algol60.pdf
+// - Arithmetic expression: https://stackoverflow.com/a/34603099
+// - The parser and the lexer: http://enear.github.io/2016/03/31/parser-combinators/
 
 // Other helpful resources:
 // Bool and arithmetic expression: https://compilers.iecc.com/crenshaw/tutor6.txt
 // Bool expression: http://www.cs.unb.ca/~wdu/cs4613/a2ans.htm
-// Arithmetic expression: https://stackoverflow.com/a/34603099
 // https://stackoverflow.com/a/2976708
 // https://stackoverflow.com/a/43971433
+// https://bitwalker.org/posts/2013-08-10-learn-by-example-scala-parser-combinators/
+// http://matt.might.net/articles/implementation-of-m-expression-parser-in-scala-combinators-without-stdlexical-stdtokenparsers/
