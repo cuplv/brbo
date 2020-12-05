@@ -11,11 +11,7 @@ class IcraParser(input: String) {
   private val prefix = "intraproceduralWeight = Base relation: {"
   private val suffix = "*******************************************"
 
-  case class RawInvariant(declarations: String, invariant: String)
-
-  case class ParsedInvariant(declarations: List[IcraAST], invariant: IcraAST)
-
-  def parseInvariant(rawInvariant: RawInvariant): ParsedInvariant = {
+  def parseRawInvariant(rawInvariant: RawInvariant): ParsedInvariant = {
     ParsedInvariant(
       IcraParser.parseDeclarations(rawInvariant.declarations),
       IcraParser.parseInvariant(rawInvariant.invariant)
@@ -61,6 +57,10 @@ class IcraParser(input: String) {
     rawInvariants.reverse
   }
 }
+
+case class RawInvariant(declarations: String, invariant: String)
+
+case class ParsedInvariant(declarations: List[IcraAST], invariant: IcraAST)
 
 sealed trait IcraAST
 

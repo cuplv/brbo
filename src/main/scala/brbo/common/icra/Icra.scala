@@ -29,7 +29,8 @@ object Icra {
     try {
       val status = cmd ! ProcessLogger(stdout append _, stderr append _)
       if (status == 0) {
-        logger.info(s"stdout:\n$stdout")
+        logger.trace(s"stdout:\n$stdout")
+        val parsedInvariants = parseInvariants(stdout.toString())
       }
       else {
         throw new RuntimeException("Error when running ICRA")
@@ -48,13 +49,11 @@ object Icra {
     }
   }
 
-  def parseInvariants(icraOutput: String): Set[AST] = {
-    ???
-  }
-
-  object IcraAstType extends Enumeration {
-    type IcraAstType = Value
-    val INT, BOOL, UNKNOWN = Value
+  def parseInvariants(icraOutput: String): List[ParsedInvariant] = {
+    val parser = new IcraParser(icraOutput)
+    parser.extractRawInvariants.map({
+      rawInvariant => parser.parseRawInvariant(rawInvariant)
+    })
   }
 
   def translateToZ3(icraAST: IcraAST, typ: BrboType, solver: Z3Solver): AST = {

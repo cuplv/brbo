@@ -182,7 +182,8 @@ class BasicProcessor extends BasicTypeProcessor {
           val endIndex = methodSignature.indexOf("(")
           s"${methodSignature.substring(0, startIndex + 1)}main${methodSignature.substring(endIndex)}"
         }
-        s"$cFilePrefix\n$replaceMethodSignature\n$newMethodBody"
+        val replaceAssertOne = newMethodBody.replace("assert(true)", "assert(1)")
+        s"$cFilePrefix\n$replaceMethodSignature\n$replaceAssertOne"
     }
   }
 }

@@ -37,6 +37,7 @@ class BoundInferenceProcessor extends BasicProcessor {
     getMethods.head match {
       case (methodTree, cfg) =>
         // Default decomposition
+        // TODO: What if R is reset by more than once?
         val result =
           Instrument.substituteAtomicStatements(
             methodTree.getBody,

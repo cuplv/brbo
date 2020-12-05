@@ -76,7 +76,7 @@ object UpperBoundProcessorUnitTest {
         |        j++;;
         |        D100 = D100 + 1;;
         |      }
-        |      i++;; D100 = 0; assert(1);;
+        |      i++;; D100 = 0;;
         |    }
         |  }
         |  {
@@ -85,7 +85,7 @@ object UpperBoundProcessorUnitTest {
         |    int i = 0;
         |    while (i < n)
         |    {
-        |      int j; D100 = 0; assert(1);;
+        |      int j; D100 = 0;;
         |      j = 0;
         |      ;;
         |      while (j < m)
@@ -143,7 +143,7 @@ object UpperBoundProcessorUnitTest {
         |        j++;;
         |        D100 = D100 + 2;;
         |      }
-        |      i++;; D100 = 0; assert(1);;
+        |      i++;; D100 = 0;;
         |    }
         |  }
         |  {
@@ -162,7 +162,7 @@ object UpperBoundProcessorUnitTest {
         |      j = 3;;
         |      while (j < m)
         |      {
-        |        j++;; D100 = 0; assert(1);;
+        |        j++;; D100 = 0;;
         |        D100 = D100 + 2;
         |      }
         |      i++;
@@ -181,7 +181,7 @@ object UpperBoundProcessorUnitTest {
         |        j = j + 4;;
         |        D100 = D100 + 1;;
         |      }
-        |      j = 3;; D100 = 0; assert(1);;
+        |      j = 3;; D100 = 0;;
         |      while (j < m)
         |      {
         |        j++;
@@ -200,7 +200,7 @@ object UpperBoundProcessorUnitTest {
         |      j = 0;;
         |      while (j < m)
         |      {
-        |        j = j + 4;; D100 = 0; assert(1);;
+        |        j = j + 4;; D100 = 0;;
         |        D100 = D100 + 1;
         |      }
         |      j = 3;
@@ -218,7 +218,7 @@ object UpperBoundProcessorUnitTest {
         |    int i = 0;
         |    while (i < n)
         |    {
-        |      int j; D100 = 0; assert(1);;
+        |      int j; D100 = 0;;
         |      j = 0;
         |      while (j < m)
         |      {
@@ -261,7 +261,7 @@ object UpperBoundProcessorUnitTest {
         |    int i = 0;
         |    while (i < n)
         |    {
-        |      int j = 0; D100 = 0; assert(1);;
+        |      int j = 0; D100 = 0;;
         |      while (j < m)
         |      {
         |        j++;

@@ -30,6 +30,6 @@ val nativeLibraryPath = {
   s"$currentDirectory/lib/z3"
 }
 
-fork in (Test, test) := true // To avoid "javaOptions will be ignored, fork is set to false"
+fork in (Test, test) := true // To avoid "javaOptions will be ignored, fork is set to false": https://github.com/sbt/sbt/issues/3832
 javaOptions in Test += s"-Djava.library.path=$nativeLibraryPath"
 javaOptions in Runtime += s"-Djava.library.path=$nativeLibraryPath"

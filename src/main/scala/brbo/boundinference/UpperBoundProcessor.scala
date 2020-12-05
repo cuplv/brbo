@@ -32,16 +32,16 @@ class UpperBoundProcessor(sourceCodeNoResourceUpdates: String, targetGhostVariab
     assumeOneClassOneMethod()
 
     // For each d = d + e, generate a file with d = 0 inserted and another file with c = 0 and c = c + 1 inserted
-    val methodBodies = {
-      val methodBodies = placeAccumulationContexts()
+    val methodBodiesCFormat = {
+      val methodBodiesJavaFormat = placeAccumulationContexts()
       getMethods.head match {
         case (methodTree, _) =>
           val className = getEnclosingClass(methodTree).get.getSimpleName.toString
-          methodBodies.map(methodBody => replaceMethodBodyAndGenerateSourceCode(methodTree, className, methodBody, C_FORMAT))
+          methodBodiesJavaFormat.map(methodBody => replaceMethodBodyAndGenerateSourceCode(methodTree, className, methodBody, C_FORMAT))
       }
     }
 
-    methodBodies.foreach({
+    methodBodiesCFormat.foreach({
       attempt =>
         Icra.run(attempt)
     })
@@ -113,7 +113,7 @@ class UpperBoundProcessor(sourceCodeNoResourceUpdates: String, targetGhostVariab
                         node: Node => potentialBlock.getNodes.contains(node)
                       },
                       {
-                        tree: Tree => s"${tree.toString}; $ghostVariable = 0; assert(1);"
+                        tree: Tree => s"${tree.toString}; $ghostVariable = 0;"
                       }
                     ),
                     indent,
@@ -123,6 +123,7 @@ class UpperBoundProcessor(sourceCodeNoResourceUpdates: String, targetGhostVariab
                   )
                   result.result
               })
+              // TODO: Insert `assert(1)` so that ICRA can infer invariants at these locations
               acc ++ instrumentedCode
             }
             else {

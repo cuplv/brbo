@@ -8,6 +8,7 @@
       <element id="extracted-dir" path="$USER_HOME$/AppData/Local/Coursier/cache/v1/https/repo1.maven.org/maven2/org/apache/logging/log4j/log4j-api/2.14.0/log4j-api-2.14.0.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$USER_HOME$/AppData/Local/Coursier/cache/v1/https/repo1.maven.org/maven2/org/scalactic/scalactic_2.12/3.2.2/scalactic_2.12-3.2.2.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$USER_HOME$/AppData/Local/Coursier/cache/v1/https/repo1.maven.org/maven2/org/apache/logging/log4j/log4j-core/2.14.0/log4j-core-2.14.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$USER_HOME$/AppData/Local/Coursier/cache/v1/https/repo1.maven.org/maven2/org/scala-lang/modules/scala-parser-combinators_2.12/1.1.2/scala-parser-combinators_2.12-1.1.2.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$USER_HOME$/.sbt/boot/scala-2.12.12/lib/scala-reflect.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$USER_HOME$/AppData/Local/Coursier/cache/v1/https/repo1.maven.org/maven2/org/checkerframework/checker/3.7.1/checker-3.7.1.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$USER_HOME$/.sbt/boot/scala-2.12.12/lib/jansi.jar" path-in-jar="/" />

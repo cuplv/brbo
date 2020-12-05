@@ -6,6 +6,8 @@ import com.microsoft.z3._
 import org.apache.logging.log4j.LogManager
 
 class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
+  Z3Solver.loadNativeLibraries()
+
   private val context: Context = Z3Solver.createContext
   private val solver: Solver = Z3Solver.createSolverUnderContext(context)
 
@@ -119,6 +121,15 @@ object Z3Solver {
   def getTimeUsage: Double = timeUsage
 
   def getNumberOfQueries: Int = numberOfQueries
+
+  // Run this before creating an instance of Z3Solver
+  def loadNativeLibraries(): Unit = {
+    logger.debug(System.getProperty("java.library.path"))
+    logger.debug(System.mapLibraryName("z3"))
+    logger.debug(System.mapLibraryName("z3java"))
+    System.loadLibrary("z3")
+    System.loadLibrary("z3java")
+  }
 
   private def createSolverUnderContext(context: Context): Solver = {
     val solver = context.mkSolver

@@ -83,11 +83,6 @@ class IcraUnitTest extends AnyFlatSpec {
     IcraUnitTest.generateZ3ASTIntegerUnitTest.foreach({
       testCase =>
         val expression = IcraParser.parseBoolExpression(testCase.input)
-        logger.debug(System.getProperty("java.library.path"))
-        logger.debug(System.mapLibraryName("z3"))
-        logger.debug(System.mapLibraryName("z3java"))
-        System.loadLibrary("z3")
-        System.loadLibrary("z3java")
         val solver = new Z3Solver
         logger.debug(Icra.translateToZ3(expression, INT, solver))
         assert(Icra.translateToZ3(expression, INT, solver).toString == testCase.expectedOutput)
@@ -98,11 +93,6 @@ class IcraUnitTest extends AnyFlatSpec {
     IcraUnitTest.generateZ3ASTBoolUnitTest.foreach({
       testCase =>
         val expression = IcraParser.parseBoolExpression(testCase.input)
-        logger.debug(System.getProperty("java.library.path"))
-        logger.debug(System.mapLibraryName("z3"))
-        logger.debug(System.mapLibraryName("z3java"))
-        System.loadLibrary("z3")
-        System.loadLibrary("z3java")
         val solver = new Z3Solver
         logger.debug(Icra.translateToZ3(expression, BOOL, solver))
         assert(Icra.translateToZ3(expression, BOOL, solver).toString == testCase.expectedOutput)

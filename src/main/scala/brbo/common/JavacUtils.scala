@@ -46,7 +46,7 @@ object JavacUtils {
       javac.compile(List.of(fileObject), List.of(compilationUnitName), List.of(processor))
     }
     catch {
-      case _: EarlyStopException => logger.debug(s"Early stop when running processor ${processor.toString}")
+      case _: EarlyStopException => logger.trace(s"Early stop when running processor ${processor.toString}")
       case e: Throwable => logger.error(s"Exception in running processor ${processor.toString}", e)
     }
     finally {
