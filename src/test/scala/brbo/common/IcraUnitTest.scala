@@ -3,16 +3,19 @@ package brbo.common
 import brbo.TestCase
 import brbo.common.TypeUtils.BrboType._
 import brbo.common.icra.{Icra, IcraLexer, IcraParser}
+import org.apache.logging.log4j.LogManager
 import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.collection.immutable.HashSet
 
 class IcraUnitTest extends AnyFlatSpec {
+  private val logger = LogManager.getLogger(classOf[IcraUnitTest])
+
   "Parser" should "correctly parse boolean expressions from ICRA's outputs (unit tests)" in {
     IcraUnitTest.parserUnitTestBoolExpressions.foreach({
       testCase =>
         val expression = IcraParser.parseBoolExpression(testCase.input)
-        // println(expression)
+        logger.debug(expression)
         assert(expression.toString == testCase.expectedOutput)
     })
   }
@@ -21,7 +24,7 @@ class IcraUnitTest extends AnyFlatSpec {
     IcraUnitTest.parserUnitTestArithmeticExpressions.foreach({
       testCase =>
         val expression = IcraParser.parseArithmeticExpression(testCase.input)
-        // println(expression)
+        logger.debug(expression)
         assert(expression.toString == testCase.expectedOutput)
     })
   }
@@ -30,7 +33,7 @@ class IcraUnitTest extends AnyFlatSpec {
     IcraUnitTest.parserIntegrationTestBoolExpressions.foreach({
       testCase =>
         val expression = IcraParser.parseBoolExpression(testCase.input)
-        // println(expression)
+        logger.debug(expression)
         assert(expression.toString == testCase.expectedOutput)
     })
   }
@@ -40,7 +43,7 @@ class IcraUnitTest extends AnyFlatSpec {
       testCase =>
         val parser = new IcraParser(testCase.input)
         val invariants = parser.extractRawInvariants
-        // println(invariants.mkString("\n"))
+        logger.debug(invariants.mkString("\n"))
         assert(invariants.size == 1)
         assert(invariants.head.toString == testCase.expectedOutput)
     })
@@ -54,9 +57,9 @@ class IcraUnitTest extends AnyFlatSpec {
         assert(rawInvariants.size == 1)
         val rawInvariant = rawInvariants.head
         val declarations = IcraLexer.parse(rawInvariant.declarations)
-        // println(declarations)
+        logger.debug(declarations)
         val invariant = IcraLexer.parse(rawInvariant.invariant)
-        // println(invariant)
+        logger.debug(invariant)
         assert(s"$declarations\n$invariant" == testCase.expectedOutput)
     })
   }
@@ -69,19 +72,40 @@ class IcraUnitTest extends AnyFlatSpec {
         assert(rawInvariants.size == 1)
         val rawInvariant = rawInvariants.head
         val declarations = IcraParser.parseDeclarations(rawInvariant.declarations)
-        // println(declarations)
+        logger.debug(declarations)
         val invariant = IcraParser.parseInvariant(rawInvariant.invariant)
-        // println(invariant)
+        logger.debug(invariant)
         assert(s"$declarations\n$invariant" == testCase.expectedOutput)
     })
   }
 
-  it should "correctly generate Z3 AST from IcraAST" in {
-    IcraUnitTest.generateZ3ASTUnitTest.foreach({
+  it should "correctly generate Z3 AST from IcraAST (integer-typed)" in {
+    IcraUnitTest.generateZ3ASTIntegerUnitTest.foreach({
       testCase =>
         val expression = IcraParser.parseBoolExpression(testCase.input)
+        logger.debug(System.getProperty("java.library.path"))
+        logger.debug(System.mapLibraryName("z3"))
+        logger.debug(System.mapLibraryName("z3java"))
+        System.loadLibrary("z3")
+        System.loadLibrary("z3java")
         val solver = new Z3Solver
-        println(Icra.translateToZ3(expression, BOOL, solver))
+        logger.debug(Icra.translateToZ3(expression, INT, solver))
+        assert(Icra.translateToZ3(expression, INT, solver).toString == testCase.expectedOutput)
+    })
+  }
+
+  it should "correctly generate Z3 AST from IcraAST (boolean-typed)" in {
+    IcraUnitTest.generateZ3ASTBoolUnitTest.foreach({
+      testCase =>
+        val expression = IcraParser.parseBoolExpression(testCase.input)
+        logger.debug(System.getProperty("java.library.path"))
+        logger.debug(System.mapLibraryName("z3"))
+        logger.debug(System.mapLibraryName("z3java"))
+        System.loadLibrary("z3")
+        System.loadLibrary("z3java")
+        val solver = new Z3Solver
+        logger.debug(Icra.translateToZ3(expression, BOOL, solver))
+        assert(Icra.translateToZ3(expression, BOOL, solver).toString == testCase.expectedOutput)
     })
   }
 }
@@ -227,21 +251,26 @@ object IcraUnitTest {
     )
   }
 
-  val generateZ3ASTUnitTest: HashSet[TestCase] = {
+  val generateZ3ASTIntegerUnitTest: HashSet[TestCase] = {
     HashSet[TestCase](
-      TestCase("", "j':99 + K:91", ""),
-      TestCase("", "j':99 - K:91", ""),
-      TestCase("", "j':99 * K:91", ""),
-      TestCase("", "j':99 / K:91", ""),
-      TestCase("", "- K:91", ""),
-      TestCase("", "j':99 < K:91", ""),
-      TestCase("", "j':99 <= K:91", ""),
-      TestCase("", "j':99 > K:91", ""),
-      TestCase("", "j':99 >= K:91", ""),
-      TestCase("", "j':99 = K:91", ""),
-      TestCase("", """j':99 /\ K:91""", ""),
-      TestCase("", """j':99 \/ K:91""", ""),
-      TestCase("", "! K:91", ""),
+      TestCase("", "j':99 + K:91", "(+ |j':99| |K:91|)"),
+      TestCase("", "j':99 - K:91", "(- |j':99| |K:91|)"),
+      TestCase("", "j':99 * K:91", "(* |j':99| |K:91|)"),
+      TestCase("", "j':99 / K:91", "(div |j':99| |K:91|)"),
+      TestCase("", "- K:91", "(- 0 |K:91|)"),
+      TestCase("", "j':99 < K:91", "(< |j':99| |K:91|)"),
+      TestCase("", "j':99 <= K:91", "(<= |j':99| |K:91|)"),
+      TestCase("", "j':99 > K:91", "(> |j':99| |K:91|)"),
+      TestCase("", "j':99 >= K:91", "(>= |j':99| |K:91|)"),
+      TestCase("", "j':99 = K:91", "(= |j':99| |K:91|)")
+    )
+  }
+
+  val generateZ3ASTBoolUnitTest: HashSet[TestCase] = {
+    HashSet[TestCase](
+      TestCase("", """(j':99 + 1 > 0) /\ (K:91 = 1)""", "(and (> (+ |j':99| 1) 0) (= |K:91| 1))"),
+      TestCase("", """(j':99 + 1 > 0) \/ (K:91 = 1)""", "(or (> (+ |j':99| 1) 0) (= |K:91| 1))"),
+      TestCase("", "! (K:91 = 1)", "(not (= |K:91| 1))"),
     )
   }
 }

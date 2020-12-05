@@ -74,7 +74,7 @@ object Icra {
       case LessThanOrEqualTo(left, right) => solver.mkLe(translateToZ3(left, INT, solver), translateToZ3(right, INT, solver))
       case GreaterThan(left, right) => solver.mkGt(translateToZ3(left, INT, solver), translateToZ3(right, INT, solver))
       case GreaterThanOrEqualTo(left, right) => solver.mkGe(translateToZ3(left, INT, solver), translateToZ3(right, INT, solver))
-      case Equal(left, right) => solver.mkGe(translateToZ3(left, INT, solver), translateToZ3(right, INT, solver))
+      case Equal(left, right) => solver.mkEq(translateToZ3(left, INT, solver), translateToZ3(right, INT, solver))
       case And(left, right) => solver.mkAnd(translateToZ3(left, BOOL, solver), translateToZ3(right, BOOL, solver))
       case Or(left, right) => solver.mkOr(translateToZ3(left, BOOL, solver), translateToZ3(right, BOOL, solver))
       case Negation(expression) => solver.mkNot(translateToZ3(expression, BOOL, solver))

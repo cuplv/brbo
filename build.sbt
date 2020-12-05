@@ -17,7 +17,19 @@ libraryDependencies += "commons-io" % "commons-io" % "2.5"
 libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2"
 
 // Add tools.jar such that sbt can find it
-unmanagedJars in Compile ~= {uj =>
-  Seq(Attributed.blank(file(System.getProperty("java.home").dropRight(3)+"lib/tools.jar"))) ++ uj
+unmanagedJars in Compile ~= {
+  uj: Classpath =>
+    Seq(
+      Attributed.blank(file(System.getProperty("java.home").dropRight(3) + "lib/tools.jar")),
+    ) ++ uj
 }
 // https://stackoverflow.com/questions/12409847/how-to-add-tools-jar-as-a-dynamic-dependency-in-sbt-is-it-possible/12508163
+
+val nativeLibraryPath = {
+  val currentDirectory = System.getProperty("user.dir")
+  s"$currentDirectory/lib/z3"
+}
+
+fork in (Test, test) := true // To avoid "javaOptions will be ignored, fork is set to false"
+javaOptions in Test += s"-Djava.library.path=$nativeLibraryPath"
+javaOptions in Runtime += s"-Djava.library.path=$nativeLibraryPath"
