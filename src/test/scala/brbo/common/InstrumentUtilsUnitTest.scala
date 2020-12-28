@@ -2,33 +2,33 @@ package brbo.common
 
 import brbo.{TestCase, TestFiles}
 import brbo.boundinference.BasicProcessor
-import brbo.common.Instrument.AtomicStatementInstrumentation
-import brbo.common.Instrument.GhostVariable.{Counter, Delta, Resource}
-import brbo.common.Instrument.InstrumentMode.{ALL, AT_MOST_ONCE}
+import brbo.common.InstrumentUtils.AtomicStatementInstrumentation
+import brbo.common.InstrumentUtils.GhostVariable.{Counter, Delta, Resource}
+import brbo.common.InstrumentUtils.InstrumentMode.{ALL, AT_MOST_ONCE}
 import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.collection.immutable.HashSet
 
-class InstrumentUnitTest extends AnyFlatSpec {
+class InstrumentUtilsUnitTest extends AnyFlatSpec {
   "Ghost variable" should "be correctly identified" in {
-    assert(Instrument.isGhostVariable("D", Delta))
-    assert(Instrument.isGhostVariable("D123", Delta))
-    assert(!Instrument.isGhostVariable("D123", Resource))
-    assert(!Instrument.isGhostVariable("D123", Counter))
+    assert(InstrumentUtils.isGhostVariable("D", Delta))
+    assert(InstrumentUtils.isGhostVariable("D123", Delta))
+    assert(!InstrumentUtils.isGhostVariable("D123", Resource))
+    assert(!InstrumentUtils.isGhostVariable("D123", Counter))
 
-    assert(Instrument.isGhostVariable("R", Resource))
-    assert(Instrument.isGhostVariable("R123", Resource))
-    assert(!Instrument.isGhostVariable("R123", Delta))
-    assert(!Instrument.isGhostVariable("R123", Counter))
+    assert(InstrumentUtils.isGhostVariable("R", Resource))
+    assert(InstrumentUtils.isGhostVariable("R123", Resource))
+    assert(!InstrumentUtils.isGhostVariable("R123", Delta))
+    assert(!InstrumentUtils.isGhostVariable("R123", Counter))
 
-    assert(Instrument.isGhostVariable("C", Counter))
-    assert(Instrument.isGhostVariable("C123", Counter))
-    assert(!Instrument.isGhostVariable("C123", Resource))
-    assert(!Instrument.isGhostVariable("C123", Delta))
+    assert(InstrumentUtils.isGhostVariable("C", Counter))
+    assert(InstrumentUtils.isGhostVariable("C123", Counter))
+    assert(!InstrumentUtils.isGhostVariable("C123", Resource))
+    assert(!InstrumentUtils.isGhostVariable("C123", Delta))
   }
 
   "Instrumentation" should "output correct java source code without any instrumentation" in {
-    InstrumentUnitTest.noInstrumentUnitTests.foreach({
+    InstrumentUtilsUnitTest.noInstrumentUnitTests.foreach({
       testCase =>
         val basicProcessor = new BasicProcessor
         JavacUtils.runProcessor(testCase.name, testCase.input, basicProcessor)
@@ -41,11 +41,11 @@ class InstrumentUnitTest extends AnyFlatSpec {
   }
 
   it should s"output correct java source code when replacing `R = R + e` with `d = d + e` in mode `$AT_MOST_ONCE`" in {
-    InstrumentUnitTest.replaceResourceAssignmentsAtMostOnce.foreach({
+    InstrumentUtilsUnitTest.replaceResourceAssignmentsAtMostOnce.foreach({
       testCase =>
         val basicProcessor = new BasicProcessor
         JavacUtils.runProcessor(testCase.name, testCase.input, basicProcessor)
-        val results = basicProcessor.testInstrumentation(Instrument.defaultResourceAssignment, AT_MOST_ONCE)
+        val results = basicProcessor.testInstrumentation(InstrumentUtils.defaultResourceAssignment, AT_MOST_ONCE)
 
         assert(results.size == 1, "We should have exactly 1 method per test class")
         results.foreach({
@@ -58,11 +58,11 @@ class InstrumentUnitTest extends AnyFlatSpec {
   }
 
   it should s"output correct java source code when replacing `R = R + e` with `d = d + e` in mode `$ALL`" in {
-    InstrumentUnitTest.replaceResourceAssignmentsAll.foreach({
+    InstrumentUtilsUnitTest.replaceResourceAssignmentsAll.foreach({
       testCase =>
         val basicProcessor = new BasicProcessor
         JavacUtils.runProcessor(testCase.name, testCase.input, basicProcessor)
-        val results = basicProcessor.testInstrumentation(Instrument.defaultResourceAssignment, ALL)
+        val results = basicProcessor.testInstrumentation(InstrumentUtils.defaultResourceAssignment, ALL)
 
         assert(results.size == 1, "We should have exactly 1 method per test class")
         results.foreach({
@@ -75,7 +75,7 @@ class InstrumentUnitTest extends AnyFlatSpec {
   }
 }
 
-object InstrumentUnitTest {
+object InstrumentUtilsUnitTest {
   val noInstrumentUnitTests: HashSet[TestCase] = {
     val assertTest =
       """class AssertTest {

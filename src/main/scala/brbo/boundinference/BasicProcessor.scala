@@ -1,9 +1,9 @@
 package brbo.boundinference
 
 import brbo.boundinference.FileFormat.{C_FORMAT, FileFormat, JAVA_FORMAT}
-import brbo.common.Instrument
-import brbo.common.Instrument.InstrumentMode.InstrumentMode
-import brbo.common.Instrument.{AtomicStatementInstrumentation, InstrumentResult}
+import brbo.common.InstrumentUtils
+import brbo.common.InstrumentUtils.InstrumentMode.InstrumentMode
+import brbo.common.InstrumentUtils.{AtomicStatementInstrumentation, InstrumentResult}
 import com.sun.source.tree.{ClassTree, CompilationUnitTree, MethodTree, Tree}
 import com.sun.source.util.{SourcePositions, TreePathScanner, Trees}
 import javax.annotation.processing.SupportedAnnotationTypes
@@ -32,7 +32,7 @@ class BasicProcessor extends BasicTypeProcessor {
   private var classes = new HashMap[ClassTree, Set[MethodTree]]
   private var methods = new HashMap[MethodTree, ControlFlowGraph]
 
-  protected val indent: Int = Instrument.INDENT
+  protected val indent: Int = InstrumentUtils.INDENT
 
   def runAnalysis(): Unit = {}
 
@@ -120,7 +120,7 @@ class BasicProcessor extends BasicTypeProcessor {
     getMethods.map({
       case (methodTree, cfg) =>
         val instrumentedSourceCode =
-          Instrument.substituteAtomicStatements(methodTree.getBody, atomicStatementInstrumentation, 0, cfg, getLineNumber, instrumentMode)
+          InstrumentUtils.substituteAtomicStatements(methodTree.getBody, atomicStatementInstrumentation, 0, cfg, getLineNumber, instrumentMode)
         (methodTree, instrumentedSourceCode)
     })
   }

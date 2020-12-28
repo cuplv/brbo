@@ -1,11 +1,11 @@
 package brbo.boundinference
 
 import brbo.boundinference.FileFormat.C_FORMAT
-import brbo.common.Instrument.AtomicStatementInstrumentation
-import brbo.common.Instrument.GhostVariable.{Counter, Delta}
-import brbo.common.Instrument.InstrumentMode.AT_MOST_ONCE
+import brbo.common.InstrumentUtils.AtomicStatementInstrumentation
+import brbo.common.InstrumentUtils.GhostVariable.{Counter, Delta}
+import brbo.common.InstrumentUtils.InstrumentMode.AT_MOST_ONCE
 import brbo.common.icra.Icra
-import brbo.common.{CFGUtils, Instrument}
+import brbo.common.{CFGUtils, InstrumentUtils}
 import com.sun.source.tree.Tree
 import javax.annotation.processing.SupportedAnnotationTypes
 import javax.lang.model.`type`.TypeKind
@@ -54,7 +54,7 @@ class UpperBoundProcessor(sourceCodeNoResourceUpdates: String, targetGhostVariab
           cfg.getAllNodes.asScala.foldLeft(new HashMap[String, List[Node]])({
             (acc, cfgNode) =>
               cfgNode match {
-                case cfgNode: AssignmentNode => Instrument.extractGhostVariableFromAssignment(cfgNode, List(Delta, Counter)) match {
+                case cfgNode: AssignmentNode => InstrumentUtils.extractGhostVariableFromAssignment(cfgNode, List(Delta, Counter)) match {
                   case Some(ghostVariableUpdate) =>
                     // We avoid using hash sets to store results, because we may have different
                     // assignments that will be determined as a same assignment in a hash set
@@ -106,7 +106,7 @@ class UpperBoundProcessor(sourceCodeNoResourceUpdates: String, targetGhostVariab
               val instrumentedCode: SortedSet[String] = potentialBlocks.map({
                 potentialBlock: Block =>
                   logger.debug(s"Instrumenting block `$potentialBlock`")
-                  val result = Instrument.substituteAtomicStatements(
+                  val result = InstrumentUtils.substituteAtomicStatements(
                     methodTree.getBody,
                     AtomicStatementInstrumentation(
                       {

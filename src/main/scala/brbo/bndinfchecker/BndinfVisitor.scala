@@ -1,7 +1,7 @@
 package brbo.bndinfchecker
 
-import brbo.common.Instrument.GhostVariable.Delta
-import brbo.common.{CFGUtils, Instrument}
+import brbo.common.InstrumentUtils.GhostVariable.Delta
+import brbo.common.{CFGUtils, InstrumentUtils}
 import com.sun.source.tree._
 import com.sun.source.util.SourcePositions
 import javax.lang.model.`type`.TypeKind
@@ -33,7 +33,7 @@ class BndinfVisitor(checker: BaseTypeChecker) extends BaseTypeVisitor[BaseAnnota
     val assignmentsToDeltaVariables = cfg.getAllNodes.asScala.foldLeft(List[AssignmentToDeltaVariable]())({
       (acc, cfgNode) =>
         cfgNode match {
-          case cfgNode: AssignmentNode => Instrument.extractGhostVariableFromAssignment(cfgNode, Delta) match {
+          case cfgNode: AssignmentNode => InstrumentUtils.extractGhostVariableFromAssignment(cfgNode, Delta) match {
             case Some(deltaVariableUpdate) =>
               // We avoid using hash sets to store results, because we may have different
               // assignments that will be determined as a same assignment in a hash set
@@ -82,7 +82,7 @@ class BndinfVisitor(checker: BaseTypeChecker) extends BaseTypeVisitor[BaseAnnota
         potentialBlocks.foreach({
           block =>
             logger.debug(s"Inserting at the end of block `$block`")
-            val instrumented = Instrument.substituteAllAtomicStatementsWith(node.getBody, assignmentToDeltaVariable.deltaVariable, block, 0, cfg)
+            val instrumented = InstrumentUtils.substituteAllAtomicStatementsWith(node.getBody, assignmentToDeltaVariable.deltaVariable, block, 0, cfg)
 
         })
     })

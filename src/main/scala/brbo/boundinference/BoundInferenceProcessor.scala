@@ -1,9 +1,9 @@
 package brbo.boundinference
 
 import brbo.boundinference.FileFormat.JAVA_FORMAT
-import brbo.common.Instrument.InstrumentMode.ALL
+import brbo.common.InstrumentUtils.InstrumentMode.ALL
 import brbo.common.TypeUtils.BrboType.INT
-import brbo.common.{Instrument, JavacUtils, TypeUtils}
+import brbo.common.{InstrumentUtils, JavacUtils, TypeUtils}
 import javax.annotation.processing.SupportedAnnotationTypes
 import javax.lang.model.`type`.TypeMirror
 import org.apache.logging.log4j.LogManager
@@ -28,7 +28,7 @@ class BoundInferenceProcessor extends BasicProcessor {
     val boundVocabulary = generateBoundVocabulary()
     logger.info(s"Inferring bounds with vocabulary `$boundVocabulary`")
 
-    val upperBoundProcessor = new UpperBoundProcessor(sourceCodeNoResourceUpdates, Instrument.defaultDeltaVariable, boundVocabulary)
+    val upperBoundProcessor = new UpperBoundProcessor(sourceCodeNoResourceUpdates, InstrumentUtils.defaultDeltaVariable, boundVocabulary)
     JavacUtils.runProcessor(getCompilationUnitName, sourceCodeDeltaUpdates, upperBoundProcessor)
     upperBoundProcessor.runAnalysis()
   }
@@ -39,9 +39,9 @@ class BoundInferenceProcessor extends BasicProcessor {
         // Default decomposition
         // TODO: What if R is reset by more than once?
         val result =
-          Instrument.substituteAtomicStatements(
+          InstrumentUtils.substituteAtomicStatements(
             methodTree.getBody,
-            Instrument.defaultResourceAssignment,
+            InstrumentUtils.defaultResourceAssignment,
             indent,
             cfg,
             getLineNumber,
@@ -50,7 +50,7 @@ class BoundInferenceProcessor extends BasicProcessor {
         // TODO: A very hacky way to insert the declaration at the entry
         val newMethodBody = {
           val spaces = " " * indent
-          result.result.replaceFirst("\\{", s"{\n$spaces${spaces}int ${Instrument.defaultDeltaVariable} = 0;")
+          result.result.replaceFirst("\\{", s"{\n$spaces${spaces}int ${InstrumentUtils.defaultDeltaVariable} = 0;")
         }
         replaceMethodBodyAndGenerateSourceCode(methodTree, getEnclosingClass(methodTree).get.getSimpleName.toString, newMethodBody, JAVA_FORMAT)
     }
@@ -60,9 +60,9 @@ class BoundInferenceProcessor extends BasicProcessor {
     getMethods.head match {
       case (methodTree, cfg) =>
         val result =
-          Instrument.substituteAtomicStatements(
+          InstrumentUtils.substituteAtomicStatements(
             methodTree.getBody,
-            Instrument.removeResourceAssignment,
+            InstrumentUtils.removeResourceAssignment,
             indent,
             cfg,
             getLineNumber,
