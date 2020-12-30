@@ -2,46 +2,55 @@ package brbo.benchmarks.containers.litesql;
 
 import brbo.benchmarks.Common;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
 public abstract class Database extends Common {
-  void upgradeTable(int oldFields, int newFields) {
+  void upgradeTable(List<Integer> oldFields, List<Integer> newFields) {
     int r = 0;
 
-    int toAdd = newFields;
-    int i = 0;
-    while (i < oldFields) {
+    List<Integer> toAdd = new ArrayList<>();
+    toAdd.addAll(newFields);
+    Iterator<Integer> iterator = oldFields.iterator();
+    while (iterator.hasNext()) {
+      Integer element = iterator.next();
       if (ndBool()) {
-        toAdd--;
-        r = r + (-1);
+        toAdd.remove(element);
       }
-      i++;
     }
 
-    int commonFields = 0;
-    i = 0;
-    while (i < oldFields) {
+    List<Integer> commonFields = new ArrayList<>();
+    Iterator<Integer> iterator1 = oldFields.iterator();
+    while (iterator1.hasNext()) {
+      Integer element1 = iterator1.next();
       if (ndBool()) {
-        commonFields++;
-        r = r + 1;
+        commonFields.add(element1);
       }
-      i++;
     }
 
-    int cols = 0;
-    int colNames = 0;
-    i = 0;
-    while (i < commonFields) {
-      cols++;
-      colNames++;
-      r = r + 1;
-      i++;
+    Iterator<Integer> iterator2 = toAdd.iterator();
+    while (iterator2.hasNext()) {
+      Integer element3 = iterator2.next();
     }
 
-    i = 0;
-    while (i < toAdd) {
-      cols++;
-      colNames++;
+    List<Integer> cols = new ArrayList<>();
+    List<Integer> colNames = new ArrayList<>();
+
+    Iterator<Integer> iterator3 = commonFields.iterator();
+    while (iterator3.hasNext()) {
+      Integer element4 = iterator3.next();
+      cols.add(element4);
       r = r + 1;
-      i++;
+      colNames.add(element4);
+    }
+
+    Iterator<Integer> iterator4 = toAdd.iterator();
+    while (iterator4.hasNext()) {
+      Integer element5 = iterator4.next();
+      cols.add(element5);
+      r = r + 1;
+      colNames.add(element5);
     }
   }
 }
