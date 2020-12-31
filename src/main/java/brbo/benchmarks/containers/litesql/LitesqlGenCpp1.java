@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-public abstract class LitesqlGenCpp extends Common {
+public abstract class LitesqlGenCpp1 extends Common {
   void writeObjRelationHandles(List<Handle> handles) {
     int r = 0;
 
@@ -85,13 +85,13 @@ public abstract class LitesqlGenCpp extends Common {
       }
     }
   }
-}
 
-class Handle {
-  Relation relation;
-  List<Integer> destObjects;
-}
+  class Handle {
+    Relation relation;
+    List<Integer> destObjects;
+  }
 
-class Relation {
-  List<Integer> fields;
+  class Relation {
+    List<Integer> fields;
+  }
 }

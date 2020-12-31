@@ -6,8 +6,8 @@
     ```
     s ::= s;...;s | while(e) s | if(e) s else s | do s while(e) | for(s; e; s) s
         | continue | break | assert(e) | return e | T x | r = r + e
-        | assume(e) | reach(e, e...) | ndInt() | ndBool()
-        | T x = y.f | T x = e | x = e
+        | assume(e) | reach(e, e,...,e) | ndInt() | ndBool()
+        | T x = y.f | T x = e | x = e | e
     e ::= x | x.m(e,...,e) | e ⋈ e | -e | !e
         | new List | new Map | new Set
     ⋈ ::= + | - | * | <= | < | == | != | > | >=
@@ -36,10 +36,10 @@ The generated numeric programs conform to the following grammar:
 
 ```
 s ::= s;...;s | while(e) s | if(e) s else s | do s while(e) | for(s; e; s) s
-    | continue | break | assert | return e | T x | r = r + e
+    | continue | break | assert(e) | return e | T x | r = r + e
     | assume(e) | ndInt() | ndBool()
     | T x = e | x = e
-e ::= x | e ⋈ e
+e ::= x | e ⋈ e | -e | !e
 ⋈ ::= + | - | * | <= | < | == | != | > | >=
 T ::= Int | Bool
 ```
