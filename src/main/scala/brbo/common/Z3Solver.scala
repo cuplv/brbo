@@ -75,6 +75,29 @@ class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
   def mkBoolVar(s: String): AST = context.mkBoolConst(s)
 
   def mkExists(boundConstants: Iterable[Expr], body: Expr): AST = {
+    /**
+     * Weight annotations to quantifiers influence the priority of quantifier
+     * instantiations.  They should be handled with care for solvers, which support
+     * them, because incorrect choices of weights might render a problem unsolvable.
+     *
+     * Weights must be non-negative.  The value @{text 0} is equivalent to providing
+     * no weight at all.
+     *
+     * Weights should only be used at quantifiers and only inside triggers (if the
+     * quantifier has triggers).
+     *
+     * https://www.isa-afp.org/browser_info/Isabelle2013/HOL/SMT.html
+     *
+     * Weights are specific to Z3. The greater the weight of the quantifier, the fewer instantiations are allowed.
+     * The instantiations that take place are those by terms that became active early, because they are more likely
+     * to be relevant to the problem at hand. Sledgehammer’s iterative relevance filter yields a list of facts sorted
+     * by likely relevance. This gives an easy way for Sledgehammer to fill in the weights meaning-fully: Give a weight
+     * of 0 to the most relevant fact included, N to the least relevant fact,and interpolate in between. The case N=0
+     * corresponds to Z3’s default behavior. We use N=10 with a quadratic interpolation, which appears to help more
+     * than it harms.
+     *
+     * http://people.mpi-inf.mpg.de/~jblanche/jar-smt.pdf
+     */
     context.mkExists(boundConstants.toArray, body, 0, null, null, null, null)
   }
 

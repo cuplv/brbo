@@ -1,6 +1,6 @@
 package brbo.common
 
-import brbo.{TestCase, TestFiles}
+import brbo.TestCase
 import brbo.boundinference.BasicProcessor
 import brbo.common.InstrumentUtils.AtomicStatementInstrumentation
 import brbo.common.InstrumentUtils.GhostVariable.{Counter, Delta, Resource}

@@ -18,6 +18,7 @@ class InvariantInferenceProcessor(solver: Z3Solver) extends BasicProcessor {
   private val logger = LogManager.getLogger(classOf[InvariantInferenceProcessor])
 
   def inferInvariant(locations: Locations, existentiallyQuantify: Map[String, BrboType]): AST = {
+    logger.debug(s"Infer invariants")
     val cProgram = translateToCAndInsertAssertions(locations)
     Icra.run(cProgram) match {
       case Some(parsedInvariants) =>
@@ -67,7 +68,6 @@ class InvariantInferenceProcessor(solver: Z3Solver) extends BasicProcessor {
 
     getMethods.head match {
       case (methodTree, cfg) =>
-        logger.debug(s"Translate to C programs and insert assertions ")
         val result = InstrumentUtils.substituteAtomicStatements(
           methodTree.getBody,
           AtomicStatementInstrumentation(
@@ -100,6 +100,13 @@ class InvariantInferenceProcessor(solver: Z3Solver) extends BasicProcessor {
 
 }
 
+/**
+ *
+ * @param whichASTs     Insert `assert(1)` before / after Which ASTs. We use `Node` instead of `Tree`
+ *                      because we are using `Node` as intermediate representations that are less
+ *                      "syntactic" than ASTs
+ * @param beforeOrAfter Insert `assert(1)` either before or after the ASTs that satisfy the condition
+ */
 case class Locations(whichASTs: Node => Boolean, beforeOrAfter: BeforeOrAfter)
 
 object BeforeOrAfter extends Enumeration {

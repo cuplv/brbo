@@ -90,17 +90,31 @@ object InstrumentUtils {
     override def toString: String = s"$identifier = $identifier + $update"
   }
 
+  def extractDeltaVariableReset(cfgNode: Node): Option[String] = {
+    cfgNode match {
+      case node: AssignmentNode =>
+        val variableName = node.getTarget.toString
+        if (isGhostVariable(variableName, Delta)) {
+          // Must be in the form of `D = 0`
+          if (node.getExpression.toString == "0") Some(variableName)
+          else None
+        }
+        else None
+      case _ => None
+    }
+  }
+
   def extractGhostVariableFromAssignment(cfgNode: Node, typ: GhostVariable): Option[GhostVariableUpdateNode] = {
     cfgNode match {
       case node: AssignmentNode =>
         // Must be in the form of g = g + e
-        if (isGhostVariable(node.getTarget.toString, typ)) {
-          val ghostVariable = node.getTarget.toString
+        val variableName = node.getTarget.toString
+        if (isGhostVariable(variableName, typ)) {
           node.getExpression match {
             case rhs: NumericalAdditionNode =>
-              if (rhs.getLeftOperand.toString == ghostVariable) Some(GhostVariableUpdateNode(ghostVariable, rhs.getRightOperand))
+              if (rhs.getLeftOperand.toString == variableName) Some(GhostVariableUpdateNode(variableName, rhs.getRightOperand))
               else {
-                logger.warn(s"Assignment to ghost variable `$ghostVariable` is not in the form of `$ghostVariable = $ghostVariable + e`!")
+                logger.warn(s"Assignment to ghost variable `$variableName` is not in the form of `$variableName = $variableName + e`!")
                 None
               }
             case _ => None
