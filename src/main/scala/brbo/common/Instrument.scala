@@ -5,11 +5,11 @@ import brbo.common.InstrumentUtils.AtomicStatementInstrumentation
 import brbo.common.InstrumentUtils.InstrumentMode.InstrumentMode
 import org.apache.logging.log4j.LogManager
 
-class InstrumentProcessor extends BasicProcessor {
-  private val logger = LogManager.getLogger(classOf[InstrumentProcessor])
-}
-
 object Instrument {
+  class InstrumentProcessor extends BasicProcessor {
+    private val logger = LogManager.getLogger(classOf[InstrumentProcessor])
+  }
+
   /**
    *
    * @param input                          A Java class that defines a Java method

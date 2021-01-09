@@ -1,6 +1,6 @@
 package brbo.common
 
-import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT}
+import brbo.common.TypeUtils.BrboType.{BOOL, BrboType}
 import brbo.common.icra._
 import com.microsoft.z3._
 import org.apache.logging.log4j.LogManager
@@ -11,36 +11,11 @@ class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
   private val context: Context = Z3Solver.createContext
   private val solver: Solver = Z3Solver.createSolverUnderContext(context)
 
-  // private var variablesToASTs = new HashMap[String, Variable]
-
-  private val TRUE = "true"
-  private val FALSE = "false"
-  private val SELF = "self"
-  private val CHECK_SAT = "(check-sat)"
-  private val GET_MODEL = "(get-model)"
-  private val GET_OBJECTIVES = "(get-objectives)"
-  private val INIT = "init"
-  private val ASSERT = "assert"
-  private val DECL_CONST = "declare-const"
-  private val MAXIMIZE = "maximize"
-  private val ASSERT_FALSE = "(assert false)"
-  private val ASSERT_TRUE = "(assert true)"
-
   def checkSAT: Boolean = Z3Solver.solverCheck(solver)
 
   def push(): Unit = solver.push()
 
   def pop(): Unit = solver.pop()
-
-  /*def getIntVariableAST(identifier: String): AST = {
-    variablesToASTs.get(identifier) match {
-      case Some(variable) => variable.ast
-      case None =>
-        val ast = mkIntVar(identifier)
-        variablesToASTs += (identifier -> Variable(identifier, INT, ast))
-        ast
-    }
-  }*/
 
   def mkAssert(assertion: AST): Unit = solver.add(assertion.asInstanceOf[BoolExpr])
 
@@ -77,7 +52,17 @@ class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
 
   def mkAnd(left: AST, right: AST): AST = context.mkAnd(left.asInstanceOf[BoolExpr], right.asInstanceOf[BoolExpr])
 
+  def mkAnd(astSequence: AST*): AST = {
+    if (astSequence.isEmpty) throw new Exception("Attempting to conjoin empty AST")
+    else context.mkAnd(astSequence.map(ast => ast.asInstanceOf[BoolExpr]): _*)
+  }
+
   def mkOr(left: AST, right: AST): AST = context.mkOr(left.asInstanceOf[BoolExpr], right.asInstanceOf[BoolExpr])
+
+  def mkOr(astSequence: AST*): AST = {
+    if (astSequence.isEmpty) throw new Exception("Attempting to disjoin empty AST")
+    else context.mkAnd(astSequence.map(ast => ast.asInstanceOf[BoolExpr]): _*)
+  }
 
   def mkXor(left: AST, right: AST): AST = context.mkXor(left.asInstanceOf[BoolExpr], right.asInstanceOf[BoolExpr])
 
@@ -89,24 +74,13 @@ class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
 
   def mkBoolVar(s: String): AST = context.mkBoolConst(s)
 
-  def generateIntegerVariableDeclaration(identifier: String): String = "(" + DECL_CONST + " " + identifier + " Int)"
-
-  def generateAssertion(assertion: String): String = {
-    def addBrackets(str: String): String = {
-      if (str.contains(" ") && !str.startsWith("("))
-        "(" + str + ")"
-      else
-        str
-    }
-
-    "(" + ASSERT + " " + addBrackets(assertion) + ")"
+  def mkExists(boundConstants: Iterable[Expr], body: Expr): AST = {
+    context.mkExists(boundConstants.toArray, body, 0, null, null, null, null)
   }
 
-  /*def getAssertions: String = {
-    // TODO: Should consider variables with other types
-    val variableDeclarations = variablesToASTs.foldLeft("") { case (acc, (name, _)) => acc + generateIntegerVariableDeclaration(name) + "\n" }
-    solver.getAssertions.foldLeft(variableDeclarations) { (acc, assertion) => acc + generateAssertion(assertion.toString) + "\n" }
-  }*/
+  def mkForall(boundConstants: Iterable[Expr], body: Expr): AST = {
+    context.mkForall(boundConstants.toArray, body, 0, null, null, null, null)
+  }
 }
 
 object Z3Solver {

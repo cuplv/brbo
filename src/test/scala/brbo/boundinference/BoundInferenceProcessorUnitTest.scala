@@ -6,6 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.collection.immutable.HashSet
 
+@deprecated
 class BoundInferenceProcessorUnitTest extends AnyFlatSpec {
   "BoundInferenceProcessor" should "correctly replace resource updates with delta variable updates in the default instrumentation" in {
     BoundInferenceProcessorUnitTest.sourceCodeDeltaUpdatesTests.foreach({

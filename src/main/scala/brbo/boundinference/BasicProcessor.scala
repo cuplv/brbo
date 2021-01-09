@@ -1,6 +1,6 @@
 package brbo.boundinference
 
-import brbo.boundinference.FileFormat.{C_FORMAT, FileFormat, JAVA_FORMAT}
+import brbo.common.FileFormat.{C_FORMAT, FileFormat, JAVA_FORMAT}
 import brbo.common.InstrumentUtils
 import brbo.common.InstrumentUtils.InstrumentMode.InstrumentMode
 import brbo.common.InstrumentUtils.{AtomicStatementInstrumentation, InstrumentResult}
@@ -132,58 +132,5 @@ class BasicProcessor extends BasicTypeProcessor {
 
   def insertDeclarationAtEntry(): String = {
     ???
-  }
-
-  def replaceMethodBodyAndGenerateSourceCode(methodTree: MethodTree,
-                                             className: String,
-                                             newMethodBody: String,
-                                             fileFormat: FileFormat): String = {
-    assumeOneClassOneMethod()
-
-    val cFilePrefix =
-      """extern void __VERIFIER_error() __attribute__((noreturn));
-        |extern void __VERIFIER_assume (int);
-        |extern int __VERIFIER_nondet_int ();
-        |#define static_assert __VERIFIER_assert
-        |#define assume __VERIFIER_assume
-        |#define LARGE_INT 1000000
-        |void __VERIFIER_assert(int cond) {
-        |  if (!(cond)) {
-        |    ERROR: __VERIFIER_error();
-        |  }
-        |  return;
-        |}
-        |void assert(int cond) {
-        |  if (!(cond)) {
-        |    ERROR: __VERIFIER_error();
-        |  }
-        |  return;
-        |}""".stripMargin
-
-    val methodSignature = {
-      // TODO: A very hacky way to get the first line of a method definition
-      val lines = methodTree.toString.split("\n")
-      // https://stackoverflow.com/a/39259747
-      // lines(1).replace(" {", "")
-      var firstLine = lines(1)
-      firstLine = firstLine.replaceAll("\\n", "")
-      firstLine = firstLine.replaceAll("\\r", "")
-      assert(firstLine.endsWith(" {"))
-      firstLine.substring(0, firstLine.length - 2)
-    }
-    fileFormat match {
-      case JAVA_FORMAT =>
-        val spaces = " " * indent
-        s"class $className {\n$spaces$methodSignature\n$newMethodBody\n}"
-      case C_FORMAT =>
-        val replaceMethodSignature = {
-          // ICRA requires there exists a method named as `main`
-          val startIndex = methodSignature.indexOf(" ")
-          val endIndex = methodSignature.indexOf("(")
-          s"${methodSignature.substring(0, startIndex + 1)}main${methodSignature.substring(endIndex)}"
-        }
-        val replaceAssertOne = newMethodBody.replace("assert(true)", "assert(1)")
-        s"$cFilePrefix\n$replaceMethodSignature\n$replaceAssertOne"
-    }
   }
 }

@@ -14,7 +14,7 @@ object Icra {
   private val logger = LogManager.getLogger("brbo.common.icra.Icra")
   private val icraPath = s"${System.getProperty("user.home")}/Documents/workspace/icra/icra"
 
-  def run(sourceCode: String): Unit = {
+  def run(sourceCode: String): Option[List[ParsedInvariant]] = {
     val stdout = new StringBuilder
     val stderr = new StringBuilder
 
@@ -26,15 +26,21 @@ object Icra {
 
     val cmd = s"$icraPath ${file.toAbsolutePath}"
 
+    var parsedInvariants: Option[List[ParsedInvariant]] = None
+
     try {
+      // TODO: Set a timeout: 60s
       val status = cmd ! ProcessLogger(stdout append _, stderr append _)
       if (status == 0) {
         logger.trace(s"stdout:\n$stdout")
-        val parsedInvariants = parseInvariants(stdout.toString())
+        parsedInvariants = Some(parseInvariants(stdout.toString()))
       }
       else {
         throw new RuntimeException("Error when running ICRA")
       }
+
+      val removeFile = s"rm $file"
+      removeFile.!!
     }
     catch {
       case e: Exception =>
@@ -43,10 +49,8 @@ object Icra {
         logger.error(s"stderr:\n$stderr")
         throw new RuntimeException("Error when running ICRA")
     }
-    finally {
-      val removeFile = s"rm $file"
-      removeFile.!!
-    }
+
+    parsedInvariants
   }
 
   def parseInvariants(icraOutput: String): List[ParsedInvariant] = {

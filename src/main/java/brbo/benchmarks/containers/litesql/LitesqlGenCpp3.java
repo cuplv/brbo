@@ -18,4 +18,3 @@ public abstract class LitesqlGenCpp3 extends Common {
     List<Integer> fields;
   }
 }
-

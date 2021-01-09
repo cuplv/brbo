@@ -22,9 +22,20 @@ class IcraParser(input: String) {
     def parseInvariant(invariant: String): RawInvariant = {
       logger.trace(s"Parsing invariant: $invariant")
       val keywordWhen = " when "
-      val indexOfWhen = invariant.indexOf(keywordWhen)
+      val indexOfWhen = {
+        val indexOfWhen = invariant.indexOf(keywordWhen)
+        if (indexOfWhen == -1) {
+          logger.error(s"No invariant is inferred: $invariant")
+          invariant.length
+        }
+        else indexOfWhen
+      }
+
       val part1 = invariant.substring(0, indexOfWhen)
-      val part2 = invariant.substring(indexOfWhen + keywordWhen.length)
+      val part2 = {
+        if (indexOfWhen == invariant.length) "0 = 0" // Denote a unuseful invariant
+        else invariant.substring(indexOfWhen + keywordWhen.length)
+      }
       logger.trace(s"Declarations: $part1; Invariant$part2")
       RawInvariant(part1, part2)
     }
@@ -110,7 +121,7 @@ case class ToOr(right: IcraAST) extends IcraAST // Intermediate AST
 
 case class Negation(expression: IcraAST) extends IcraAST
 
-case class Assignment(variable: Identifier, expression: IcraAST) extends IcraAST
+case class Assignment(variable: Identifier, expression: IcraAST) extends IcraAST // Declare symbols that are used in the inferred invariants
 
 object IcraParser extends Parsers {
   override type Elem = IcraLexer.IcraToken

@@ -84,8 +84,9 @@ class IcraUnitTest extends AnyFlatSpec {
       testCase =>
         val expression = IcraParser.parseBoolExpression(testCase.input)
         val solver = new Z3Solver
-        logger.debug(Icra.translateToZ3(expression, INT, solver))
-        assert(Icra.translateToZ3(expression, INT, solver).toString == testCase.expectedOutput)
+        val z3Ast = Icra.translateToZ3(expression, INT, solver)
+        logger.debug(z3Ast)
+        assert(z3Ast.toString == testCase.expectedOutput)
     })
   }
 
@@ -94,8 +95,9 @@ class IcraUnitTest extends AnyFlatSpec {
       testCase =>
         val expression = IcraParser.parseBoolExpression(testCase.input)
         val solver = new Z3Solver
-        logger.debug(Icra.translateToZ3(expression, BOOL, solver))
-        assert(Icra.translateToZ3(expression, BOOL, solver).toString == testCase.expectedOutput)
+        val z3Ast = Icra.translateToZ3(expression, BOOL, solver)
+        logger.debug(z3Ast)
+        assert(z3Ast.toString == testCase.expectedOutput)
     })
   }
 }

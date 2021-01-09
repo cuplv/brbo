@@ -244,4 +244,3 @@ public abstract class LitesqlGenCpp2 extends Common {
     }
   }
 }
-

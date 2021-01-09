@@ -1,4 +1,4 @@
-package brbo.boundinference
+package brbo.common
 
 object FileFormat extends Enumeration {
   type FileFormat = Value

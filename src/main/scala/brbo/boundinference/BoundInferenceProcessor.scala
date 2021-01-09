@@ -1,9 +1,9 @@
 package brbo.boundinference
 
-import brbo.boundinference.FileFormat.JAVA_FORMAT
+import brbo.common.FileFormat.JAVA_FORMAT
 import brbo.common.InstrumentUtils.InstrumentMode.ALL
 import brbo.common.TypeUtils.BrboType.INT
-import brbo.common.{InstrumentUtils, JavacUtils, TypeUtils}
+import brbo.common.{InstrumentUtils, TypeUtils}
 import javax.annotation.processing.SupportedAnnotationTypes
 import javax.lang.model.`type`.TypeMirror
 import org.apache.logging.log4j.LogManager
@@ -13,6 +13,7 @@ import scala.collection.JavaConverters._
 import scala.collection.immutable.{HashMap, HashSet}
 
 @SupportedAnnotationTypes(Array("*"))
+@deprecated
 class BoundInferenceProcessor extends BasicProcessor {
   private val logger = LogManager.getLogger(classOf[BoundInferenceProcessor])
 
@@ -27,10 +28,6 @@ class BoundInferenceProcessor extends BasicProcessor {
 
     val boundVocabulary = generateBoundVocabulary()
     logger.info(s"Inferring bounds with vocabulary `$boundVocabulary`")
-
-    val upperBoundProcessor = new UpperBoundProcessor(sourceCodeNoResourceUpdates, InstrumentUtils.defaultDeltaVariable, boundVocabulary)
-    JavacUtils.runProcessor(getCompilationUnitName, sourceCodeDeltaUpdates, upperBoundProcessor)
-    upperBoundProcessor.runAnalysis()
   }
 
   def generateSourceCodeDeltaUpdates(): String = {
@@ -52,7 +49,7 @@ class BoundInferenceProcessor extends BasicProcessor {
           val spaces = " " * indent
           result.result.replaceFirst("\\{", s"{\n$spaces${spaces}int ${InstrumentUtils.defaultDeltaVariable} = 0;")
         }
-        replaceMethodBodyAndGenerateSourceCode(methodTree, getEnclosingClass(methodTree).get.getSimpleName.toString, newMethodBody, JAVA_FORMAT)
+        InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(methodTree, getEnclosingClass(methodTree).get.getSimpleName.toString, newMethodBody, JAVA_FORMAT, indent)
     }
   }
 
@@ -68,7 +65,7 @@ class BoundInferenceProcessor extends BasicProcessor {
             getLineNumber,
             ALL
           )
-        replaceMethodBodyAndGenerateSourceCode(methodTree, getEnclosingClass(methodTree).get.getSimpleName.toString, result.result, JAVA_FORMAT)
+        InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(methodTree, getEnclosingClass(methodTree).get.getSimpleName.toString, result.result, JAVA_FORMAT, indent)
     }
   }
 

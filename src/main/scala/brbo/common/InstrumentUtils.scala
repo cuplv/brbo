@@ -1,5 +1,6 @@
 package brbo.common
 
+import brbo.common.FileFormat.{C_FORMAT, FileFormat, JAVA_FORMAT}
 import brbo.common.InstrumentUtils.GhostVariable.{Counter, Delta, GhostVariable, Resource}
 import brbo.common.InstrumentUtils.InstrumentMode.{ALL, AT_MOST_ONCE, InstrumentMode}
 import com.sun.source.tree._
@@ -411,6 +412,67 @@ object InstrumentUtils {
       case tree: WhileLoopTree =>
         s"${spaces}while (${tree.getCondition})\n" +
           substituteAllAtomicStatementsWith(tree.getStatement, deltaVariable, targetBlock, indent, cfg)
+    }
+  }
+
+  /**
+   *
+   * @param methodTree    The method whose body will be replaced
+   * @param className     The class name of the method
+   * @param newMethodBody The new method body
+   * @param fileFormat    The file format of the output string
+   * @param indent        The indent before the method signature in the output
+   * @return A valid Java or C program that contains the new method body
+   */
+  def replaceMethodBodyAndGenerateSourceCode(methodTree: MethodTree,
+                                             className: String,
+                                             newMethodBody: String,
+                                             fileFormat: FileFormat,
+                                             indent: Int): String = {
+    val cFilePrefix =
+      """extern void __VERIFIER_error() __attribute__((noreturn));
+        |extern void __VERIFIER_assume (int);
+        |extern int __VERIFIER_nondet_int ();
+        |#define static_assert __VERIFIER_assert
+        |#define assume __VERIFIER_assume
+        |#define LARGE_INT 1000000
+        |void __VERIFIER_assert(int cond) {
+        |  if (!(cond)) {
+        |    ERROR: __VERIFIER_error();
+        |  }
+        |  return;
+        |}
+        |void assert(int cond) {
+        |  if (!(cond)) {
+        |    ERROR: __VERIFIER_error();
+        |  }
+        |  return;
+        |}""".stripMargin
+
+    val methodSignature = {
+      // TODO: A very hacky way to get the first line of a method definition
+      val lines = methodTree.toString.split("\n")
+      // https://stackoverflow.com/a/39259747
+      // lines(1).replace(" {", "")
+      var firstLine = lines(1)
+      firstLine = firstLine.replaceAll("\\n", "")
+      firstLine = firstLine.replaceAll("\\r", "")
+      assert(firstLine.endsWith(" {"))
+      firstLine.substring(0, firstLine.length - 2)
+    }
+    fileFormat match {
+      case JAVA_FORMAT =>
+        val spaces = " " * indent
+        s"class $className {\n$spaces$methodSignature\n$newMethodBody\n}"
+      case C_FORMAT =>
+        val replaceMethodSignature = {
+          // ICRA requires there exists a method named as `main`
+          val startIndex = methodSignature.indexOf(" ")
+          val endIndex = methodSignature.indexOf("(")
+          s"${methodSignature.substring(0, startIndex + 1)}main${methodSignature.substring(endIndex)}"
+        }
+        val replaceAssertOne = newMethodBody.replace("assert(true)", "assert(1)")
+        s"$cFilePrefix\n$replaceMethodSignature\n$replaceAssertOne"
     }
   }
 }
