@@ -1,7 +1,7 @@
 package brbo.boundinference
 
 import brbo.common.FileFormat.{C_FORMAT, FileFormat, JAVA_FORMAT}
-import brbo.common.InstrumentUtils
+import brbo.common.{InstrumentUtils, JavacUtils}
 import brbo.common.InstrumentUtils.InstrumentMode.InstrumentMode
 import brbo.common.InstrumentUtils.{AtomicStatementInstrumentation, InstrumentResult}
 import com.sun.source.tree.{ClassTree, CompilationUnitTree, MethodTree, Tree}
@@ -116,6 +116,8 @@ class BasicProcessor extends BasicTypeProcessor {
 
   def getSourceCode: String = sourceCode.get
 
+  // TODO: Remove this. Instead, use getTrees()
+  @deprecated
   def testInstrumentation(atomicStatementInstrumentation: AtomicStatementInstrumentation, instrumentMode: InstrumentMode): Map[MethodTree, InstrumentResult] = {
     getMethods.map({
       case (methodTree, cfg) =>
@@ -132,5 +134,13 @@ class BasicProcessor extends BasicTypeProcessor {
 
   def insertDeclarationAtEntry(): String = {
     ???
+  }
+}
+
+object BasicProcessor {
+  def getTrees(className: String, sourceFileContents: String): (HashMap[ClassTree, Set[MethodTree]], HashMap[MethodTree, ControlFlowGraph]) = {
+    val basicProcessor = new BasicProcessor
+    JavacUtils.runProcessor(className, sourceFileContents, basicProcessor)
+    (basicProcessor.getClasses, basicProcessor.getMethods)
   }
 }

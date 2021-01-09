@@ -1,41 +1,23 @@
 package brbo.common
 
-import brbo.TestCase
+import brbo.TestCaseJavaProgram
 import brbo.boundinference.BasicProcessor
 import brbo.common.InstrumentUtils.AtomicStatementInstrumentation
-import brbo.common.InstrumentUtils.GhostVariable.{Counter, Delta, Resource}
 import brbo.common.InstrumentUtils.InstrumentMode.{ALL, AT_MOST_ONCE}
 import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.collection.immutable.HashSet
 
 class InstrumentUtilsUnitTest extends AnyFlatSpec {
-  "Ghost variable" should "be correctly identified" in {
-    assert(InstrumentUtils.isGhostVariable("D", Delta))
-    assert(InstrumentUtils.isGhostVariable("D123", Delta))
-    assert(!InstrumentUtils.isGhostVariable("D123", Resource))
-    assert(!InstrumentUtils.isGhostVariable("D123", Counter))
-
-    assert(InstrumentUtils.isGhostVariable("R", Resource))
-    assert(InstrumentUtils.isGhostVariable("R123", Resource))
-    assert(!InstrumentUtils.isGhostVariable("R123", Delta))
-    assert(!InstrumentUtils.isGhostVariable("R123", Counter))
-
-    assert(InstrumentUtils.isGhostVariable("C", Counter))
-    assert(InstrumentUtils.isGhostVariable("C123", Counter))
-    assert(!InstrumentUtils.isGhostVariable("C123", Resource))
-    assert(!InstrumentUtils.isGhostVariable("C123", Delta))
-  }
-
   "Instrumentation" should "output correct java source code without any instrumentation" in {
     InstrumentUtilsUnitTest.noInstrumentUnitTests.foreach({
       testCase =>
         val basicProcessor = new BasicProcessor
-        JavacUtils.runProcessor(testCase.name, testCase.input, basicProcessor)
+        JavacUtils.runProcessor(testCase.className, testCase.inputProgram, basicProcessor)
         val results = basicProcessor.testInstrumentation(AtomicStatementInstrumentation(_ => false, tree => tree.toString), AT_MOST_ONCE)
         assert(results.size == 1, "We should have only 1 method per test class")
         results.foreach({
-          case (_, result) => assert(result.result == testCase.expectedOutput, s"Test ${testCase.name} failed!")
+          case (_, result) => assert(result.result == testCase.expectedOutput, s"Test ${testCase.className} failed!")
         })
     })
   }
@@ -44,7 +26,7 @@ class InstrumentUtilsUnitTest extends AnyFlatSpec {
     InstrumentUtilsUnitTest.replaceResourceAssignmentsAtMostOnce.foreach({
       testCase =>
         val basicProcessor = new BasicProcessor
-        JavacUtils.runProcessor(testCase.name, testCase.input, basicProcessor)
+        JavacUtils.runProcessor(testCase.className, testCase.inputProgram, basicProcessor)
         val results = basicProcessor.testInstrumentation(InstrumentUtils.defaultResourceAssignment, AT_MOST_ONCE)
 
         assert(results.size == 1, "We should have exactly 1 method per test class")
@@ -52,7 +34,7 @@ class InstrumentUtilsUnitTest extends AnyFlatSpec {
           case (_, result) =>
             // println(result.result)
             // println(testCase.expectedOutput)
-            assert(result.result == testCase.expectedOutput, s"Test ${testCase.name} failed!")
+            assert(result.result == testCase.expectedOutput, s"Test ${testCase.className} failed!")
         })
     })
   }
@@ -61,7 +43,7 @@ class InstrumentUtilsUnitTest extends AnyFlatSpec {
     InstrumentUtilsUnitTest.replaceResourceAssignmentsAll.foreach({
       testCase =>
         val basicProcessor = new BasicProcessor
-        JavacUtils.runProcessor(testCase.name, testCase.input, basicProcessor)
+        JavacUtils.runProcessor(testCase.className, testCase.inputProgram, basicProcessor)
         val results = basicProcessor.testInstrumentation(InstrumentUtils.defaultResourceAssignment, ALL)
 
         assert(results.size == 1, "We should have exactly 1 method per test class")
@@ -69,14 +51,14 @@ class InstrumentUtilsUnitTest extends AnyFlatSpec {
           case (_, result) =>
             // println(result.result)
             // println(testCase.expectedOutput)
-            assert(result.result == testCase.expectedOutput, s"Test ${testCase.name} failed!")
+            assert(result.result == testCase.expectedOutput, s"Test ${testCase.className} failed!")
         })
     })
   }
 }
 
 object InstrumentUtilsUnitTest {
-  val noInstrumentUnitTests: HashSet[TestCase] = {
+  val noInstrumentUnitTests: HashSet[TestCaseJavaProgram] = {
     val assertTest =
       """class AssertTest {
         |    void f(int n) {
@@ -249,22 +231,22 @@ object InstrumentUtilsUnitTest {
         |  }
         |}""".stripMargin
 
-    HashSet[TestCase](
-      TestCase("AssertTest", assertTest, assertTestExpected),
-      TestCase("BreakTest", breakTest, breakTestExpected),
-      TestCase("ContinueTest", continueTest, continueTestExpected),
-      TestCase("DoWhileTest", doWhileTest, doWhileTestExpected),
-      TestCase("EmptyTest", emptyTest, emptyTestExpected),
-      TestCase("ForLoopTest", forLoopTest, forLoopTestExpected),
-      TestCase("IfTest", ifTest, ifTestExpected),
-      TestCase("LabelTest", labelTest, labelTestExpected),
-      TestCase("ReturnTest", returnTest, returnTestExpected),
-      TestCase("VariableTest", variableTest, variableTestExpected),
-      TestCase("WhileTest", whileTest, whileTestExpected)
+    HashSet[TestCaseJavaProgram](
+      TestCaseJavaProgram("AssertTest", assertTest, assertTestExpected),
+      TestCaseJavaProgram("BreakTest", breakTest, breakTestExpected),
+      TestCaseJavaProgram("ContinueTest", continueTest, continueTestExpected),
+      TestCaseJavaProgram("DoWhileTest", doWhileTest, doWhileTestExpected),
+      TestCaseJavaProgram("EmptyTest", emptyTest, emptyTestExpected),
+      TestCaseJavaProgram("ForLoopTest", forLoopTest, forLoopTestExpected),
+      TestCaseJavaProgram("IfTest", ifTest, ifTestExpected),
+      TestCaseJavaProgram("LabelTest", labelTest, labelTestExpected),
+      TestCaseJavaProgram("ReturnTest", returnTest, returnTestExpected),
+      TestCaseJavaProgram("VariableTest", variableTest, variableTestExpected),
+      TestCaseJavaProgram("WhileTest", whileTest, whileTestExpected)
     )
   }
 
-  val replaceResourceAssignmentsAtMostOnce: HashSet[TestCase] = {
+  val replaceResourceAssignmentsAtMostOnce: HashSet[TestCaseJavaProgram] = {
     val noLoopTest1 =
       """class NoLoopTest1 {
         |    void f(int n) {
@@ -414,18 +396,18 @@ object InstrumentUtilsUnitTest {
         |  }
         |}""".stripMargin
 
-    HashSet[TestCase](
-      TestCase("NoLoopTest1", noLoopTest1, noLoopTest1Expected),
-      TestCase("NoLoopTest2", noLoopTest2, noLoopTest2Expected),
-      TestCase("WhileLoopTest1", whileLoopTest1, whileLoopTest1Expected),
-      TestCase("WhileLoopTest2", whileLoopTest2, whileLoopTest2Expected),
-      TestCase("ForLoopTest1", forLoopTest1, forLoopTest1Expected),
-      TestCase("ForLoopTest2", forLoopTest2, forLoopTest2Expected),
-      TestCase("SequenceTest1", sequenceTest1, sequenceTest1Expected),
+    HashSet[TestCaseJavaProgram](
+      TestCaseJavaProgram("NoLoopTest1", noLoopTest1, noLoopTest1Expected),
+      TestCaseJavaProgram("NoLoopTest2", noLoopTest2, noLoopTest2Expected),
+      TestCaseJavaProgram("WhileLoopTest1", whileLoopTest1, whileLoopTest1Expected),
+      TestCaseJavaProgram("WhileLoopTest2", whileLoopTest2, whileLoopTest2Expected),
+      TestCaseJavaProgram("ForLoopTest1", forLoopTest1, forLoopTest1Expected),
+      TestCaseJavaProgram("ForLoopTest2", forLoopTest2, forLoopTest2Expected),
+      TestCaseJavaProgram("SequenceTest1", sequenceTest1, sequenceTest1Expected),
     )
   }
 
-  val replaceResourceAssignmentsAll: HashSet[TestCase] = {
+  val replaceResourceAssignmentsAll: HashSet[TestCaseJavaProgram] = {
     val noLoopTest1 =
       """class NoLoopTest1 {
         |    void f(int n) {
@@ -576,14 +558,14 @@ object InstrumentUtilsUnitTest {
         |  }
         |}""".stripMargin
 
-    HashSet[TestCase](
-      TestCase("NoLoopTest1", noLoopTest1, noLoopTest1Expected),
-      TestCase("NoLoopTest2", noLoopTest2, noLoopTest2Expected),
-      TestCase("WhileLoopTest1", whileLoopTest1, whileLoopTest1Expected),
-      TestCase("WhileLoopTest2", whileLoopTest2, whileLoopTest2Expected),
-      TestCase("ForLoopTest1", forLoopTest1, forLoopTest1Expected),
-      TestCase("ForLoopTest2", forLoopTest2, forLoopTest2Expected),
-      TestCase("SequenceTest1", sequenceTest1, sequenceTest1Expected),
+    HashSet[TestCaseJavaProgram](
+      TestCaseJavaProgram("NoLoopTest1", noLoopTest1, noLoopTest1Expected),
+      TestCaseJavaProgram("NoLoopTest2", noLoopTest2, noLoopTest2Expected),
+      TestCaseJavaProgram("WhileLoopTest1", whileLoopTest1, whileLoopTest1Expected),
+      TestCaseJavaProgram("WhileLoopTest2", whileLoopTest2, whileLoopTest2Expected),
+      TestCaseJavaProgram("ForLoopTest1", forLoopTest1, forLoopTest1Expected),
+      TestCaseJavaProgram("ForLoopTest2", forLoopTest2, forLoopTest2Expected),
+      TestCaseJavaProgram("SequenceTest1", sequenceTest1, sequenceTest1Expected),
     )
   }
 }

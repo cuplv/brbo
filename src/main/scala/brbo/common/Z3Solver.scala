@@ -104,6 +104,10 @@ class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
   def mkForall(boundConstants: Iterable[Expr], body: Expr): AST = {
     context.mkForall(boundConstants.toArray, body, 0, null, null, null, null)
   }
+
+  def mkTrue(): AST = mkBoolVal(true)
+
+  def mkFalse(): AST = mkBoolVal(false)
 }
 
 object Z3Solver {

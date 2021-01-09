@@ -35,7 +35,7 @@ During numeric abstraction, any APIs not listed below are modeled as pure and re
 The generated numeric programs conform to the following grammar:
 
 ```
-s ::= s;...;s | while(e) s | if(e) s else s | do s while(e) | for(s; e; s) s
+s ::= s;...;s | while(e) s | if(e) s else s | do s while(e) | for(s; e; s) s | label: s
     | continue | break | assert(e) | return e | T x | R = R + e
     | assume(e) | ndInt() | ndBool()
     | T x = e | x = e

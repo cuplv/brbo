@@ -1,6 +1,7 @@
 package brbo.boundinference
 
-import brbo.boundinference.BeforeOrAfter.{AFTER, BEFORE, BeforeOrAfter}
+import brbo.boundinference.BoundCheckingProcessor.BeforeOrAfter.{AFTER, BEFORE, BeforeOrAfter}
+import brbo.boundinference.BoundCheckingProcessor.{DeltaCounterPair, Locations}
 import brbo.common.FileFormat.C_FORMAT
 import brbo.common.InstrumentUtils.AtomicStatementInstrumentation
 import brbo.common.InstrumentUtils.InstrumentMode.ALL
@@ -8,15 +9,36 @@ import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT}
 import brbo.common.icra.{Assignment, Icra}
 import brbo.common.{InstrumentUtils, Z3Solver}
 import com.microsoft.z3.{AST, Expr}
-import com.sun.source.tree.Tree
+import com.sun.source.tree._
 import javax.annotation.processing.SupportedAnnotationTypes
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.node.Node
 
 @SupportedAnnotationTypes(Array("*"))
-class InvariantInferenceProcessor(solver: Z3Solver) extends BasicProcessor {
-  private val logger = LogManager.getLogger(classOf[InvariantInferenceProcessor])
+class BoundCheckingProcessor(solver: Z3Solver) extends BasicProcessor {
+  private val logger = LogManager.getLogger(classOf[BoundCheckingProcessor])
 
+  validateInputProgram()
+
+  def checkBound(deltaCounterPairs: Set[DeltaCounterPair], boundExpression: AST): Boolean = {
+    ???
+  }
+
+  /**
+   * The input program of this processor should include:
+   * 1. 1 reset for each delta variable
+   * 2. >=1 updates for each delta variable
+   * 3. 1 update for each counter
+   */
+  def validateInputProgram(): Unit = {
+  }
+
+  /**
+   *
+   * @param locations             The locations before or after which we wish to infer invariants
+   * @param existentiallyQuantify The inferred invariants will be existentially quantified by these variables
+   * @return The conjunction of local invariants that are existentially quantified by some variables
+   */
   def inferInvariant(locations: Locations, existentiallyQuantify: Map[String, BrboType]): AST = {
     logger.debug(s"Infer invariants")
     val cProgram = translateToCAndInsertAssertions(locations)
@@ -52,7 +74,7 @@ class InvariantInferenceProcessor(solver: Z3Solver) extends BasicProcessor {
         solver.mkAnd(existentiallyQuantifiedInvariants: _*)
       case None =>
         logger.fatal("ICRA returns no invariant!")
-        solver.mkBoolVal(true)
+        solver.mkTrue()
     }
   }
 
@@ -61,7 +83,7 @@ class InvariantInferenceProcessor(solver: Z3Solver) extends BasicProcessor {
    * @param locations The locations before or after which we insert `assert(1)`
    * @return The C program that is translated from the input Java program, and is asserted with `assert(1)`
    */
-  def translateToCAndInsertAssertions(locations: Locations): String = {
+  private def translateToCAndInsertAssertions(locations: Locations): String = {
     assumeOneClassOneMethod()
 
     val ASSERT_TRUE = "assert(true);"
@@ -100,16 +122,22 @@ class InvariantInferenceProcessor(solver: Z3Solver) extends BasicProcessor {
 
 }
 
-/**
- *
- * @param whichASTs     Insert `assert(1)` before / after Which ASTs. We use `Node` instead of `Tree`
- *                      because we are using `Node` as intermediate representations that are less
- *                      "syntactic" than ASTs
- * @param beforeOrAfter Insert `assert(1)` either before or after the ASTs that satisfy the condition
- */
-case class Locations(whichASTs: Node => Boolean, beforeOrAfter: BeforeOrAfter)
+object BoundCheckingProcessor {
 
-object BeforeOrAfter extends Enumeration {
-  type BeforeOrAfter = Value
-  val BEFORE, AFTER = Value
+  case class DeltaCounterPair(deltaVariable: String, counter: String)
+
+  /**
+   *
+   * @param whichASTs     Insert `assert(1)` before / after Which ASTs. We use `Node` instead of `Tree`
+   *                      because we are using `Node` as intermediate representations that are less
+   *                      "syntactic" than ASTs
+   * @param beforeOrAfter Insert `assert(1)` either before or after the ASTs that satisfy the condition
+   */
+  case class Locations(whichASTs: Node => Boolean, beforeOrAfter: BeforeOrAfter)
+
+  object BeforeOrAfter extends Enumeration {
+    type BeforeOrAfter = Value
+    val BEFORE, AFTER = Value
+  }
+
 }
