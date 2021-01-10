@@ -18,10 +18,10 @@ object InvariantInference {
   /**
    *
    * @param solver                The solver that is used to construct Z3 ASTs that represent the inferred invariants
-   * @param className             The class name
+   * @param className             The class name of the method where we wish to infer invariants
    * @param methodTree            The method where we wish to infer invariants
    * @param getLineNumber         A function to get line numbers
-   * @param cfg                   The control flow graph
+   * @param cfg                   The control flow graph of the method where we wish to infer invariants
    * @param locations             The locations before or after which we wish to infer invariants
    * @param existentiallyQuantify The inferred invariants will be existentially quantified by these variables
    * @return The conjunction of local invariants that are existentially quantified by some variables
@@ -33,7 +33,7 @@ object InvariantInference {
                      cfg: ControlFlowGraph,
                      locations: Locations,
                      existentiallyQuantify: Map[String, BrboType]): AST = {
-    logger.debug(s"Infer invariants")
+    logger.info(s"Infer invariants in method ${methodTree.getName} ${locations.beforeOrAfter} specified nodes in CFG")
     val cProgram = translateToCAndInsertAssertions(className, methodTree, getLineNumber, cfg, locations)
     Icra.run(cProgram) match {
       case Some(parsedInvariants) =>

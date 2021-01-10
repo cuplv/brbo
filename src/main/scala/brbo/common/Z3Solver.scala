@@ -1,6 +1,6 @@
 package brbo.common
 
-import brbo.common.TypeUtils.BrboType.{BOOL, BrboType}
+import brbo.common.TypeUtils.BrboType.BOOL
 import brbo.common.icra._
 import com.microsoft.z3._
 import org.apache.logging.log4j.LogManager
@@ -74,7 +74,7 @@ class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
 
   def mkBoolVar(s: String): AST = context.mkBoolConst(s)
 
-  def mkExists(boundConstants: Iterable[Expr], body: Expr): AST = {
+  def mkExists(boundConstants: Iterable[AST], body: AST): AST = {
     /**
      * Weight annotations to quantifiers influence the priority of quantifier
      * instantiations.  They should be handled with care for solvers, which support
@@ -98,11 +98,11 @@ class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
      *
      * http://people.mpi-inf.mpg.de/~jblanche/jar-smt.pdf
      */
-    context.mkExists(boundConstants.toArray, body, 0, null, null, null, null)
+    context.mkExists(boundConstants.map(ast => ast.asInstanceOf[Expr]).toArray, body.asInstanceOf[Expr], 0, null, null, null, null)
   }
 
-  def mkForall(boundConstants: Iterable[Expr], body: Expr): AST = {
-    context.mkForall(boundConstants.toArray, body, 0, null, null, null, null)
+  def mkForall(boundConstants: Iterable[AST], body: AST): AST = {
+    context.mkForall(boundConstants.map(ast => ast.asInstanceOf[Expr]).toArray, body.asInstanceOf[Expr], 0, null, null, null, null)
   }
 
   def mkTrue(): AST = mkBoolVal(true)
@@ -164,10 +164,6 @@ object Z3Solver {
     result
   }
 
-  def assert(icraAST: IcraAST, solver: Z3Solver): Unit = {
-    solver.mkAssert(Icra.translateToZ3(icraAST, BOOL, solver))
-  }
-
   def check(assertion: BoolExpr): Boolean = {
     val context = new Context
     val solver = createSolverUnderContext(context)
@@ -191,7 +187,5 @@ object Z3Solver {
     else if (array.isEmpty) context.mkTrue()
     else context.mkAnd(parseSMTLIB2StringToArray(string, context): _*)
   }
-
-  case class Variable(identifier: String, typ: BrboType, ast: AST)
 
 }
