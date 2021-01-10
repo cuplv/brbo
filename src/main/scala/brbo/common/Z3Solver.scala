@@ -1,7 +1,5 @@
 package brbo.common
 
-import brbo.common.TypeUtils.BrboType.BOOL
-import brbo.common.icra._
 import com.microsoft.z3._
 import org.apache.logging.log4j.LogManager
 
@@ -11,7 +9,7 @@ class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
   private val context: Context = Z3Solver.createContext
   private val solver: Solver = Z3Solver.createSolverUnderContext(context)
 
-  def checkSAT: Boolean = Z3Solver.solverCheck(solver)
+  def checkSAT(debug: Boolean): Boolean = Z3Solver.solverCheck(solver, debug)
 
   def push(): Unit = solver.push()
 
@@ -149,11 +147,16 @@ object Z3Solver {
 
   private def createContext: Context = new Context(configuration)
 
-  private def solverCheck(solver: Solver): Boolean = {
+  private def solverCheck(solver: Solver, debug: Boolean): Boolean = {
     val start = System.nanoTime()
     val result = {
       solver.check() match {
-        case Status.UNSATISFIABLE => false
+        case Status.UNSATISFIABLE =>
+          if (debug) {
+            logger.error("Unsat core is: ")
+            solver.getUnsatCore.foreach(expression => println(expression))
+          }
+          false
         case Status.SATISFIABLE => true
         case Status.UNKNOWN => throw new RuntimeException("Status.UNKNOWN: Z3 decidability or timeout issue")
       }
@@ -164,11 +167,11 @@ object Z3Solver {
     result
   }
 
-  def check(assertion: BoolExpr): Boolean = {
+  def check(assertion: BoolExpr, debug: Boolean): Boolean = {
     val context = new Context
     val solver = createSolverUnderContext(context)
     solver.add(assertion)
-    solverCheck(solver)
+    solverCheck(solver, debug)
   }
 
   def parseSMTLIB2StringToArray(string: String, context: Context): Array[BoolExpr] = {

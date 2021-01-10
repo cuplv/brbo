@@ -22,18 +22,28 @@ class BoundCheckingUnitTest extends AnyFlatSpec {
       val solver1 = new Z3Solver
       val boundExpression1 = solver1.mkLe(
         solver1.mkIntVar("R"),
-        // solver1.mkIntVar("n")
-        solver1.mkIntVal(1)
+        solver1.mkIntVar("n")
       )
       val solver2 = new Z3Solver
       val boundExpression2 = solver2.mkLe(
         solver2.mkIntVar("R"),
-        solver2.mkAdd(
-          solver2.mkMul(solver2.mkIntVar("n"), solver2.mkIntVar("m")),
-          solver2.mkIntVar("l")
+        solver2.mkIntVal(1)
+      )
+      val solver3 = new Z3Solver
+      val boundExpression3 = solver3.mkLe(
+        solver3.mkIntVar("R"),
+        solver3.mkAdd(
+          solver3.mkMul(solver3.mkIntVar("n"), solver3.mkIntVar("m")),
+          solver3.mkIntVar("l")
         )
       )
+      val solver4 = new Z3Solver
+      val boundExpression4 = solver4.mkLe(
+        solver4.mkIntVar("R"),
+        solver4.mkMul(solver4.mkIntVar("n"), solver4.mkIntVar("m")),
+      )
       List((solver1, boundExpression1), (solver2, boundExpression2))
+      // List((solver3, boundExpression3), (solver4, boundExpression4))
     }
 
     BoundCheckingUnitTest.boundCheckingTests.zip(boundExpressions).foreach({
@@ -55,7 +65,7 @@ class BoundCheckingUnitTest extends AnyFlatSpec {
           deltaCounterPairs,
           boundExpression
         )
-        println(result)
+        assert(result.toString == testCase.expectedOutput)
     })
   }
 }
@@ -69,7 +79,6 @@ object BoundCheckingUnitTest {
       |    int C1 = 0;
       |    int R = 0;
       |    int i = 0;
-      |    D100 = D100 + 1;
       |    while (i < n)
       |    {
       |      i++;
@@ -110,61 +119,61 @@ object BoundCheckingUnitTest {
 
   val deltaVariableUpdateTests: HashSet[TestCaseJavaProgram] = {
     val test01Expected =
-      """(let ((a!1 (exists ((i Int)
-        |                    (|i':80| Int)
+      """(let ((a!1 (exists ((C1 Int)
+        |                    (R Int)
+        |                    (i Int)
         |                    (|param0:12| Int)
-        |                    (|R':77| Int)
-        |                    (|K:76| Int)
-        |                    (|C1':79| Int)
-        |                    (|D100':78| Int))
-        |             (! (let ((a!1 (or (not (and (<= 0 |K:76|) (<= |K:76| 0)))
-        |                               (= |R':77| |K:76|)))
-        |                      (a!2 (or (not (and (<= 0 |K:76|) (<= |K:76| 0)))
-        |                               (= |D100':78| 1)))
-        |                      (a!3 (or (not (and (<= 0 |K:76|) (<= |K:76| 0)))
-        |                               (= |C1':79| |K:76|)))
-        |                      (a!4 (and (<= 1 |K:76|)
-        |                                (= (+ (- 0 1) 1) 0)
+        |                    (|R':81| Int)
+        |                    (|C1':83| Int)
+        |                    (|K:79| Int)
+        |                    (|i':82| Int)
+        |                    (|D100':80| Int))
+        |             (! (let ((a!1 (or (not (and (<= 0 |K:79|) (<= |K:79| 0)))
+        |                               (= |D100':80| 0)))
+        |                      (a!2 (or (not (and (<= 0 |K:79|) (<= |K:79| 0)))
+        |                               (= |R':81| |K:79|)))
+        |                      (a!3 (or (not (and (<= 0 |K:79|) (<= |K:79| 0)))
+        |                               (= |C1':83| |K:79|)))
+        |                      (a!4 (and (<= 1 |K:79|)
         |                                (<= 0 (+ (- 0 1) |param0:12|))
-        |                                (= (+ (- 0 |R':77|) |C1':79|) 0)
-        |                                (= (+ (- 0 |R':77|) |i':80|) 0)
-        |                                (= (+ (- 0 1) |D100':78|) 0)
-        |                                (<= 0 (+ (- 0 |R':77|) |param0:12|))
-        |                                (<= 0 (+ (- 0 1) |R':77|)))))
+        |                                (= (+ (- 0 |R':81|) |C1':83|) 0)
+        |                                (= (+ (- 0 |R':81|) |i':82|) 0)
+        |                                (= (+ (- 0 1) |D100':80|) 0)
+        |                                (<= 0 (+ (- 0 |R':81|) |param0:12|))
+        |                                (<= 0 (+ (- 0 1) |R':81|)))))
         |                  (and a!1
-        |                       (or (not (<= 1 |K:76|)) (= |R':77| |K:76|))
+        |                       (or (not (<= 1 |K:79|)) (= |D100':80| 1))
         |                       a!2
-        |                       (or (not (<= 1 |K:76|)) (= |D100':78| 1))
+        |                       (or (not (<= 1 |K:79|)) (= |R':81| |K:79|))
+        |                       (or (not (<= 0 |K:79|)) (= |i':82| |K:79|))
         |                       a!3
-        |                       (or (not (<= 1 |K:76|)) (= |C1':79| |K:76|))
-        |                       (or (not (<= 0 |K:76|)) (= |i':80| |K:76|))
-        |                       (or (and (= |K:76| 0)
-        |                                (= 0 |i':80|)
-        |                                (= 0 |R':77|)
-        |                                (= 0 |C1':79|)
-        |                                (= 1 |D100':78|))
+        |                       (or (not (<= 1 |K:79|)) (= |C1':83| |K:79|))
+        |                       (or (not (<= 0 |K:79|)) (<= |D100':80| |K:79|))
+        |                       (or (and (= |K:79| 0)
+        |                                (= 0 |i':82|)
+        |                                (= 0 |R':81|)
+        |                                (= 0 |C1':83|)
+        |                                (= 0 |D100':80|))
         |                           a!4)
-        |                       (<= 0 |K:76|)
-        |                       (<= 0 |R':77|)
-        |                       (<= 0 |C1':79|)
-        |                       (<= 0 |i':80|)
-        |                       (< 0 |D100':78|)
-        |                       (= (+ (- 0 |i':80|) |R':77|) 0)
-        |                       (= (+ (- 0 |i':80|) |C1':79|) 0)
-        |                       (= (+ (- 0 1) |D100':78|) 0)
-        |                       (< |i':80| |param0:12|)
+        |                       (<= 0 |K:79|)
+        |                       (<= 0 |R':81|)
+        |                       (<= 0 |D100':80|)
+        |                       (<= 0 |C1':83|)
+        |                       (<= 0 |i':82|)
+        |                       (= (+ (- 0 |i':82|) |R':81|) 0)
+        |                       (= (+ (- 0 |i':82|) |C1':83|) 0)
+        |                       (< |i':82| |param0:12|)
         |                       (= D100 1)
-        |                       (= C1 (+ |C1':79| 1))
-        |                       (= R |R':77|)
-        |                       (= i (+ |i':80| 1))
+        |                       (= C1 (+ |C1':83| 1))
+        |                       (= R |R':81|)
+        |                       (= i (+ |i':82| 1))
         |                       (= n |param0:12|)))
         |                :weight 0))))
-        |  (and (exists ((i Int) (|param0:12| Int))
-        |         (! (and (= 0 0) (= D100 1) (= C1 0) (= R 0) (= i 0) (= n |param0:12|))
-        |            :weight 0))
-        |       a!1))""".stripMargin
+        |  (and a!1))""".stripMargin
     val test02Expected =
-      """(let ((a!1 (exists ((i Int)
+      """(let ((a!1 (exists ((C1 Int)
+        |                    (R Int)
+        |                    (i Int)
         |                    (|C1':127| Int)
         |                    (|K:125| Int)
         |                    (|param0:16| Int)
@@ -255,7 +264,9 @@ object BoundCheckingUnitTest {
         |                       (= m |param1:19|)
         |                       (= l |param2:22|)))
         |                :weight 0)))
-        |      (a!2 (exists ((i Int)
+        |      (a!2 (exists ((C1 Int)
+        |                    (R Int)
+        |                    (i Int)
         |                    (|C1':127| Int)
         |                    (|K:125| Int)
         |                    (|param0:16| Int)
@@ -356,58 +367,61 @@ object BoundCheckingUnitTest {
 
   val deltaVariableResetTests: HashSet[TestCaseJavaProgram] = {
     val test01Expected =
-      """(let ((a!1 (exists ((i Int)
-        |                    (|i':80| Int)
+      """(let ((a!1 (exists ((C1 Int)
+        |                    (R Int)
+        |                    (i Int)
         |                    (|param0:12| Int)
-        |                    (|R':77| Int)
-        |                    (|K:76| Int)
-        |                    (|C1':79| Int)
-        |                    (|D100':78| Int))
-        |             (! (let ((a!1 (or (not (and (<= 0 |K:76|) (<= |K:76| 0)))
-        |                               (= |R':77| |K:76|)))
-        |                      (a!2 (or (not (and (<= 0 |K:76|) (<= |K:76| 0)))
-        |                               (= |D100':78| 1)))
-        |                      (a!3 (or (not (and (<= 0 |K:76|) (<= |K:76| 0)))
-        |                               (= |C1':79| |K:76|)))
-        |                      (a!4 (and (<= 1 |K:76|)
-        |                                (= (+ (- 0 1) 1) 0)
+        |                    (|D100':81| Int)
+        |                    (|R':82| Int)
+        |                    (|C1':84| Int)
+        |                    (|K:80| Int)
+        |                    (|i':83| Int))
+        |             (! (let ((a!1 (or (not (and (<= 0 |K:80|) (<= |K:80| 0)))
+        |                               (= |D100':81| 0)))
+        |                      (a!2 (or (not (and (<= 0 |K:80|) (<= |K:80| 0)))
+        |                               (= |R':82| |K:80|)))
+        |                      (a!3 (or (not (and (<= 0 |K:80|) (<= |K:80| 0)))
+        |                               (= |C1':84| |K:80|)))
+        |                      (a!4 (and (<= 1 |K:80|)
         |                                (<= 0 (+ (- 0 1) |param0:12|))
-        |                                (= (+ (- 0 |R':77|) |C1':79|) 0)
-        |                                (= (+ (- 0 |R':77|) |i':80|) 0)
-        |                                (= (+ (- 0 1) |D100':78|) 0)
-        |                                (<= 0 (+ (- 0 |R':77|) |param0:12|))
-        |                                (<= 0 (+ (- 0 1) |R':77|)))))
+        |                                (= (+ (- 0 |R':82|) |C1':84|) 0)
+        |                                (= (+ (- 0 |R':82|) |i':83|) 0)
+        |                                (= (+ (- 0 1) |D100':81|) 0)
+        |                                (<= 0 (+ (- 0 |R':82|) |param0:12|))
+        |                                (<= 0 (+ (- 0 1) |R':82|)))))
         |                  (and a!1
-        |                       (or (not (<= 1 |K:76|)) (= |R':77| |K:76|))
+        |                       (or (not (<= 1 |K:80|)) (= |D100':81| 1))
         |                       a!2
-        |                       (or (not (<= 1 |K:76|)) (= |D100':78| 1))
+        |                       (or (not (<= 1 |K:80|)) (= |R':82| |K:80|))
+        |                       (or (not (<= 0 |K:80|)) (= |i':83| |K:80|))
         |                       a!3
-        |                       (or (not (<= 1 |K:76|)) (= |C1':79| |K:76|))
-        |                       (or (not (<= 0 |K:76|)) (= |i':80| |K:76|))
-        |                       (or (and (= |K:76| 0)
-        |                                (= 0 |i':80|)
-        |                                (= 0 |R':77|)
-        |                                (= 0 |C1':79|)
-        |                                (= 1 |D100':78|))
+        |                       (or (not (<= 1 |K:80|)) (= |C1':84| |K:80|))
+        |                       (or (not (<= 0 |K:80|)) (<= |D100':81| |K:80|))
+        |                       (or (and (= |K:80| 0)
+        |                                (= 0 |i':83|)
+        |                                (= 0 |R':82|)
+        |                                (= 0 |C1':84|)
+        |                                (= 0 |D100':81|))
         |                           a!4)
-        |                       (<= 0 |K:76|)
-        |                       (<= 0 |R':77|)
-        |                       (<= 0 |C1':79|)
-        |                       (<= 0 |i':80|)
-        |                       (< 0 |D100':78|)
-        |                       (= (+ (- 0 |i':80|) |R':77|) 0)
-        |                       (= (+ (- 0 |i':80|) |C1':79|) 0)
-        |                       (= (+ (- 0 1) |D100':78|) 0)
-        |                       (< |i':80| |param0:12|)
-        |                       (= D100 |D100':78|)
-        |                       (= C1 (+ |C1':79| 1))
-        |                       (= R |R':77|)
-        |                       (= i (+ |i':80| 1))
+        |                       (<= 0 |K:80|)
+        |                       (<= 0 |R':82|)
+        |                       (<= 0 |D100':81|)
+        |                       (<= 0 |C1':84|)
+        |                       (<= 0 |i':83|)
+        |                       (= (+ (- 0 |i':83|) |R':82|) 0)
+        |                       (= (+ (- 0 |i':83|) |C1':84|) 0)
+        |                       (< |i':83| |param0:12|)
+        |                       (= D100 |D100':81|)
+        |                       (= C1 (+ |C1':84| 1))
+        |                       (= R |R':82|)
+        |                       (= i (+ |i':83| 1))
         |                       (= n |param0:12|)))
         |                :weight 0))))
         |  (and a!1))""".stripMargin
     val test02Expected =
-      """(let ((a!1 (exists ((i Int)
+      """(let ((a!1 (exists ((C1 Int)
+        |                    (R Int)
+        |                    (i Int)
         |                    (|C1':127| Int)
         |                    (|K:125| Int)
         |                    (|param0:16| Int)
@@ -479,58 +493,61 @@ object BoundCheckingUnitTest {
 
   val counterVariableUpdateTests: HashSet[TestCaseJavaProgram] = {
     val test01Expected =
-      """(let ((a!1 (exists ((i Int)
-        |                    (|i':80| Int)
+      """(let ((a!1 (exists ((D100 Int)
+        |                    (R Int)
+        |                    (i Int)
         |                    (|param0:12| Int)
-        |                    (|R':77| Int)
-        |                    (|K:76| Int)
-        |                    (|C1':79| Int)
-        |                    (|D100':78| Int))
-        |             (! (let ((a!1 (or (not (and (<= 0 |K:76|) (<= |K:76| 0)))
-        |                               (= |R':77| |K:76|)))
-        |                      (a!2 (or (not (and (<= 0 |K:76|) (<= |K:76| 0)))
-        |                               (= |D100':78| 1)))
-        |                      (a!3 (or (not (and (<= 0 |K:76|) (<= |K:76| 0)))
-        |                               (= |C1':79| |K:76|)))
-        |                      (a!4 (and (<= 1 |K:76|)
-        |                                (= (+ (- 0 1) 1) 0)
+        |                    (|D100':81| Int)
+        |                    (|R':82| Int)
+        |                    (|C1':84| Int)
+        |                    (|K:80| Int)
+        |                    (|i':83| Int))
+        |             (! (let ((a!1 (or (not (and (<= 0 |K:80|) (<= |K:80| 0)))
+        |                               (= |D100':81| 0)))
+        |                      (a!2 (or (not (and (<= 0 |K:80|) (<= |K:80| 0)))
+        |                               (= |R':82| |K:80|)))
+        |                      (a!3 (or (not (and (<= 0 |K:80|) (<= |K:80| 0)))
+        |                               (= |C1':84| |K:80|)))
+        |                      (a!4 (and (<= 1 |K:80|)
         |                                (<= 0 (+ (- 0 1) |param0:12|))
-        |                                (= (+ (- 0 |R':77|) |C1':79|) 0)
-        |                                (= (+ (- 0 |R':77|) |i':80|) 0)
-        |                                (= (+ (- 0 1) |D100':78|) 0)
-        |                                (<= 0 (+ (- 0 |R':77|) |param0:12|))
-        |                                (<= 0 (+ (- 0 1) |R':77|)))))
+        |                                (= (+ (- 0 |R':82|) |C1':84|) 0)
+        |                                (= (+ (- 0 |R':82|) |i':83|) 0)
+        |                                (= (+ (- 0 1) |D100':81|) 0)
+        |                                (<= 0 (+ (- 0 |R':82|) |param0:12|))
+        |                                (<= 0 (+ (- 0 1) |R':82|)))))
         |                  (and a!1
-        |                       (or (not (<= 1 |K:76|)) (= |R':77| |K:76|))
+        |                       (or (not (<= 1 |K:80|)) (= |D100':81| 1))
         |                       a!2
-        |                       (or (not (<= 1 |K:76|)) (= |D100':78| 1))
+        |                       (or (not (<= 1 |K:80|)) (= |R':82| |K:80|))
+        |                       (or (not (<= 0 |K:80|)) (= |i':83| |K:80|))
         |                       a!3
-        |                       (or (not (<= 1 |K:76|)) (= |C1':79| |K:76|))
-        |                       (or (not (<= 0 |K:76|)) (= |i':80| |K:76|))
-        |                       (or (and (= |K:76| 0)
-        |                                (= 0 |i':80|)
-        |                                (= 0 |R':77|)
-        |                                (= 0 |C1':79|)
-        |                                (= 1 |D100':78|))
+        |                       (or (not (<= 1 |K:80|)) (= |C1':84| |K:80|))
+        |                       (or (not (<= 0 |K:80|)) (<= |D100':81| |K:80|))
+        |                       (or (and (= |K:80| 0)
+        |                                (= 0 |i':83|)
+        |                                (= 0 |R':82|)
+        |                                (= 0 |C1':84|)
+        |                                (= 0 |D100':81|))
         |                           a!4)
-        |                       (<= 0 |K:76|)
-        |                       (<= 0 |R':77|)
-        |                       (<= 0 |C1':79|)
-        |                       (<= 0 |i':80|)
-        |                       (< 0 |D100':78|)
-        |                       (= (+ (- 0 |i':80|) |R':77|) 0)
-        |                       (= (+ (- 0 |i':80|) |C1':79|) 0)
-        |                       (= (+ (- 0 1) |D100':78|) 0)
-        |                       (< |i':80| |param0:12|)
-        |                       (= D100 |D100':78|)
-        |                       (= C1 (+ |C1':79| 1))
-        |                       (= R |R':77|)
-        |                       (= i (+ |i':80| 1))
+        |                       (<= 0 |K:80|)
+        |                       (<= 0 |R':82|)
+        |                       (<= 0 |D100':81|)
+        |                       (<= 0 |C1':84|)
+        |                       (<= 0 |i':83|)
+        |                       (= (+ (- 0 |i':83|) |R':82|) 0)
+        |                       (= (+ (- 0 |i':83|) |C1':84|) 0)
+        |                       (< |i':83| |param0:12|)
+        |                       (= D100 |D100':81|)
+        |                       (= C1 (+ |C1':84| 1))
+        |                       (= R |R':82|)
+        |                       (= i (+ |i':83| 1))
         |                       (= n |param0:12|)))
         |                :weight 0))))
         |  (and a!1))""".stripMargin
     val test02Expected =
-      """(let ((a!1 (exists ((i Int)
+      """(let ((a!1 (exists ((D100 Int)
+        |                    (R Int)
+        |                    (i Int)
         |                    (|C1':127| Int)
         |                    (|K:125| Int)
         |                    (|param0:16| Int)
@@ -812,12 +829,16 @@ object BoundCheckingUnitTest {
   }
 
   val boundCheckingTests: HashSet[TestCaseJavaProgram] = {
-    val test01Expected = ""
-    val test02Expected = ""
+    val test01Expected = "true"
+    val test01Expected2 = "false"
+    val test02Expected = "true"
+    val test02Expected2 = "false"
 
     HashSet[TestCaseJavaProgram](
       TestCaseJavaProgram("Test01", test01, test01Expected),
-      // TestCaseJavaProgram("Test02", test02, test02Expected)
+      TestCaseJavaProgram("Test01", test01, test01Expected2),
+      // TestCaseJavaProgram("Test02", test02, test02Expected),
+      // TestCaseJavaProgram("Test02", test02, test02Expected2),
     )
   }
 }

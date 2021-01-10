@@ -23,7 +23,8 @@ object InvariantInference {
    * @param getLineNumber         A function to get line numbers
    * @param cfg                   The control flow graph of the method where we wish to infer invariants
    * @param locations             The locations before or after which we wish to infer invariants
-   * @param universallyQuantify   The inferred invariants must only contain free variables that appear in this set
+   * @param existentiallyQuantify The inferred invariants must existentially quantify these variables
+   * @param freeVariables         The inferred invariants must only contain free variables that appear in this set
    * @return The conjunction of local invariants that are existentially quantified by some variables
    */
   def inferInvariant(solver: Z3Solver,
@@ -32,7 +33,13 @@ object InvariantInference {
                      getLineNumber: Tree => Int,
                      cfg: ControlFlowGraph,
                      locations: Locations,
-                     universallyQuantify: Map[String, BrboType]): AST = {
+                     existentiallyQuantify: Map[String, BrboType],
+                     freeVariables: Map[String, BrboType]): AST = {
+    // There are intermediate variables that need existential quantification
+    def getExtraExistentiallyQuantify(variables: Set[String]): Set[String] = {
+      variables.filter(variable => !existentiallyQuantify.contains(variable) && !freeVariables.contains(variable))
+    }
+
     logger.info(s"Infer invariants in method ${methodTree.getName} ${locations.beforeOrAfter} specified nodes in CFG")
     val cProgram = translateToCAndInsertAssertions(className, methodTree, getLineNumber, cfg, locations)
     Icra.run(cProgram) match {
@@ -41,23 +48,28 @@ object InvariantInference {
           parsedInvariants.map {
             parsedInvariant =>
               val (invariant, variableNames) = Icra.translateToZ3AndCollectVariables(parsedInvariant.invariant, BOOL, solver)
-              // A variable in the output invariant must be either existentially or universally quantified
-              var existentiallyQuantify = variableNames.diff(universallyQuantify.keySet)
+              var extraExistentiallyQuantify = getExtraExistentiallyQuantify(variableNames)
 
               val equalities = {
                 val equalities: List[AST] = parsedInvariant.declarations.map({
                   case Assignment(variable, expression) =>
                     val (variableAst, variableNames1) = Icra.translateToZ3AndCollectVariables(variable, INT, solver)
-                    existentiallyQuantify = existentiallyQuantify ++ variableNames1.diff(universallyQuantify.keySet)
+                    extraExistentiallyQuantify = extraExistentiallyQuantify ++ getExtraExistentiallyQuantify(variableNames1)
                     val (expressionAst, variableNames2) = Icra.translateToZ3AndCollectVariables(expression, INT, solver)
-                    existentiallyQuantify = existentiallyQuantify ++ variableNames2.diff(universallyQuantify.keySet)
+                    extraExistentiallyQuantify = extraExistentiallyQuantify ++ getExtraExistentiallyQuantify(variableNames2)
                     solver.mkEq(variableAst, expressionAst)
                   case x@_ => throw new Exception(s"Declaration $x should be parsed into `Assignment`")
                 })
                 solver.mkAnd(equalities: _*)
               }
               solver.mkExists(
-                existentiallyQuantify.map(variable => solver.mkIntVar(variable)),
+                existentiallyQuantify.map({
+                  case (identifier, typ) =>
+                    typ match {
+                      case INT => solver.mkIntVar(identifier)
+                      case BOOL => solver.mkBoolVar(identifier)
+                    }
+                }) ++ extraExistentiallyQuantify.map(variable => solver.mkIntVar(variable)),
                 solver.mkAnd(invariant, equalities).asInstanceOf[Expr]
               )
           }

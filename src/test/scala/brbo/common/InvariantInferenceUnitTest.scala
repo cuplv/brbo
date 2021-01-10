@@ -45,6 +45,10 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
           ),
           HashMap[String, BrboType](
             "R" -> INT,
+            "C1" -> INT,
+          ),
+          HashMap[String, BrboType](
+            "R" -> INT,
             "n" -> INT,
             "m" -> INT,
             "l" -> INT,
@@ -86,6 +90,10 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
           ),
           HashMap[String, BrboType](
             "R" -> INT,
+            "C1" -> INT,
+          ),
+          HashMap[String, BrboType](
+            "R" -> INT,
             "n" -> INT,
             "m" -> INT,
             "l" -> INT,
@@ -124,6 +132,10 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
                 }
             },
             AFTER
+          ),
+          HashMap[String, BrboType](
+            "R" -> INT,
+            "D100" -> INT,
           ),
           HashMap[String, BrboType](
             "R" -> INT,

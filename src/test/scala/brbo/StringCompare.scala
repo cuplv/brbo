@@ -5,7 +5,7 @@ object StringCompare {
     val result = actual.replaceAll("(?s)\\s+", " ").trim == expected.replaceAll("(?s)\\s+", " ").trim
     if (!result) {
       val lineSeparator = "------------------------------------------\n"
-      println(s"Actual:\n$lineSeparator$actual\nExpected:\n$lineSeparator$expected$lineSeparator")
+      println(s"Actual:\n$lineSeparator$actual\nExpected:\n$lineSeparator$expected\n$lineSeparator")
     }
     result
   }
