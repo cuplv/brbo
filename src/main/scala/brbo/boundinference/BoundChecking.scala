@@ -4,7 +4,7 @@ import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, Resource}
 import brbo.common.InvariantInference.BeforeOrAfter.{AFTER, BEFORE}
 import brbo.common.InvariantInference.Locations
 import brbo.common.TreeUtils.collectCommands
-import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT}
+import brbo.common.TypeUtils.BrboType.{BrboType, INT}
 import brbo.common.{GhostVariableUtils, InvariantInference, TreeUtils, Z3Solver}
 import com.microsoft.z3.{AST, Expr}
 import com.sun.source.tree.{AssertTree, MethodTree, Tree}
@@ -47,12 +47,10 @@ object BoundChecking {
 
     // val boundExpression = BoundChecking.extractBoundExpression(solver, methodTree, typeContext)
 
-    val counterAxioms: AST = CounterAxiomGenerator.generateCounterAxioms(solver, methodBody)
-    logger.debug(s"Counter axioms: $counterAxioms")
-
     val universallyQuantify: Map[String, BrboType] = {
       val variables: Set[String] =
         deltaCounterPairs.map({ deltaCounterPair => deltaCounterPair.delta }) ++ // Delta variables
+          // TODO: Remove this???
           deltaCounterPairs.map({ deltaCounterPair => generateDeltaVariablePrime(deltaCounterPair.delta) }) ++ // Delta variables' primed version
           CounterAxiomGenerator.generateCounterMap(methodBody).values + // Counters for all ASTs
           resourceVariable._1 // Resource variable
@@ -61,17 +59,6 @@ object BoundChecking {
       })
     }
     logger.info(s"Inductive invariant is universally quantified by $universallyQuantify")
-
-    val counterConstraints: AST = {
-      val nonNegativeCounters =
-        universallyQuantify
-          .filter({ case (identifier, _) => GhostVariableUtils.isGhostVariable(identifier, Counter) })
-          .map({ case (counter, _) => solver.mkGe(solver.mkIntVar(counter), solver.mkIntVal(0)) }).toSeq
-      solver.mkAnd(
-        solver.mkLe(solver.mkIntVar(CounterAxiomGenerator.FIRST_COUNTER_NAME), solver.mkIntVal(1)),
-        solver.mkAnd(nonNegativeCounters: _*)
-      )
-    }
 
     val invariants: Set[(AST, AST, AST)] = deltaCounterPairs.map({
       deltaCounterPair =>
@@ -179,6 +166,20 @@ object BoundChecking {
     }
 
     val counterInvariants = {
+      val counterAxioms: AST = CounterAxiomGenerator.generateCounterAxioms(solver, methodBody)
+      logger.debug(s"Counter axioms: $counterAxioms")
+
+      val counterConstraints: AST = {
+        val nonNegativeCounters =
+          universallyQuantify
+            .filter({ case (identifier, _) => GhostVariableUtils.isGhostVariable(identifier, Counter) })
+            .map({ case (counter, _) => solver.mkGe(solver.mkIntVar(counter), solver.mkIntVal(0)) }).toSeq
+        solver.mkAnd(
+          solver.mkLe(solver.mkIntVar(CounterAxiomGenerator.FIRST_COUNTER_NAME), solver.mkIntVal(1)),
+          solver.mkAnd(nonNegativeCounters: _*)
+        )
+      }
+
       solver.mkAnd(
         counterAxioms,
         counterConstraints,
@@ -186,21 +187,29 @@ object BoundChecking {
       )
     }
 
+    checkSAT(solver, resourceVariableUpperBound)
+    checkSAT(solver, deltaInvariants)
+    checkSAT(solver, counterInvariants)
+    checkSAT(solver, solver.mkNot(boundExpression))
+
     solver.mkAssert(resourceVariableUpperBound)
-    assert(solver.checkSAT(true))
-
     solver.mkAssert(deltaInvariants)
-    assert(solver.checkSAT(true))
-
     solver.mkAssert(counterInvariants)
-    assert(solver.checkSAT(true))
-
     solver.mkAssert(solver.mkNot(boundExpression))
-    !solver.checkSAT(true)
+    val result = !solver.checkSAT(printUnsatCore = false)
+    if (!result) {
+      logger.fatal(s"Bound expression cannot be verified: $boundExpression")
+      solver.printAssertions()
+      solver.printModel()
+    }
+    result
   }
 
-  def printVariableDeclarations(): String = {
-    ???
+  def checkSAT(solver: Z3Solver, ast: AST): Unit = {
+    solver.push()
+    solver.mkAssert(ast)
+    assert(solver.checkSAT(printUnsatCore = true))
+    solver.pop()
   }
 
   def extractBoundExpression(solver: Z3Solver, methodTree: MethodTree, typeContext: Map[String, BrboType]): AST = {
@@ -213,7 +222,10 @@ object BoundChecking {
     TreeUtils.translatePureExpressionToZ3AST(solver, assertions.head.asInstanceOf[AssertTree].getCondition, typeContext)
   }
 
-  case class DeltaCounterPair(delta: String, counter: String)
+  case class DeltaCounterPair(delta: String, counter: String) {
+    GhostVariableUtils.isGhostVariable(delta, Delta)
+    GhostVariableUtils.isGhostVariable(counter, Counter)
+  }
 
   private def generateDeltaVariablePrime(identifier: String): String = {
     assert(GhostVariableUtils.isGhostVariable(identifier, Delta))

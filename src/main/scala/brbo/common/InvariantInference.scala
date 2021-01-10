@@ -35,7 +35,7 @@ object InvariantInference {
                      locations: Locations,
                      existentiallyQuantify: Map[String, BrboType],
                      freeVariables: Map[String, BrboType]): AST = {
-    // There are intermediate variables that need existential quantification
+    // Intermediate variables must be existentially quantified
     def getExtraExistentiallyQuantify(variables: Set[String]): Set[String] = {
       variables.filter(variable => !existentiallyQuantify.contains(variable) && !freeVariables.contains(variable))
     }
@@ -73,7 +73,7 @@ object InvariantInference {
                 solver.mkAnd(invariant, equalities).asInstanceOf[Expr]
               )
           }
-        solver.mkAnd(existentiallyQuantifiedInvariants: _*)
+        solver.mkOr(existentiallyQuantifiedInvariants: _*)
       case None =>
         logger.fatal("ICRA returns no invariant!")
         solver.mkTrue()
@@ -91,7 +91,7 @@ object InvariantInference {
                                               cfg: ControlFlowGraph,
                                               locations: Locations): String = {
     val indent = 2
-    val ASSERT_TRUE = "assert(true);"
+    val ASSERT_TRUE = "assert(true)"
 
     val methodBody = methodTree.getBody
 
@@ -104,8 +104,8 @@ object InvariantInference {
         {
           tree: Tree =>
             locations.beforeOrAfter match {
-              case BEFORE => s"$ASSERT_TRUE ${tree.toString};"
-              case AFTER => s"${tree.toString}; $ASSERT_TRUE"
+              case BEFORE => s"$ASSERT_TRUE; ${tree.toString};"
+              case AFTER => s"${tree.toString}; $ASSERT_TRUE;"
             }
         }
       ),

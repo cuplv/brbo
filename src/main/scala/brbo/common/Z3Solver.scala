@@ -4,12 +4,16 @@ import com.microsoft.z3._
 import org.apache.logging.log4j.LogManager
 
 class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
+  private val logger = LogManager.getLogger(classOf[Z3Solver])
+
   Z3Solver.loadNativeLibraries()
 
   private val context: Context = Z3Solver.createContext
   private val solver: Solver = Z3Solver.createSolverUnderContext(context)
 
-  def checkSAT(debug: Boolean): Boolean = Z3Solver.solverCheck(solver, debug)
+  def checkSAT(printUnsatCore: Boolean): Boolean = Z3Solver.solverCheck(solver, printUnsatCore)
+
+  def getAssertions: Array[BoolExpr] = solver.getAssertions
 
   def push(): Unit = solver.push()
 
@@ -59,7 +63,7 @@ class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
 
   def mkOr(astSequence: AST*): AST = {
     if (astSequence.isEmpty) throw new Exception("Attempting to disjoin empty AST")
-    else context.mkAnd(astSequence.map(ast => ast.asInstanceOf[BoolExpr]): _*)
+    else context.mkOr(astSequence.map(ast => ast.asInstanceOf[BoolExpr]): _*)
   }
 
   def mkXor(left: AST, right: AST): AST = context.mkXor(left.asInstanceOf[BoolExpr], right.asInstanceOf[BoolExpr])
@@ -113,6 +117,15 @@ class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
       trueCase.asInstanceOf[Expr],
       falseExpr.asInstanceOf[Expr]
     )
+
+  def printAssertions(): Unit = {
+    logger.error("Assertions are:")
+    solver.getAssertions.foreach(expression => println(expression))
+  }
+
+  def printModel(): Unit = {
+    logger.error(s"Model is:\n${solver.getModel.toString}")
+  }
 }
 
 object Z3Solver {
@@ -141,19 +154,20 @@ object Z3Solver {
     val solver = context.mkSolver
     val parameters = context.mkParams()
     parameters.add("timeout", 10000)
+    parameters.add("unsat_core", true)
     solver.setParameters(parameters)
     solver
   }
 
   private def createContext: Context = new Context(configuration)
 
-  private def solverCheck(solver: Solver, debug: Boolean): Boolean = {
+  private def solverCheck(solver: Solver, printUnsatCore: Boolean): Boolean = {
     val start = System.nanoTime()
     val result = {
       solver.check() match {
         case Status.UNSATISFIABLE =>
-          if (debug) {
-            logger.error("Unsat core is: ")
+          if (printUnsatCore) {
+            logger.error("Unsat core is:")
             solver.getUnsatCore.foreach(expression => println(expression))
           }
           false
@@ -167,12 +181,12 @@ object Z3Solver {
     result
   }
 
-  def check(assertion: BoolExpr, debug: Boolean): Boolean = {
+  /*def check(assertion: BoolExpr, debug: Boolean): Boolean = {
     val context = new Context
     val solver = createSolverUnderContext(context)
     solver.add(assertion)
     solverCheck(solver, debug)
-  }
+  }*/
 
   def parseSMTLIB2StringToArray(string: String, context: Context): Array[BoolExpr] = {
     try {
