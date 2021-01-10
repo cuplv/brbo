@@ -50,6 +50,41 @@ object BoundChecking {
     val counterAxioms: AST = CounterAxiomGenerator.generateCounterAxioms(solver, methodBody)
     logger.debug(s"Counter axioms: $counterAxioms")
 
+    val universallyQuantify: Map[String, BrboType] = {
+      val variables: Set[String] =
+        deltaCounterPairs.map({ deltaCounterPair => deltaCounterPair.delta }) ++ // Delta variables
+          deltaCounterPairs.map({ deltaCounterPair => generateDeltaVariablePrime(deltaCounterPair.delta) }) ++ // Delta variables' primed version
+          deltaCounterPairs.map({ deltaCounterPair => deltaCounterPair.counter }) ++ // Counters for some ASTs
+          CounterAxiomGenerator.generateCounterMap(methodBody).values + // Counters for all ASTs
+          resourceVariable._1 // Resource variable
+      variables.foldLeft(inputVariables)({
+        (acc, variable) => acc + (variable -> INT)
+      })
+    }
+    logger.info(s"Inductive invariant is universally quantified by $universallyQuantify")
+
+    val universallyQuantifyASTs: List[AST] =
+      universallyQuantify
+        .toList.sortWith({ case (pair1, pair2) => pair1._2 < pair2._2 })
+        .map({
+          case (identifier, typ) =>
+            typ match {
+              case INT => solver.mkIntVar(identifier)
+              case BOOL => solver.mkBoolVar(identifier)
+            }
+        })
+
+    val counterConstraints: AST = {
+      val nonNegativeCounters =
+        universallyQuantify
+          .filter({ case (identifier, _) => GhostVariableUtils.isGhostVariable(identifier, Counter) })
+          .map({ case (counter, _) => solver.mkGe(solver.mkIntVar(counter), solver.mkIntVal(0)) }).toSeq
+      solver.mkAnd(
+        solver.mkLe(solver.mkIntVar(CounterAxiomGenerator.FIRST_COUNTER_NAME), solver.mkIntVal(1)),
+        solver.mkAnd(nonNegativeCounters: _*)
+      )
+    }
+
     val invariants: Seq[AST] = deltaCounterPairs.map({
       deltaCounterPair =>
         val deltaVariable = deltaCounterPair.delta
@@ -70,7 +105,7 @@ object BoundChecking {
             },
             AFTER
           ),
-          localVariables - deltaVariable
+          universallyQuantify
         )
         logger.trace(s"Invariant for the peak value of delta variable $deltaVariable is $peakInvariant")
 
@@ -91,7 +126,7 @@ object BoundChecking {
               },
               BEFORE
             ),
-            localVariables - deltaVariable
+            universallyQuantify
           )
           accumulationInvariant.asInstanceOf[Expr].substitute(
             solver.mkIntVar(deltaVariable).asInstanceOf[Expr],
@@ -116,55 +151,62 @@ object BoundChecking {
             },
             AFTER
           ),
-          localVariables - deltaCounterPair.counter
+          universallyQuantify
         )
         logger.trace(s"Invariant for AST counter $deltaCounterPair is $counterInvariant")
 
         solver.mkAnd(peakInvariant, accumulationInvariant, counterInvariant)
     }).toSeq
 
-    val inductiveInvariant: AST = {
-      val summands: Seq[AST] = deltaCounterPairs.map({
-        deltaCounterPair =>
-          solver.mkAdd(
-            solver.mkIntVar(deltaCounterPair.delta),
-            solver.mkMul(
-              solver.mkIntVar(deltaCounterPair.counter),
-              solver.mkIntVar(generateDeltaVariablePrime(deltaCounterPair.delta)))
-          )
-      }).toSeq
-      solver.mkLe(
-        solver.mkIntVar(resourceVariable._1),
-        solver.mkAdd(summands: _*)
-      )
-    }
-    logger.info(s"Inductive invariant is $inductiveInvariant")
+    val resourceVariableUpperBound: AST = {
+      val resourceVariableUpperBound = {
+        val summands: Seq[AST] = deltaCounterPairs.map({
+          deltaCounterPair =>
+            solver.mkAdd(
+              solver.mkIntVar(deltaCounterPair.delta),
+              solver.mkMul(
+                solver.mkIntVar(deltaCounterPair.counter),
+                solver.mkIntVar(generateDeltaVariableDoublePrime(deltaCounterPair.delta)))
+            )
+        }).toSeq
+        solver.mkLe(
+          solver.mkIntVar(resourceVariable._1),
+          solver.mkAdd(summands: _*)
+        )
+      }
+      logger.info(s"Inductive invariant is $resourceVariableUpperBound")
 
-    val universallyQuantify: Set[AST] = {
-      val set1 = inputVariables.map({
-        case (identifier, typ) =>
-          typ match {
-            case INT => solver.mkIntVar(identifier)
-            case BOOL => solver.mkBoolVar(identifier)
-          }
-      }).toSet
-      val set2 = deltaCounterPairs.map({ deltaCounterPair => solver.mkIntVar(deltaCounterPair.delta) })
-      val set3 = deltaCounterPairs.map({ deltaCounterPair => solver.mkIntVar(deltaCounterPair.counter) })
-      set1 ++ set2 ++ set3 + solver.mkIntVar(resourceVariable._1)
-    }
-    logger.debug(s"Inductive invariant is universally quantified by $universallyQuantify")
+      val maximumAccumulation = {
+        val greaterThanOrEqualTo = deltaCounterPairs.map({
+          deltaCounterPair =>
+            val prime = generateDeltaVariablePrime(deltaCounterPair.delta)
+            val doublePrime = generateDeltaVariableDoublePrime(deltaCounterPair.delta)
+            solver.mkGe(solver.mkIntVar(doublePrime), solver.mkIntVar(prime))
+        }).toSeq
+        solver.mkAnd(greaterThanOrEqualTo: _*)
+      }
 
-    val query = solver.mkForall(
-      universallyQuantify,
+      // Delta variables' double primed version represents the maximum amount of accumulation per execution of subprograms
+      val existentiallyQuantify = deltaCounterPairs
+        .map({ deltaCounterPair => generateDeltaVariableDoublePrime(deltaCounterPair.delta) })
+        .map(identifier => solver.mkIntVar(identifier))
+
+      solver.mkExists(existentiallyQuantify, solver.mkAnd(resourceVariableUpperBound, maximumAccumulation))
+    }
+
+    val implication =
       solver.mkImplies(
         solver.mkAnd(
-          inductiveInvariant,
+          resourceVariableUpperBound,
           solver.mkAnd(invariants: _*),
-          counterAxioms
+          counterAxioms,
+          counterConstraints
         ),
         boundExpression
       )
-    )
+    val query = solver.mkForall(universallyQuantifyASTs, implication)
+    println(implication)
+    println(query)
     solver.mkAssert(query)
     solver.checkSAT
   }
@@ -183,7 +225,12 @@ object BoundChecking {
 
   private def generateDeltaVariablePrime(identifier: String): String = {
     assert(GhostVariableUtils.isGhostVariable(identifier, Delta))
-    s"${identifier}000"
+    s"${identifier}\'"
+  }
+
+  private def generateDeltaVariableDoublePrime(identifier: String): String = {
+    assert(GhostVariableUtils.isGhostVariable(identifier, Delta))
+    s"${identifier}\'\'"
   }
 
 }

@@ -12,6 +12,11 @@ import scala.collection.immutable.HashMap
 object CounterAxiomGenerator {
   private val logger = LogManager.getLogger("brbo.boundinference.CounterAxiomGenerator")
 
+  private val FIRST_COUNTER_ID = 0
+  val FIRST_COUNTER_NAME = generateCounterId(FIRST_COUNTER_ID)
+
+  def generateCounterId(id: Int): String = GhostVariableUtils.generateGhostVariable(id.toString, Counter)
+
   /**
    *
    * @param tree The AST that we wish to generate a counter mapping
@@ -19,12 +24,10 @@ object CounterAxiomGenerator {
    */
   def generateCounterMap(tree: Tree): Map[Tree, String] = {
     logger.info(s"Attaching unique counters to AST nodes")
-    generateCounterMapHelper(tree, 0)._1
+    generateCounterMapHelper(tree, FIRST_COUNTER_ID)._1
   }
 
   def generateCounterMapHelper(tree: Tree, id: Int): (Map[Tree, String], Int) = {
-    def generateCounterId(id: Int): String = GhostVariableUtils.generateGhostVariable(id.toString, Counter)
-
     def throwException(message: String): Nothing = {
       throw new Exception(s"Generate counter map - $message in AST: $tree")
     }
