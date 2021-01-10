@@ -20,13 +20,13 @@ object InstrumentUtils {
   val defaultResourceAssignment: AtomicStatementInstrumentation =
     AtomicStatementInstrumentation( // Replace `R = R + e` with `d = d + e`
       {
-        node: Node => GhostVariableUtils.extractGhostVariableFromAssignment(node, Resource).nonEmpty
+        node: Node => GhostVariableUtils.extractGhostVariableUpdate(node, Resource).nonEmpty
       },
       {
         case expressionStatement: ExpressionStatementTree =>
           expressionStatement.getExpression match {
             case assignmentTree: AssignmentTree =>
-              val update = GhostVariableUtils.extractGhostVariableFromAssignment(assignmentTree, Resource)
+              val update = GhostVariableUtils.extractGhostVariableUpdate(assignmentTree, Resource)
               s"$defaultDeltaVariable = $defaultDeltaVariable + ${update.get.update}"
             case unaryTree: UnaryTree =>
               unaryTree.getKind match {
@@ -41,7 +41,7 @@ object InstrumentUtils {
   val removeResourceAssignment: AtomicStatementInstrumentation =
     AtomicStatementInstrumentation( // Replace `R = R + e` with `;`
       {
-        node: Node => GhostVariableUtils.extractGhostVariableFromAssignment(node, Resource).nonEmpty
+        node: Node => GhostVariableUtils.extractGhostVariableUpdate(node, Resource).nonEmpty
       },
       {
         case expressionStatement: ExpressionStatementTree =>

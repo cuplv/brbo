@@ -108,6 +108,13 @@ class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
   def mkTrue(): AST = mkBoolVal(true)
 
   def mkFalse(): AST = mkBoolVal(false)
+
+  def mkITE(condition: AST, trueCase: AST, falseExpr: AST): AST =
+    context.mkITE(
+      condition.asInstanceOf[BoolExpr],
+      trueCase.asInstanceOf[Expr],
+      falseExpr.asInstanceOf[Expr]
+    )
 }
 
 object Z3Solver {

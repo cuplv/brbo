@@ -1,114 +1,23 @@
 package brbo.boundinference
 
-import brbo.boundinference.BoundCheckingProcessor.BeforeOrAfter.{AFTER, BEFORE}
-import brbo.boundinference.BoundCheckingProcessor.Locations
-import brbo.common.GhostVariableUtils.GhostVariable._
-import brbo.common.TypeUtils.BrboType.{BrboType, INT}
-import brbo.common.{GhostVariableUtils, JavacUtils, Z3Solver}
+import brbo.common.Z3Solver
 import brbo.{StringCompare, TestCaseJavaProgram}
 import com.sun.source.tree.MethodTree
 import org.apache.logging.log4j.LogManager
-import org.checkerframework.dataflow.cfg.node.Node
 import org.scalatest.flatspec.AnyFlatSpec
 
-import scala.collection.immutable.{HashMap, HashSet}
+import scala.collection.immutable.HashSet
 
 class BoundCheckingUnitTest extends AnyFlatSpec {
   private val logger = LogManager.getLogger(classOf[BoundCheckingUnitTest])
 
-  "Invariant inference for delta variable updates" should "succeed" in {
-    BoundCheckingUnitTest.deltaVariableUpdateTests.foreach({
-      testCase =>
-        val solver = new Z3Solver
-        val invariantInferenceProcessor = new BoundCheckingProcessor(solver)
-        JavacUtils.runProcessor(testCase.className, testCase.inputProgram, invariantInferenceProcessor)
-        val result = invariantInferenceProcessor.inferInvariant(
-          Locations(
-            {
-              node: Node =>
-                GhostVariableUtils.extractGhostVariableFromAssignment(node, Delta) match {
-                  case Some(_) => true
-                  case None => false
-                }
-            },
-            AFTER
-          ),
-          HashMap[String, BrboType](
-            "R" -> INT,
-            "i" -> INT,
-            "j" -> INT,
-            "C1" -> INT,
-          )
-        )
-        logger.debug(result)
-        assert(StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput))
-    })
-  }
-
-  "Invariant inference for delta variable resets" should "succeed" in {
-    BoundCheckingUnitTest.deltaVariableResetTests.foreach({
-      testCase =>
-        val solver = new Z3Solver
-        val invariantInferenceProcessor = new BoundCheckingProcessor(solver)
-        JavacUtils.runProcessor(testCase.className, testCase.inputProgram, invariantInferenceProcessor)
-        val result = invariantInferenceProcessor.inferInvariant(
-          Locations(
-            {
-              node: Node =>
-                GhostVariableUtils.extractDeltaVariableReset(node) match {
-                  case Some(_) => true
-                  case None => false
-                }
-            },
-            BEFORE
-          ),
-          HashMap[String, BrboType](
-            "R" -> INT,
-            "i" -> INT,
-            "j" -> INT,
-            "C1" -> INT,
-          )
-        )
-        logger.debug(result)
-        assert(StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput))
-    })
-  }
-
-  "Invariant inference for counter variable updates" should "succeed" in {
-    BoundCheckingUnitTest.counterVariableUpdateTests.foreach({
-      testCase =>
-        val solver = new Z3Solver
-        val invariantInferenceProcessor = new BoundCheckingProcessor(solver)
-        JavacUtils.runProcessor(testCase.className, testCase.inputProgram, invariantInferenceProcessor)
-        val result = invariantInferenceProcessor.inferInvariant(
-          Locations(
-            {
-              node: Node =>
-                GhostVariableUtils.extractGhostVariableFromAssignment(node, Counter) match {
-                  case Some(_) => true
-                  case None => false
-                }
-            },
-            AFTER
-          ),
-          HashMap[String, BrboType](
-            "R" -> INT,
-            "i" -> INT,
-            "j" -> INT,
-            "C1" -> INT,
-          )
-        )
-        logger.debug(result)
-        assert(StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput))
-    })
-  }
-
   "Generating counter map" should "be correct" in {
     BoundCheckingUnitTest.counterGenerationTests.foreach({
       testCase =>
-        val (_, methods) = BasicProcessor.getTrees(testCase.className, testCase.inputProgram)
-        assert(methods.size == 1)
-        val methodTree: MethodTree = methods.head._1
+        val basicProcessor = BasicProcessor.run(testCase.className, testCase.inputProgram)
+        basicProcessor.assumeOneClassOneMethod()
+
+        val methodTree: MethodTree = basicProcessor.getMethods.head._1
         val result = {
           val result = CounterAxiomGenerator.generateCounterMap(methodTree.getBody)
           result.toList.sortWith({
@@ -122,13 +31,18 @@ class BoundCheckingUnitTest extends AnyFlatSpec {
   "Generating counter axioms" should "output correct predicates" in {
     BoundCheckingUnitTest.counterAxiomsTests.foreach({
       testCase =>
-        val (_, methods) = BasicProcessor.getTrees(testCase.className, testCase.inputProgram)
-        assert(methods.size == 1)
-        val methodTree: MethodTree = methods.head._1
+        val basicProcessor = BasicProcessor.run(testCase.className, testCase.inputProgram)
+        basicProcessor.assumeOneClassOneMethod()
+
+        val methodTree: MethodTree = basicProcessor.getMethods.head._1
         val solver = new Z3Solver
         val result = CounterAxiomGenerator.generateCounterAxioms(solver, methodTree.getBody)
         assert(StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput))
     })
+  }
+
+  "Extracting bound expression" should "succeed" in {
+
   }
 }
 

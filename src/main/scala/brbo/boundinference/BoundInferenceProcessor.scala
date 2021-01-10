@@ -25,9 +25,6 @@ class BoundInferenceProcessor extends BasicProcessor {
     // println(sourceCodeDeltaUpdates)
     val sourceCodeNoResourceUpdates = generateSourceCodeNoResourceUpdates()
     // println(sourceCodeNoResourceUpdates)
-
-    val boundVocabulary = generateBoundVocabulary()
-    logger.info(s"Inferring bounds with vocabulary `$boundVocabulary`")
   }
 
   def generateSourceCodeDeltaUpdates(): String = {
@@ -66,18 +63,6 @@ class BoundInferenceProcessor extends BasicProcessor {
             ALL
           )
         InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(methodTree, getEnclosingClass(methodTree).get.getSimpleName.toString, result.result, JAVA_FORMAT, indent)
-    }
-  }
-
-  def generateBoundVocabulary(): HashSet[String] = {
-    getMethods.head match {
-      case (methodTree, _) =>
-        val parameters = methodTree.getParameters.asScala.foldLeft(HashMap[String, TypeMirror]())({
-          (acc, param) => acc + (param.getName.toString -> TreeUtils.typeOf(param.getType))
-        })
-        TypeUtils.typeMapTranslation(parameters).foldLeft(new HashSet[String])({
-          case (acc, (name, typ)) => if (typ == INT) acc + name else acc
-        })
     }
   }
 }

@@ -59,7 +59,7 @@ object GhostVariableUtils {
     }
   }
 
-  def extractGhostVariableFromAssignment(cfgNode: Node, typ: GhostVariable): Option[GhostVariableUpdateNode] = {
+  def extractGhostVariableUpdate(cfgNode: Node, typ: GhostVariable): Option[GhostVariableUpdateNode] = {
     cfgNode match {
       case node: AssignmentNode =>
         // Must be in the form of g = g + e
@@ -80,17 +80,17 @@ object GhostVariableUtils {
     }
   }
 
-  def extractGhostVariableFromAssignment(cfgNode: Node, types: Iterable[GhostVariable]): Option[GhostVariableUpdateNode] = {
+  def extractGhostVariableUpdate(cfgNode: Node, types: Iterable[GhostVariable]): Option[GhostVariableUpdateNode] = {
     types.foldLeft(None: Option[GhostVariableUpdateNode])({
       (acc, typ) =>
         acc match {
           case Some(_) => acc
-          case None => extractGhostVariableFromAssignment(cfgNode, typ)
+          case None => extractGhostVariableUpdate(cfgNode, typ)
         }
     })
   }
 
-  def extractGhostVariableFromAssignment(tree: Tree, typ: GhostVariable): Option[GhostVariableUpdateTree] = {
+  def extractGhostVariableUpdate(tree: Tree, typ: GhostVariable): Option[GhostVariableUpdateTree] = {
     tree match {
       case tree: AssignmentTree =>
         // Must be in the form of g = g + e

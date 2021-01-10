@@ -89,7 +89,7 @@ class BasicProcessor extends BasicTypeProcessor {
 
   override def getSupportedSourceVersion: SourceVersion = SourceVersion.latestSupported
 
-  protected def getEnclosingClass(node: MethodTree): Option[ClassTree] = {
+  def getEnclosingClass(node: MethodTree): Option[ClassTree] = {
     classes.find({
       case (_, methods) => methods.contains(node)
     }) match {
@@ -98,7 +98,7 @@ class BasicProcessor extends BasicTypeProcessor {
     }
   }
 
-  protected def getLineNumber(node: Tree): Int = {
+  def getLineNumber(node: Tree): Int = {
     def getLineNumber(node: Tree, positions: SourcePositions, root: CompilationUnitTree): Long = {
       root.getLineMap.getLineNumber(positions.getStartPosition(root, node))
     }
@@ -138,9 +138,9 @@ class BasicProcessor extends BasicTypeProcessor {
 }
 
 object BasicProcessor {
-  def getTrees(className: String, sourceFileContents: String): (HashMap[ClassTree, Set[MethodTree]], HashMap[MethodTree, ControlFlowGraph]) = {
+  def run(className: String, sourceFileContents: String): BasicProcessor = {
     val basicProcessor = new BasicProcessor
     JavacUtils.runProcessor(className, sourceFileContents, basicProcessor)
-    (basicProcessor.getClasses, basicProcessor.getMethods)
+    basicProcessor
   }
 }

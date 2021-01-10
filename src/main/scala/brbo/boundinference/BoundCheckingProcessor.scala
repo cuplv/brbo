@@ -1,18 +1,19 @@
 package brbo.boundinference
 
-import brbo.boundinference.BoundCheckingProcessor.BeforeOrAfter.{AFTER, BEFORE, BeforeOrAfter}
-import brbo.boundinference.BoundCheckingProcessor.{DeltaCounterPair, Locations}
-import brbo.common.FileFormat.C_FORMAT
-import brbo.common.InstrumentUtils.AtomicStatementInstrumentation
-import brbo.common.InstrumentUtils.InstrumentMode.ALL
-import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT}
-import brbo.common.icra.{Assignment, Icra}
-import brbo.common.{InstrumentUtils, Z3Solver}
-import com.microsoft.z3.{AST, Expr}
+import brbo.boundinference.BoundCheckingProcessor.DeltaCounterPair
+import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta}
+import brbo.common.InvariantInference.BeforeOrAfter.{AFTER, BEFORE}
+import brbo.common.InvariantInference.Locations
+import brbo.common.TreeUtils.collectCommands
+import brbo.common.TypeUtils.BrboType.BrboType
+import brbo.common.{GhostVariableUtils, InvariantInference, TreeUtils, Z3Solver}
+import com.microsoft.z3.AST
 import com.sun.source.tree._
 import javax.annotation.processing.SupportedAnnotationTypes
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.node.Node
+
+import scala.collection.immutable.HashMap
 
 @SupportedAnnotationTypes(Array("*"))
 class BoundCheckingProcessor(solver: Z3Solver) extends BasicProcessor {
@@ -20,8 +21,103 @@ class BoundCheckingProcessor(solver: Z3Solver) extends BasicProcessor {
 
   validateInputProgram()
 
-  def checkBound(deltaCounterPairs: Set[DeltaCounterPair], boundExpression: AST): Boolean = {
+  def checkBound(deltaCounterPairs: Set[DeltaCounterPair]): Boolean = {
+    assumeOneClassOneMethod()
+
+    val methodTree: MethodTree = getMethods.head._1
+    val cfg = getMethods.head._2
+    val className = getEnclosingClass(methodTree).get.getSimpleName.toString
+    val methodBody = methodTree.getBody
+    assert(methodBody != null)
+
+    val inputVariables: Map[String, BrboType] = TreeUtils.getAllInputVariables(methodTree)
+
+    val localVariables: Map[String, BrboType] = TreeUtils.getAllDeclaredVariables(methodBody)
+
+    val typeContext = {
+      assert(inputVariables.keySet.intersect(localVariables.keySet).isEmpty)
+      inputVariables ++ localVariables
+    }
+
+    val boundExpression = extractBoundExpression(solver, methodTree, typeContext)
+
+    val counterAxioms: AST = CounterAxiomGenerator.generateCounterAxioms(solver, methodBody)
+
+    val invariants = deltaCounterPairs.map({
+      deltaCounterPair =>
+        val peakInvariant = InvariantInference.inferInvariant(
+          solver,
+          className,
+          methodTree,
+          getLineNumber,
+          cfg,
+          Locations(
+            {
+              node: Node =>
+                GhostVariableUtils.extractGhostVariableUpdate(node, Delta) match {
+                  case Some(update) => update.identifier == deltaCounterPair.deltaVariable
+                  case None => false
+                }
+            },
+            AFTER
+          ),
+          ???
+        )
+
+        val accumulateInvariant = InvariantInference.inferInvariant(
+          solver,
+          className,
+          methodTree,
+          getLineNumber,
+          cfg,
+          Locations(
+            {
+              node: Node =>
+                GhostVariableUtils.extractDeltaVariableReset(node) match {
+                  case Some(identifier) => identifier == deltaCounterPair.deltaVariable
+                  case None => false
+                }
+            },
+            BEFORE
+          ),
+          ???
+        )
+
+        val counterInvariant = InvariantInference.inferInvariant(
+          solver,
+          className,
+          methodTree,
+          getLineNumber,
+          cfg,
+          Locations(
+            {
+              node: Node =>
+                GhostVariableUtils.extractGhostVariableUpdate(node, Counter) match {
+                  case Some(update) => update.identifier == deltaCounterPair.counter
+                  case None => false
+                }
+            },
+            AFTER
+          ),
+          ???
+        )
+
+        (peakInvariant, accumulateInvariant, counterInvariant)
+    })
+
+    val inductiveInvariant = ???
+
     ???
+  }
+
+  def extractBoundExpression(solver: Z3Solver, methodTree: MethodTree, typeContext: Map[String, BrboType]): AST = {
+    val methodBody = methodTree.getBody
+    if (methodBody == null)
+      throw new Exception(s"There is no method body to extract bound expression from in $methodTree")
+    val commands = collectCommands(methodTree.getBody)
+    val assertions = commands.filter(tree => tree.isInstanceOf[AssertTree])
+    assert(assertions.size == 1, "Please use exact 1 assertion as the bound expression to be verified")
+    TreeUtils.translatePureExpressionToZ3AST(solver, assertions.head.asInstanceOf[AssertTree].getCondition, typeContext)
   }
 
   /**
@@ -32,112 +128,10 @@ class BoundCheckingProcessor(solver: Z3Solver) extends BasicProcessor {
    */
   def validateInputProgram(): Unit = {
   }
-
-  /**
-   *
-   * @param locations             The locations before or after which we wish to infer invariants
-   * @param existentiallyQuantify The inferred invariants will be existentially quantified by these variables
-   * @return The conjunction of local invariants that are existentially quantified by some variables
-   */
-  def inferInvariant(locations: Locations, existentiallyQuantify: Map[String, BrboType]): AST = {
-    logger.debug(s"Infer invariants")
-    val cProgram = translateToCAndInsertAssertions(locations)
-    Icra.run(cProgram) match {
-      case Some(parsedInvariants) =>
-        val existentiallyQuantifiedInvariants =
-          parsedInvariants.map {
-            parsedInvariant =>
-              val invariant: AST = Icra.translateToZ3(parsedInvariant.invariant, BOOL, solver)
-              val equalities = {
-                val equalities: List[AST] = parsedInvariant.declarations.map({
-                  case Assignment(variable, expression) =>
-                    val variableAst = Icra.translateToZ3(variable, INT, solver)
-                    val expressionAst = Icra.translateToZ3(expression, INT, solver)
-                    solver.mkEq(variableAst, expressionAst)
-                  case x@_ => throw new Exception(s"Declaration $x should be parsed into `Assignment`")
-                })
-                solver.mkAnd(equalities: _*)
-              }
-              solver.mkExists(
-                existentiallyQuantify.map({
-                  case (identifier, typ) =>
-                    val variable =
-                      typ match {
-                        case BOOL => solver.mkBoolVar(identifier)
-                        case INT => solver.mkIntVar(identifier)
-                      }
-                    variable.asInstanceOf[Expr]
-                }),
-                solver.mkAnd(invariant, equalities).asInstanceOf[Expr]
-              )
-          }
-        solver.mkAnd(existentiallyQuantifiedInvariants: _*)
-      case None =>
-        logger.fatal("ICRA returns no invariant!")
-        solver.mkTrue()
-    }
-  }
-
-  /**
-   *
-   * @param locations The locations before or after which we insert `assert(1)`
-   * @return The C program that is translated from the input Java program, and is asserted with `assert(1)`
-   */
-  private def translateToCAndInsertAssertions(locations: Locations): String = {
-    assumeOneClassOneMethod()
-
-    val ASSERT_TRUE = "assert(true);"
-
-    getMethods.head match {
-      case (methodTree, cfg) =>
-        val result = InstrumentUtils.substituteAtomicStatements(
-          methodTree.getBody,
-          AtomicStatementInstrumentation(
-            {
-              node: Node => locations.whichASTs.apply(node)
-            },
-            {
-              tree: Tree =>
-                locations.beforeOrAfter match {
-                  case BEFORE => s"$ASSERT_TRUE ${tree.toString};"
-                  case AFTER => s"${tree.toString}; $ASSERT_TRUE"
-                }
-            }
-          ),
-          indent,
-          cfg,
-          getLineNumber,
-          ALL
-        )
-        val methodBody = result.result
-        InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(
-          methodTree,
-          getEnclosingClass(methodTree).get.getSimpleName.toString,
-          methodBody,
-          C_FORMAT,
-          indent
-        )
-    }
-  }
-
 }
 
 object BoundCheckingProcessor {
 
   case class DeltaCounterPair(deltaVariable: String, counter: String)
-
-  /**
-   *
-   * @param whichASTs     Insert `assert(1)` before / after Which ASTs. We use `Node` instead of `Tree`
-   *                      because we are using `Node` as intermediate representations that are less
-   *                      "syntactic" than ASTs
-   * @param beforeOrAfter Insert `assert(1)` either before or after the ASTs that satisfy the condition
-   */
-  case class Locations(whichASTs: Node => Boolean, beforeOrAfter: BeforeOrAfter)
-
-  object BeforeOrAfter extends Enumeration {
-    type BeforeOrAfter = Value
-    val BEFORE, AFTER = Value
-  }
 
 }
