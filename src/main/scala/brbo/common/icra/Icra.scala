@@ -25,7 +25,7 @@ object Icra {
       close()
     }
 
-    val cmd = s"$icraPath ${file.toAbsolutePath}"
+    val cmd = s"$icraPath -cra-split-loops -cra-prsd ${file.toAbsolutePath}"
 
     var parsedInvariants: Option[List[ParsedInvariant]] = None
 
@@ -88,6 +88,7 @@ object Icra {
         case And(left, right) => solver.mkAnd(helper(left, BOOL, solver), helper(right, BOOL, solver))
         case Or(left, right) => solver.mkOr(helper(left, BOOL, solver), helper(right, BOOL, solver))
         case Negation(expression) => solver.mkNot(helper(expression, BOOL, solver))
+        case IfThenElse(condition, left, right) => solver.mkITE(helper(condition, BOOL, solver), helper(left, INT, solver), helper(right, INT, solver))
         case _ => throw new RuntimeException(s"IcraAST should never contain $icraAST after parsing")
       }
     }

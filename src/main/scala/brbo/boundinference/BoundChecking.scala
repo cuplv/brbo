@@ -40,25 +40,23 @@ object BoundChecking {
     }
     logger.debug(s"Resource variable: $resourceVariable")
 
-    val typeContext = {
+    /*val typeContext = {
       assert(inputVariables.keySet.intersect(localVariables.keySet).isEmpty)
       inputVariables ++ localVariables
     }
 
-    // val boundExpression = BoundChecking.extractBoundExpression(solver, methodTree, typeContext)
+    val boundExpression = BoundChecking.extractBoundExpression(solver, methodTree, typeContext)*/
 
-    val universallyQuantify: Map[String, BrboType] = {
+    val globalScopeVariables: Map[String, BrboType] = {
       val variables: Set[String] =
         deltaCounterPairs.map({ deltaCounterPair => deltaCounterPair.delta }) ++ // Delta variables
-          // TODO: Remove this???
-          deltaCounterPairs.map({ deltaCounterPair => generateDeltaVariablePrime(deltaCounterPair.delta) }) ++ // Delta variables' primed version
           CounterAxiomGenerator.generateCounterMap(methodBody).values + // Counters for all ASTs
           resourceVariable._1 // Resource variable
       variables.foldLeft(inputVariables)({
         (acc, variable) => acc + (variable -> INT)
       })
     }
-    logger.info(s"Inductive invariant is universally quantified by $universallyQuantify")
+    logger.info(s"For Z3, we declare these variables in the global scope: $globalScopeVariables")
 
     val invariants: Set[(AST, AST, AST)] = deltaCounterPairs.map({
       deltaCounterPair =>
@@ -81,9 +79,9 @@ object BoundChecking {
             AFTER
           ),
           localVariables - deltaVariable,
-          universallyQuantify
+          globalScopeVariables
         )
-        logger.trace(s"Invariant for the peak value of delta variable $deltaVariable is $peakInvariant")
+        logger.trace(s"Invariant for the peak value of delta variable $deltaVariable:\n$peakInvariant")
 
         val accumulationInvariant = {
           val accumulationInvariant = InvariantInference.inferInvariant(
@@ -103,7 +101,7 @@ object BoundChecking {
               BEFORE
             ),
             localVariables - deltaVariable,
-            universallyQuantify
+            globalScopeVariables
           )
 
           // Delta variables' double primed version represents the maximum amount of accumulation per execution of subprograms
@@ -113,7 +111,7 @@ object BoundChecking {
           )
           doublePrimeInvariant
         }
-        logger.trace(s"Invariant for the accumulation of delta variable $deltaVariable (per visit to its subprogram) is $accumulationInvariant")
+        logger.trace(s"Invariant for the accumulation of delta variable $deltaVariable (per visit to its subprogram):\n$accumulationInvariant")
 
         val counterInvariant = InvariantInference.inferInvariant(
           solver,
@@ -132,21 +130,26 @@ object BoundChecking {
             AFTER
           ),
           localVariables - deltaCounterPair.counter,
-          universallyQuantify
+          globalScopeVariables
         )
-        logger.trace(s"Invariant for AST counter $deltaCounterPair is $counterInvariant")
+        logger.trace(s"Invariant for AST counter $deltaCounterPair:\n$counterInvariant")
 
         (peakInvariant, accumulationInvariant, counterInvariant)
     })
 
-    val resourceVariableUpperBound: AST = {
+    val resourceInvariants: AST = {
       val resourceVariableUpperBound = {
         val items: Seq[AST] = deltaCounterPairs.map({
           deltaCounterPair =>
+            val counterMinusOne = solver.mkSub(solver.mkIntVar(deltaCounterPair.counter), solver.mkIntVal(1))
             solver.mkAdd(
               solver.mkIntVar(deltaCounterPair.delta),
               solver.mkMul(
-                solver.mkIntVar(deltaCounterPair.counter),
+                solver.mkITE(
+                  solver.mkGe(counterMinusOne, solver.mkIntVal(0)),
+                  counterMinusOne,
+                  solver.mkIntVal(0)
+                ),
                 solver.mkIntVar(generateDeltaVariableDoublePrime(deltaCounterPair.delta)))
             )
         }).toSeq
@@ -155,7 +158,7 @@ object BoundChecking {
           solver.mkAdd(items: _*)
         )
       }
-      logger.info(s"Inductive invariant is $resourceVariableUpperBound")
+      logger.info(s"Inductive invariant:\n$resourceVariableUpperBound")
 
       val deltaDoublePrimeInvariants = solver.mkAnd(invariants.map({ case (_, invariant, _) => invariant }).toSeq: _*)
       solver.mkAnd(resourceVariableUpperBound, deltaDoublePrimeInvariants)
@@ -167,11 +170,11 @@ object BoundChecking {
 
     val counterInvariants = {
       val counterAxioms: AST = CounterAxiomGenerator.generateCounterAxioms(solver, methodBody)
-      logger.debug(s"Counter axioms: $counterAxioms")
+      logger.debug(s"Counter axioms:\n$counterAxioms")
 
       val counterConstraints: AST = {
         val nonNegativeCounters =
-          universallyQuantify
+          globalScopeVariables
             .filter({ case (identifier, _) => GhostVariableUtils.isGhostVariable(identifier, Counter) })
             .map({ case (counter, _) => solver.mkGe(solver.mkIntVar(counter), solver.mkIntVal(0)) }).toSeq
         solver.mkAnd(
@@ -187,18 +190,24 @@ object BoundChecking {
       )
     }
 
-    checkSAT(solver, resourceVariableUpperBound)
+    // Extra queries to ensure ???
+    checkSAT(solver, resourceInvariants)
     checkSAT(solver, deltaInvariants)
     checkSAT(solver, counterInvariants)
+    checkSAT(solver, solver.mkAnd(resourceInvariants, deltaInvariants))
+    checkSAT(solver, solver.mkAnd(resourceInvariants, counterInvariants))
+    checkSAT(solver, solver.mkAnd(deltaInvariants, deltaInvariants))
+    checkSAT(solver, solver.mkAnd(resourceInvariants, deltaInvariants, counterInvariants))
+
     checkSAT(solver, solver.mkNot(boundExpression))
 
-    solver.mkAssert(resourceVariableUpperBound)
+    solver.mkAssert(resourceInvariants)
     solver.mkAssert(deltaInvariants)
     solver.mkAssert(counterInvariants)
     solver.mkAssert(solver.mkNot(boundExpression))
     val result = !solver.checkSAT(printUnsatCore = false)
     if (!result) {
-      logger.fatal(s"Bound expression cannot be verified: $boundExpression")
+      logger.fatal(s"Bound expression could not be verified: $boundExpression")
       solver.printAssertions()
       solver.printModel()
     }
@@ -225,11 +234,6 @@ object BoundChecking {
   case class DeltaCounterPair(delta: String, counter: String) {
     GhostVariableUtils.isGhostVariable(delta, Delta)
     GhostVariableUtils.isGhostVariable(counter, Counter)
-  }
-
-  private def generateDeltaVariablePrime(identifier: String): String = {
-    assert(GhostVariableUtils.isGhostVariable(identifier, Delta))
-    s"$identifier\'"
   }
 
   private def generateDeltaVariableDoublePrime(identifier: String): String = {

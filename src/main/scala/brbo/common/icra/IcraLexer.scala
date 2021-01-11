@@ -75,6 +75,14 @@ object IcraLexer extends RegexParsers {
     override def toString: String = ":="
   }
 
+  object ITE extends IcraToken {
+    override def toString: String = "ite"
+  }
+
+  object COMMA extends IcraToken {
+    override def toString: String = ","
+  }
+
   override def skipWhitespace = true
 
   override val whiteSpace: Regex = "[ \t\r\f\n]+".r
@@ -98,9 +106,9 @@ object IcraLexer extends RegexParsers {
 
   private def minus: Parser[IcraToken] = """-""" ^^ (_ => MINUS)
 
-  private def multiplication : Parser[IcraToken]= """*""" ^^ (_ => MULTIPLICATION)
+  private def multiplication: Parser[IcraToken] = """*""" ^^ (_ => MULTIPLICATION)
 
-  private def division : Parser[IcraToken]= """/""" ^^ (_ => DIVISION)
+  private def division: Parser[IcraToken] = """/""" ^^ (_ => DIVISION)
 
   private def leftBracket: Parser[IcraToken] = """(""" ^^ (_ => LEFT_BRACKET)
 
@@ -114,17 +122,21 @@ object IcraLexer extends RegexParsers {
 
   private def greaterThan: Parser[IcraToken] = """>""" ^^ (_ => GREATER_THAN)
 
-  private def greaterThanOrEqualTo : Parser[IcraToken]= """>=""" ^^ (_ => GREATER_THAN_OR_EQUAL_TO)
+  private def greaterThanOrEqualTo: Parser[IcraToken] = """>=""" ^^ (_ => GREATER_THAN_OR_EQUAL_TO)
 
-  private def assignment : Parser[IcraToken]= """:=""" ^^ (_ => ASSIGNMENT)
+  private def assignment: Parser[IcraToken] = """:=""" ^^ (_ => ASSIGNMENT)
+
+  private def ite: Parser[IcraToken] = """ite""" ^^ (_ => ITE)
+
+  private def comma: Parser[IcraToken] = """,""" ^^ (_ => COMMA)
 
   private def tokens: Parser[List[IcraToken]] = {
     phrase(
       rep1(
-        and | or | negation | plus | minus | multiplication | division | leftBracket | rightBracket
-      | lessThanOrEqualTo | greaterThanOrEqualTo | lessThan | greaterThan
-      | assignment | equal
-      | number | identifier
+        and | or | negation | plus | minus | multiplication | division | leftBracket | rightBracket | comma
+          | lessThanOrEqualTo | greaterThanOrEqualTo | lessThan | greaterThan
+          | assignment | equal
+          | number | ite | identifier
       )
     )
   }

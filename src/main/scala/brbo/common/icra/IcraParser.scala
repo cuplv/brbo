@@ -121,6 +121,8 @@ case class ToOr(right: IcraAST) extends IcraAST // Intermediate AST
 
 case class Negation(expression: IcraAST) extends IcraAST
 
+case class IfThenElse(condition: IcraAST, left: IcraAST, right: IcraAST) extends IcraAST
+
 case class Assignment(variable: Identifier, expression: IcraAST) extends IcraAST // Declare symbols that are used in the inferred invariants
 
 object IcraParser extends Parsers {
@@ -360,7 +362,12 @@ object IcraParser extends Parsers {
   }
 
   private def primary: Parser[IcraAST] = {
-    (number | identifier | LEFT_BRACKET ~ expression ~ RIGHT_BRACKET) ^^ {
+    (ITE ~ LEFT_BRACKET ~ boolExpression ~ COMMA ~ expression ~ COMMA ~ expression ~ RIGHT_BRACKET |
+      number |
+      identifier |
+      LEFT_BRACKET ~ expression ~ RIGHT_BRACKET) ^^ {
+      case _ ~ _ ~ (condition: IcraAST) ~ _ ~ (left: IcraAST) ~ _ ~ (right: IcraAST) ~ _ =>
+        IfThenElse(condition, left, right)
       case LEFT_BRACKET ~ (expression: IcraAST) ~ RIGHT_BRACKET => expression
       case number: Number => number
       case identifier: Identifier => identifier
