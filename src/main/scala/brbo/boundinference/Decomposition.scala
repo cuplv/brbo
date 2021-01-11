@@ -1,18 +1,14 @@
 package brbo.boundinference
 
+import brbo.common.TargetMethod
 import brbo.common.TypeUtils.BrboType.BrboType
-import com.sun.source.tree.{MethodTree, Tree}
+import com.sun.source.tree.Tree
 import org.apache.logging.log4j.LogManager
-import org.checkerframework.dataflow.cfg.ControlFlowGraph
 
-object Decomposition {
-  private val logger = LogManager.getLogger("brbo.boundinference.Decomposition")
+class Decomposition(targetMethod: TargetMethod) {
+  private val logger = LogManager.getLogger(classOf[Decomposition])
 
-  def computeDependencySet(className: String,
-                           methodTree: MethodTree,
-                           getLineNumber: Tree => Int,
-                           cfg: ControlFlowGraph,
-                           location: Tree): Map[String, BrboType] = {
+  def computeDependencySet(location: Tree): Map[String, BrboType] = {
     ???
   }
 

@@ -1,37 +1,34 @@
 package brbo.common
 
 import brbo.common.InstrumentUtils.AtomicStatementInstrumentation
-import brbo.common.InstrumentUtils.FileFormat.{JAVA_FORMAT, C_FORMAT}
+import brbo.common.InstrumentUtils.FileFormat.C_FORMAT
 import brbo.common.InstrumentUtils.InstrumentMode.ALL
 import brbo.common.InvariantInference.BeforeOrAfter.{AFTER, BEFORE, BeforeOrAfter}
+import brbo.common.InvariantInference.Locations
 import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT}
 import brbo.common.icra.{Assignment, Icra}
 import com.microsoft.z3.{AST, Expr}
-import com.sun.source.tree.{MethodTree, Tree}
+import com.sun.source.tree.Tree
 import org.apache.logging.log4j.LogManager
-import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.node.Node
 
-object InvariantInference {
-  private val logger = LogManager.getLogger("brbo.common.InvariantInference")
+class InvariantInference(targetMethod: TargetMethod) {
+  private val logger = LogManager.getLogger(classOf[InvariantInference])
+
+  private val className = targetMethod.className
+  private val methodTree = targetMethod.methodTree
+  private val getLineNumber = targetMethod.getLineNumber
+  private val cfg = targetMethod.cfg
 
   /**
    *
    * @param solver                The solver that is used to construct Z3 ASTs that represent the inferred invariants
-   * @param className             The class name of the method where we wish to infer invariants
-   * @param methodTree            The method where we wish to infer invariants
-   * @param getLineNumber         A function to get line numbers
-   * @param cfg                   The control flow graph of the method where we wish to infer invariants
    * @param locations             The locations before or after which we wish to infer invariants
    * @param existentiallyQuantify The inferred invariants must existentially quantify these variables
    * @param freeVariables         The inferred invariants must only contain free variables that appear in this set
    * @return The conjunction of local invariants that are existentially quantified by some variables
    */
   def inferInvariant(solver: Z3Solver,
-                     className: String,
-                     methodTree: MethodTree,
-                     getLineNumber: Tree => Int,
-                     cfg: ControlFlowGraph,
                      locations: Locations,
                      existentiallyQuantify: Map[String, BrboType],
                      freeVariables: Map[String, BrboType]): AST = {
@@ -41,7 +38,7 @@ object InvariantInference {
     }
 
     logger.info(s"Infer invariants in method ${methodTree.getName} ${locations.beforeOrAfter} specified nodes in CFG")
-    val cProgram = translateToCAndInsertAssertions(className, methodTree, getLineNumber, cfg, locations)
+    val cProgram = translateToCAndInsertAssertions(locations)
     Icra.run(cProgram) match {
       case Some(parsedInvariants) =>
         val existentiallyQuantifiedInvariants =
@@ -85,11 +82,7 @@ object InvariantInference {
    * @param locations The locations before or after which we insert `assert(1)`
    * @return The C program that is translated from the input Java program, and is asserted with `assert(1)`
    */
-  private def translateToCAndInsertAssertions(className: String,
-                                              methodTree: MethodTree,
-                                              getLineNumber: Tree => Int,
-                                              cfg: ControlFlowGraph,
-                                              locations: Locations): String = {
+  private def translateToCAndInsertAssertions(locations: Locations): String = {
     val indent = 2
     val ASSERT_TRUE = "assert(true)"
 
@@ -123,6 +116,10 @@ object InvariantInference {
       indent
     )
   }
+}
+
+object InvariantInference {
+  private val logger = LogManager.getLogger("brbo.common.InvariantInference")
 
   /**
    *

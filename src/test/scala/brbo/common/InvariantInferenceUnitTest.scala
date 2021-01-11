@@ -26,13 +26,11 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
         val cfg = basicProcessor.getMethods.head._2
         val className = basicProcessor.getEnclosingClass(methodTree).get.getSimpleName.toString
 
+        val targetMethod = TargetMethod(className, methodTree, basicProcessor.getLineNumber, cfg)
+        val invariantInference = new InvariantInference(targetMethod)
         val solver = new Z3Solver
-        val result = InvariantInference.inferInvariant(
+        val result = invariantInference.inferInvariant(
           solver,
-          className,
-          methodTree,
-          basicProcessor.getLineNumber,
-          cfg,
           Locations(
             {
               node: Node =>
@@ -73,13 +71,11 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
         val cfg = basicProcessor.getMethods.head._2
         val className = basicProcessor.getEnclosingClass(methodTree).get.getSimpleName.toString
 
+        val targetMethod = TargetMethod(className, methodTree, basicProcessor.getLineNumber, cfg)
+        val invariantInference = new InvariantInference(targetMethod)
         val solver = new Z3Solver
-        val result = InvariantInference.inferInvariant(
+        val result = invariantInference.inferInvariant(
           solver,
-          className,
-          methodTree,
-          basicProcessor.getLineNumber,
-          cfg,
           Locations(
             {
               node: Node =>
@@ -120,13 +116,11 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
         val cfg = basicProcessor.getMethods.head._2
         val className = basicProcessor.getEnclosingClass(methodTree).get.getSimpleName.toString
 
+        val targetMethod = TargetMethod(className, methodTree, basicProcessor.getLineNumber, cfg)
+        val invariantInference = new InvariantInference(targetMethod)
         val solver = new Z3Solver
-        val result = InvariantInference.inferInvariant(
+        val result = invariantInference.inferInvariant(
           solver,
-          className,
-          methodTree,
-          basicProcessor.getLineNumber,
-          cfg,
           Locations(
             {
               node: Node =>

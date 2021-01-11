@@ -1,13 +1,13 @@
 package brbo.common
 
-import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, GhostVariable, Resource}
-import brbo.common.InstrumentUtils.FileFormat.{FileFormat, JAVA_FORMAT, C_FORMAT}
+import brbo.common.GhostVariableUtils.GhostVariable.Resource
+import brbo.common.InstrumentUtils.FileFormat.{C_FORMAT, FileFormat, JAVA_FORMAT}
 import brbo.common.InstrumentUtils.InstrumentMode.{ALL, AT_MOST_ONCE, InstrumentMode}
 import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.block.Block
-import org.checkerframework.dataflow.cfg.node.{AssignmentNode, Node, NumericalAdditionNode}
+import org.checkerframework.dataflow.cfg.node.Node
 
 import scala.collection.JavaConverters._
 
@@ -401,4 +401,5 @@ object InstrumentUtils {
     type FileFormat = Value
     val JAVA_FORMAT, C_FORMAT = Value
   }
+
 }

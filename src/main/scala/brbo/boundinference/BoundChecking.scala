@@ -5,7 +5,7 @@ import brbo.common.InvariantInference.BeforeOrAfter.{AFTER, BEFORE}
 import brbo.common.InvariantInference.Locations
 import brbo.common.TreeUtils.collectCommands
 import brbo.common.TypeUtils.BrboType.{BrboType, INT}
-import brbo.common.{GhostVariableUtils, InvariantInference, TreeUtils, Z3Solver}
+import brbo.common.{GhostVariableUtils, InvariantInference, TargetMethod, TreeUtils, Z3Solver}
 import com.microsoft.z3.{AST, Expr}
 import com.sun.source.tree.{AssertTree, MethodTree, Tree}
 import org.apache.logging.log4j.LogManager
@@ -59,16 +59,14 @@ object BoundChecking {
     }
     logger.info(s"For Z3, we declare these variables in the global scope: $globalScopeVariables")
 
+    val targetMethod = TargetMethod(className, methodTree, getLineNumber, cfg)
+    val invariantInference = new InvariantInference(targetMethod)
     val invariants: Set[(AST, AST, AST)] = deltaCounterPairs.map({
       deltaCounterPair =>
         val deltaVariable = deltaCounterPair.delta
 
-        val peakInvariant = InvariantInference.inferInvariant(
+        val peakInvariant = invariantInference.inferInvariant(
           solver,
-          className,
-          methodTree,
-          getLineNumber,
-          cfg,
           Locations(
             {
               node: Node =>
@@ -85,12 +83,8 @@ object BoundChecking {
         logger.trace(s"Invariant for the peak value of delta variable $deltaVariable:\n$peakInvariant")
 
         val accumulationInvariant = {
-          val accumulationInvariant = InvariantInference.inferInvariant(
+          val accumulationInvariant = invariantInference.inferInvariant(
             solver,
-            className,
-            methodTree,
-            getLineNumber,
-            cfg,
             Locations(
               {
                 node: Node =>
@@ -114,12 +108,8 @@ object BoundChecking {
         }
         logger.trace(s"Invariant for the accumulation of delta variable $deltaVariable (per visit to its subprogram):\n$accumulationInvariant")
 
-        val counterInvariant = InvariantInference.inferInvariant(
+        val counterInvariant = invariantInference.inferInvariant(
           solver,
-          className,
-          methodTree,
-          getLineNumber,
-          cfg,
           Locations(
             {
               node: Node =>
