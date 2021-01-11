@@ -15,4 +15,8 @@ class Decomposition(targetMethod: TargetMethod) {
   def computeModifiedSet(location: Tree): Map[String, BrboType] = {
     ???
   }
+
+  def extractSubprogram(location: Tree): String = {
+    ???
+  }
 }

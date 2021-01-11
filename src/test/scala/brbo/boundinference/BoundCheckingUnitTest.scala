@@ -44,7 +44,7 @@ class BoundCheckingUnitTest extends AnyFlatSpec {
 }
 
 object BoundCheckingUnitTest {
-  private val test01 = // A loop with a nesting depth of 1
+  val test01: String = // A loop with a nesting depth of 1
     """class Test01 {
       |  void f(int n)
       |  {
@@ -63,7 +63,7 @@ object BoundCheckingUnitTest {
       |  }
       |}""".stripMargin
 
-  private val test02 = // A loop with a nesting depth of 2
+  val test02: String = // A loop with a nesting depth of 2
     """class Test02 {
       |  void f(int n, int m, int l)
       |  {

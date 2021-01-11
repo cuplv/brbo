@@ -17,8 +17,6 @@ class InvariantInference(targetMethod: TargetMethod) {
 
   private val className = targetMethod.className
   private val methodTree = targetMethod.methodTree
-  private val getLineNumber = targetMethod.getLineNumber
-  private val cfg = targetMethod.cfg
 
   /**
    *
