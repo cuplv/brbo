@@ -1,7 +1,7 @@
 package brbo.common
 
-import brbo.common.FileFormat.C_FORMAT
 import brbo.common.InstrumentUtils.AtomicStatementInstrumentation
+import brbo.common.InstrumentUtils.FileFormat.{JAVA_FORMAT, C_FORMAT}
 import brbo.common.InstrumentUtils.InstrumentMode.ALL
 import brbo.common.InvariantInference.BeforeOrAfter.{AFTER, BEFORE, BeforeOrAfter}
 import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT}

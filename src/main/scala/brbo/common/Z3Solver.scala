@@ -169,6 +169,7 @@ object Z3Solver {
           if (printUnsatCore) {
             logger.error("Unsat core is:")
             solver.getUnsatCore.foreach(expression => println(expression))
+            // FYI: https://stackoverflow.com/questions/18132243/get-unsat-core-returns-empty-in-z3
           }
           false
         case Status.SATISFIABLE => true

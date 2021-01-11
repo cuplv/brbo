@@ -1,7 +1,7 @@
 package brbo.common
 
-import brbo.common.FileFormat.{C_FORMAT, FileFormat, JAVA_FORMAT}
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, GhostVariable, Resource}
+import brbo.common.InstrumentUtils.FileFormat.{FileFormat, JAVA_FORMAT, C_FORMAT}
 import brbo.common.InstrumentUtils.InstrumentMode.{ALL, AT_MOST_ONCE, InstrumentMode}
 import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
@@ -395,5 +395,10 @@ object InstrumentUtils {
   object InstrumentMode extends Enumeration {
     type InstrumentMode = Value
     val AT_MOST_ONCE, ALL = Value
+  }
+
+  object FileFormat extends Enumeration {
+    type FileFormat = Value
+    val JAVA_FORMAT, C_FORMAT = Value
   }
 }

@@ -1,6 +1,5 @@
 package brbo.boundinference
 
-import brbo.common.FileFormat.{C_FORMAT, FileFormat, JAVA_FORMAT}
 import brbo.common.{InstrumentUtils, JavacUtils}
 import brbo.common.InstrumentUtils.InstrumentMode.InstrumentMode
 import brbo.common.InstrumentUtils.{AtomicStatementInstrumentation, InstrumentResult}

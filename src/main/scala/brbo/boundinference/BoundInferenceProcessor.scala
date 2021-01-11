@@ -1,6 +1,6 @@
 package brbo.boundinference
 
-import brbo.common.FileFormat.JAVA_FORMAT
+import brbo.common.InstrumentUtils.FileFormat.JAVA_FORMAT
 import brbo.common.InstrumentUtils.InstrumentMode.ALL
 import brbo.common.TypeUtils.BrboType.INT
 import brbo.common.{InstrumentUtils, TypeUtils}
