@@ -21,7 +21,8 @@ object BoundChecking {
                  getLineNumber: Tree => Int,
                  cfg: ControlFlowGraph,
                  deltaCounterPairs: Set[DeltaCounterPair],
-                 boundExpression: AST): Boolean = {
+                 boundExpression: AST,
+                 printModelIfFail: Boolean): Boolean = {
     logger.info(s"Verifying bound $boundExpression in method ${methodTree.getName} of class $className")
 
     val methodBody = methodTree.getBody
@@ -190,7 +191,7 @@ object BoundChecking {
       )
     }
 
-    // Extra queries to ensure ???
+    // Sanity check: We assume the generated constraints won't contradict with each other
     checkSAT(solver, resourceInvariants)
     checkSAT(solver, deltaInvariants)
     checkSAT(solver, counterInvariants)
@@ -206,7 +207,7 @@ object BoundChecking {
     solver.mkAssert(counterInvariants)
     solver.mkAssert(solver.mkNot(boundExpression))
     val result = !solver.checkSAT(printUnsatCore = false)
-    if (!result) {
+    if (!result && printModelIfFail) {
       logger.fatal(s"Bound expression could not be verified: $boundExpression")
       solver.printAssertions()
       solver.printModel()

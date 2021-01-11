@@ -18,65 +18,8 @@ class BoundCheckingUnitTest extends AnyFlatSpec {
   }
 
   "Bound checking" should "succeed" in {
-    val boundExpressions: List[(Z3Solver, AST)] = {
-      val solver1 = new Z3Solver
-      val boundExpression1 = solver1.mkLe(
-        solver1.mkIntVar("R"),
-        solver1.mkIntVar("n")
-      )
-      val solver2 = new Z3Solver
-      val boundExpression2 = {
-        val R = solver2.mkIntVar("R")
-        solver2.mkITE(
-          solver2.mkGt(R, solver2.mkIntVal(1)),
-          solver2.mkLe(
-            R,
-            solver2.mkIntVal(1)
-          ),
-          solver2.mkFalse()
-        )
-      }
-      val solver3 = new Z3Solver
-      val boundExpression3 = {
-        val n = solver3.mkIntVar("n")
-        val m = solver3.mkIntVar("m")
-        solver3.mkITE(
-          solver3.mkAnd(
-            solver3.mkGe(n, solver3.mkIntVal(0)),
-            solver3.mkGe(m, solver3.mkIntVal(0))
-          ),
-          solver3.mkLe(
-            solver3.mkIntVar("R"),
-            solver3.mkMul(n, m)
-          ),
-          solver3.mkTrue()
-        )
-      }
-      val solver4 = new Z3Solver
-      val boundExpression4 = {
-        val n = solver4.mkIntVar("n")
-        val m = solver4.mkIntVar("m")
-        solver4.mkITE(
-          solver4.mkAnd(
-            solver4.mkGe(n, solver4.mkIntVal(0)),
-            solver4.mkGe(m, solver4.mkIntVal(0))
-          ),
-          solver4.mkLe(
-            solver4.mkIntVar("R"),
-            n
-          ),
-          solver4.mkFalse()
-        )
-      }
-      List((solver1, boundExpression1), (solver2, boundExpression2), (solver3, boundExpression3), (solver4, boundExpression4))
-      // List((solver1, boundExpression1))
-      // List((solver2, boundExpression2))
-      // List((solver3, boundExpression3))
-      // List((solver4, boundExpression4))
-    }
-
-    BoundCheckingUnitTest.boundCheckingTests.zip(boundExpressions).foreach({
-      case (testCase, (solver, boundExpression)) =>
+    BoundCheckingUnitTest.boundCheckingTests.foreach({
+      case (testCase, solver, boundExpression) =>
         val basicProcessor = BasicProcessor.run(testCase.className, testCase.inputProgram)
         basicProcessor.assumeOneClassOneMethod()
 
@@ -92,7 +35,8 @@ class BoundCheckingUnitTest extends AnyFlatSpec {
           basicProcessor.getLineNumber,
           cfg,
           deltaCounterPairs,
-          boundExpression
+          boundExpression,
+          printModelIfFail = false
         )
         assert(result.toString == testCase.expectedOutput, s"Test case ${testCase.className} failed")
     })
@@ -100,7 +44,7 @@ class BoundCheckingUnitTest extends AnyFlatSpec {
 }
 
 object BoundCheckingUnitTest {
-  private val test01 =
+  private val test01 = // A loop with a nesting depth of 1
     """class Test01 {
       |  void f(int n)
       |  {
@@ -119,7 +63,7 @@ object BoundCheckingUnitTest {
       |  }
       |}""".stripMargin
 
-  private val test02 =
+  private val test02 = // A loop with a nesting depth of 2
     """class Test02 {
       |  void f(int n, int m, int l)
       |  {
@@ -138,6 +82,45 @@ object BoundCheckingUnitTest {
       |      }
       |      i++;
       |    }
+      |  }
+      |}""".stripMargin
+
+  private val test03 = // The resource is updated at 2 places
+    """class Test03 {
+      |  void f(int n)
+      |  {
+      |    int R = 0;
+      |    int C1 = 0;
+      |    int D100 = 0;
+      |    int i = 0;
+      |    C1++;
+      |    D100 = 0;
+      |    D100++;
+      |    R++;
+      |    while (i < n) {
+      |      R++;
+      |      D100++;
+      |      i++;
+      |    }
+      |  }
+      |}""".stripMargin
+
+  private val test04 = // The resource increases and decreases
+    """class Test04 {
+      |  void f(int n)
+      |  {
+      |    int R = 0;
+      |    int C1 = 0;
+      |    int D100 = 0;
+      |    int i = 0;
+      |    C1++;
+      |    D100 = 0;
+      |    R = R + n;
+      |    D100 = D100 + n;
+      |    R = R - n;
+      |    D100 = D100 - n;
+      |    R = R + n;
+      |    D100 = D100 + n;
       |  }
       |}""".stripMargin
 
@@ -900,15 +883,124 @@ object BoundCheckingUnitTest {
     )
   }
 
-  val boundCheckingTests: List[TestCaseJavaProgram] = {
+  val boundCheckingTests: List[(TestCaseJavaProgram, Z3Solver, AST)] = {
     val TRUE = "true"
     val FALSE = "false"
 
-    List[TestCaseJavaProgram](
-      TestCaseJavaProgram("Test01", test01, TRUE),
-      TestCaseJavaProgram("Test01", test01, FALSE),
-      TestCaseJavaProgram("Test02", test02, TRUE),
-      TestCaseJavaProgram("Test02", test02, FALSE),
+    val solver1 = new Z3Solver
+    val boundExpression1 = solver1.mkLe(
+      solver1.mkIntVar("R"),
+      solver1.mkIntVar("n")
+    )
+
+    val solver2 = new Z3Solver
+    val boundExpression2 = {
+      val R = solver2.mkIntVar("R")
+      solver2.mkITE(
+        solver2.mkGt(R, solver2.mkIntVal(1)),
+        solver2.mkLe(
+          R,
+          solver2.mkIntVal(1)
+        ),
+        solver2.mkFalse()
+      )
+    }
+
+    val solver3 = new Z3Solver
+    val boundExpression3 = {
+      val n = solver3.mkIntVar("n")
+      val m = solver3.mkIntVar("m")
+      solver3.mkITE(
+        solver3.mkAnd(
+          solver3.mkGe(n, solver3.mkIntVal(0)),
+          solver3.mkGe(m, solver3.mkIntVal(0))
+        ),
+        solver3.mkLe(
+          solver3.mkIntVar("R"),
+          solver3.mkMul(n, m)
+        ),
+        solver3.mkTrue()
+      )
+    }
+
+    val solver4 = new Z3Solver
+    val boundExpression4 = {
+      val n = solver4.mkIntVar("n")
+      val m = solver4.mkIntVar("m")
+      solver4.mkITE(
+        solver4.mkAnd(
+          solver4.mkGe(n, solver4.mkIntVal(0)),
+          solver4.mkGe(m, solver4.mkIntVal(0))
+        ),
+        solver4.mkLe(
+          solver4.mkIntVar("R"),
+          n
+        ),
+        solver4.mkFalse()
+      )
+    }
+
+    val solver5 = new Z3Solver
+    val boundExpression5 = {
+      val n = solver5.mkIntVar("n")
+      solver5.mkITE(
+        solver5.mkGe(n, solver5.mkIntVal(0)),
+        solver5.mkLe(
+          solver5.mkIntVar("R"),
+          solver5.mkAdd(n, solver5.mkIntVal(1))
+        ),
+        solver5.mkTrue()
+      )
+    }
+
+    val solver6 = new Z3Solver
+    val boundExpression6 = {
+      val n = solver6.mkIntVar("n")
+      solver6.mkITE(
+        solver6.mkGe(n, solver6.mkIntVal(0)),
+        solver6.mkLe(
+          solver6.mkIntVar("R"),
+          n
+        ),
+        solver6.mkFalse()
+      )
+    }
+
+    val solver7 = new Z3Solver
+    val boundExpression7 = {
+      val n = solver7.mkIntVar("n")
+      solver7.mkITE(
+        solver7.mkGe(n, solver7.mkIntVal(0)),
+        solver7.mkLe(
+          solver7.mkIntVar("R"),
+          n
+        ),
+        solver7.mkTrue()
+      )
+    }
+
+    val solver8 = new Z3Solver
+    val boundExpression8 = {
+      val n = solver8.mkIntVar("n")
+      solver8.mkITE(
+        solver8.mkGe(n, solver8.mkIntVal(0)),
+        solver8.mkLe(
+          solver8.mkIntVar("R"),
+          solver8.mkIntVal(1)
+        ),
+        solver8.mkFalse()
+      )
+    }
+
+    List[(TestCaseJavaProgram, Z3Solver, AST)](
+      (TestCaseJavaProgram("Test01", test01, TRUE), solver1, boundExpression1),
+      (TestCaseJavaProgram("Test01", test01, FALSE), solver2, boundExpression2),
+      (TestCaseJavaProgram("Test02", test02, TRUE), solver3, boundExpression3),
+      (TestCaseJavaProgram("Test02", test02, FALSE), solver4, boundExpression4),
+      (TestCaseJavaProgram("Test03", test03, TRUE), solver5, boundExpression5),
+      (TestCaseJavaProgram("Test03", test03, FALSE), solver6, boundExpression6),
+      (TestCaseJavaProgram("Test04", test04, TRUE), solver7, boundExpression7),
+      (TestCaseJavaProgram("Test04", test04, FALSE), solver8, boundExpression8),
     )
   }
 }
