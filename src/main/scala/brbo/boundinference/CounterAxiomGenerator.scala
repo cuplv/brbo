@@ -13,7 +13,7 @@ object CounterAxiomGenerator {
   private val logger = LogManager.getLogger("brbo.boundinference.CounterAxiomGenerator")
 
   private val FIRST_COUNTER_ID = 0
-  val FIRST_COUNTER_NAME = generateCounterId(FIRST_COUNTER_ID)
+  val FIRST_COUNTER_NAME: String = generateCounterId(FIRST_COUNTER_ID)
 
   def generateCounterId(id: Int): String = GhostVariableUtils.generateGhostVariable(id.toString, Counter)
 

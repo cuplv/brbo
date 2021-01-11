@@ -58,12 +58,14 @@ object InstrumentUtils {
         case tree@_ => throw new RuntimeException(s"Instrumenting non expression statement `$tree` (Kind: ${tree.getKind})")
       })
 
-  def substituteAtomicStatements(tree: Tree,
+  def substituteAtomicStatements(targetMethod: TargetMethod,
                                  instrumentation: AtomicStatementInstrumentation,
                                  indent: Int,
-                                 cfg: ControlFlowGraph,
-                                 getLineNumber: Tree => Int,
                                  instrumentMode: InstrumentMode): InstrumentResult = {
+    val tree = targetMethod.methodTree.getBody
+    val cfg: ControlFlowGraph = targetMethod.cfg
+    val getLineNumber: Tree => Int = targetMethod.getLineNumber
+
     instrumentMode match {
       case ALL => substituteAtomicStatementHelper(tree, InstrumentState(needInstrument = true, hasInstrumented = false, ALL, instrumentation, cfg, getLineNumber), indent)
       case AT_MOST_ONCE => substituteAtomicStatementHelper(tree, InstrumentState(needInstrument = true, hasInstrumented = false, AT_MOST_ONCE, instrumentation, cfg, getLineNumber), indent)

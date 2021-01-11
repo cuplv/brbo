@@ -12,47 +12,27 @@ class InstrumentUtilsUnitTest extends AnyFlatSpec {
   "Instrumentation" should "output correct java source code without any instrumentation" in {
     InstrumentUtilsUnitTest.noInstrumentUnitTests.foreach({
       testCase =>
-        val basicProcessor = new BasicProcessor
-        JavacUtils.runProcessor(testCase.className, testCase.inputProgram, basicProcessor)
-        val results = basicProcessor.testInstrumentation(AtomicStatementInstrumentation(_ => false, tree => tree.toString), AT_MOST_ONCE)
-        assert(results.size == 1, "We should have only 1 method per test class")
-        results.foreach({
-          case (_, result) => assert(result.result == testCase.expectedOutput, s"Test ${testCase.className} failed!")
-        })
+        val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
+        val result = InstrumentUtils.substituteAtomicStatements(targetMethod, AtomicStatementInstrumentation(_ => false, tree => tree.toString), 0, AT_MOST_ONCE)
+        assert(result.result == testCase.expectedOutput, s"Test ${testCase.className} failed!")
     })
   }
 
   it should s"output correct java source code when replacing `R = R + e` with `d = d + e` in mode `$AT_MOST_ONCE`" in {
     InstrumentUtilsUnitTest.replaceResourceAssignmentsAtMostOnce.foreach({
       testCase =>
-        val basicProcessor = new BasicProcessor
-        JavacUtils.runProcessor(testCase.className, testCase.inputProgram, basicProcessor)
-        val results = basicProcessor.testInstrumentation(InstrumentUtils.defaultResourceAssignment, AT_MOST_ONCE)
-
-        assert(results.size == 1, "We should have exactly 1 method per test class")
-        results.foreach({
-          case (_, result) =>
-            // println(result.result)
-            // println(testCase.expectedOutput)
-            assert(result.result == testCase.expectedOutput, s"Test ${testCase.className} failed!")
-        })
+        val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
+        val result = InstrumentUtils.substituteAtomicStatements(targetMethod, InstrumentUtils.defaultResourceAssignment, 0, AT_MOST_ONCE)
+        assert(result.result == testCase.expectedOutput, s"Test ${testCase.className} failed!")
     })
   }
 
   it should s"output correct java source code when replacing `R = R + e` with `d = d + e` in mode `$ALL`" in {
     InstrumentUtilsUnitTest.replaceResourceAssignmentsAll.foreach({
       testCase =>
-        val basicProcessor = new BasicProcessor
-        JavacUtils.runProcessor(testCase.className, testCase.inputProgram, basicProcessor)
-        val results = basicProcessor.testInstrumentation(InstrumentUtils.defaultResourceAssignment, ALL)
-
-        assert(results.size == 1, "We should have exactly 1 method per test class")
-        results.foreach({
-          case (_, result) =>
-            // println(result.result)
-            // println(testCase.expectedOutput)
-            assert(result.result == testCase.expectedOutput, s"Test ${testCase.className} failed!")
-        })
+        val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
+        val result = InstrumentUtils.substituteAtomicStatements(targetMethod, InstrumentUtils.defaultResourceAssignment, 0, ALL)
+        assert(result.result == testCase.expectedOutput, s"Test ${testCase.className} failed!")
     })
   }
 }

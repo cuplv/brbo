@@ -18,16 +18,9 @@ class BoundInferenceProcessor extends BasicProcessor {
   private val logger = LogManager.getLogger(classOf[BoundInferenceProcessor])
 
   override def runAnalysis(): Unit = {
-    assumeOneClassOneMethod()
-
-    // Default decomposition
-    val sourceCodeDeltaUpdates = generateSourceCodeDeltaUpdates()
-    // println(sourceCodeDeltaUpdates)
-    val sourceCodeNoResourceUpdates = generateSourceCodeNoResourceUpdates()
-    // println(sourceCodeNoResourceUpdates)
   }
 
-  def generateSourceCodeDeltaUpdates(): String = {
+  /*def generateSourceCodeDeltaUpdates(): String = {
     getMethods.head match {
       case (methodTree, cfg) =>
         // Default decomposition
@@ -64,5 +57,5 @@ class BoundInferenceProcessor extends BasicProcessor {
           )
         InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(methodTree, getEnclosingClass(methodTree).get.getSimpleName.toString, result.result, JAVA_FORMAT, indent)
     }
-  }
+  }*/
 }

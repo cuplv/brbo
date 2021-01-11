@@ -12,7 +12,7 @@ class Decomposition(targetMethod: TargetMethod) {
     ???
   }
 
-  def computeModifiedSet(): Map[String, BrboType] = {
+  def computeModifiedSet(location: Tree): Map[String, BrboType] = {
     ???
   }
 }

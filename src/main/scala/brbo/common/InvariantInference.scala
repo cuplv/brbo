@@ -86,10 +86,8 @@ class InvariantInference(targetMethod: TargetMethod) {
     val indent = 2
     val ASSERT_TRUE = "assert(true)"
 
-    val methodBody = methodTree.getBody
-
     val result = InstrumentUtils.substituteAtomicStatements(
-      methodBody,
+      targetMethod,
       AtomicStatementInstrumentation(
         {
           node: Node => locations.whichASTs.apply(node)
@@ -103,8 +101,6 @@ class InvariantInference(targetMethod: TargetMethod) {
         }
       ),
       indent,
-      cfg,
-      getLineNumber,
       ALL
     )
     val newMethodBody = result.result

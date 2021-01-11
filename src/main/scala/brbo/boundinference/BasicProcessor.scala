@@ -1,8 +1,8 @@
 package brbo.boundinference
 
-import brbo.common.{InstrumentUtils, JavacUtils}
 import brbo.common.InstrumentUtils.InstrumentMode.InstrumentMode
 import brbo.common.InstrumentUtils.{AtomicStatementInstrumentation, InstrumentResult}
+import brbo.common.{InstrumentUtils, JavacUtils, TargetMethod}
 import com.sun.source.tree.{ClassTree, CompilationUnitTree, MethodTree, Tree}
 import com.sun.source.util.{SourcePositions, TreePathScanner, Trees}
 import javax.annotation.processing.SupportedAnnotationTypes
@@ -115,17 +115,6 @@ class BasicProcessor extends BasicTypeProcessor {
 
   def getSourceCode: String = sourceCode.get
 
-  // TODO: Remove this. Instead, use getTrees()
-  @deprecated
-  def testInstrumentation(atomicStatementInstrumentation: AtomicStatementInstrumentation, instrumentMode: InstrumentMode): Map[MethodTree, InstrumentResult] = {
-    getMethods.map({
-      case (methodTree, cfg) =>
-        val instrumentedSourceCode =
-          InstrumentUtils.substituteAtomicStatements(methodTree.getBody, atomicStatementInstrumentation, 0, cfg, getLineNumber, instrumentMode)
-        (methodTree, instrumentedSourceCode)
-    })
-  }
-
   def assumeOneClassOneMethod(): Unit = {
     assert(getClasses.size == 1, s"We should analyze exactly one class. Instead, we have `$getClasses`")
     assert(getMethods.size == 1, s"We should analyze exactly one class. Instead, we have `$getMethods`")
@@ -141,5 +130,17 @@ object BasicProcessor {
     val basicProcessor = new BasicProcessor
     JavacUtils.runProcessor(className, sourceFileContents, basicProcessor)
     basicProcessor
+  }
+
+  /**
+   *
+   * @param className          The class name
+   * @param sourceFileContents Java source code that contains a class, which defines exactly 1 method
+   * @return The method in the Java source code
+   */
+  def getTargetMethod(className: String, sourceFileContents: String): TargetMethod = {
+    val processor = run(className, sourceFileContents)
+    processor.assumeOneClassOneMethod()
+    TargetMethod(className, processor.getMethods.head._1, processor.getLineNumber, processor.getMethods.head._2)
   }
 }

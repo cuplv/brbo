@@ -8,7 +8,7 @@ import scala.collection.immutable.HashSet
 
 @deprecated
 class BoundInferenceProcessorUnitTest extends AnyFlatSpec {
-  "BoundInferenceProcessor" should "correctly replace resource updates with delta variable updates in the default instrumentation" in {
+  /*"BoundInferenceProcessor" should "correctly replace resource updates with delta variable updates in the default instrumentation" in {
     BoundInferenceProcessorUnitTest.sourceCodeDeltaUpdatesTests.foreach({
       testCase =>
         val boundInferenceProcessor = new BoundInferenceProcessor
@@ -30,7 +30,7 @@ class BoundInferenceProcessorUnitTest extends AnyFlatSpec {
         // println(testCase.expectedOutput)
         assert(result == testCase.expectedOutput, s"Test ${testCase.name} failed!")
     })
-  }
+  }*/
 }
 
 object BoundInferenceProcessorUnitTest {
