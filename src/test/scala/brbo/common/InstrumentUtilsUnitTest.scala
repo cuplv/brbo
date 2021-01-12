@@ -1,7 +1,7 @@
 package brbo.common
 
 import brbo.{StringCompare, TestCaseJavaProgram}
-import brbo.boundinference.BasicProcessor
+import brbo.verification.BasicProcessor
 import brbo.common.InstrumentUtils.AtomicStatementInstrumentation
 import brbo.common.InstrumentUtils.InstrumentMode.{ALL, AT_MOST_ONCE}
 import org.scalatest.flatspec.AnyFlatSpec

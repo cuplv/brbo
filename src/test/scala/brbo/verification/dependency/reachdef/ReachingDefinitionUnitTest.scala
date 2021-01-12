@@ -1,6 +1,6 @@
-package brbo.boundinference.dependencyanalysis.reachingdefinition
+package brbo.verification.dependency.reachdef
 
-import brbo.boundinference.{BasicProcessor, BoundCheckingUnitTest}
+import brbo.verification.{BasicProcessor, BoundCheckingUnitTest}
 import brbo.{StringCompare, TestCaseJavaProgram}
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.analysis.{AnalysisResult, ForwardAnalysisImpl}

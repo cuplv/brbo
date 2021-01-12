@@ -1,4 +1,4 @@
-package brbo.boundinference.dependencyanalysis.reachingdefinition
+package brbo.verification.dependency.reachdef
 
 import org.checkerframework.dataflow.analysis.{ForwardTransferFunction, RegularTransferResult, TransferInput, TransferResult}
 import org.checkerframework.dataflow.cfg.UnderlyingAST

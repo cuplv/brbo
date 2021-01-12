@@ -1,4 +1,4 @@
-package brbo.boundinference
+package brbo.verification
 
 import javax.annotation.processing.SupportedAnnotationTypes
 import org.apache.logging.log4j.LogManager

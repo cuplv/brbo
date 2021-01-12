@@ -1,6 +1,6 @@
-package brbo.boundinference.dependencyanalysis
+package brbo.verification.dependency
 
-import brbo.boundinference.dependencyanalysis.reachingdefinition.{ReachingStore, ReachingTransfer, ReachingValue}
+import brbo.verification.dependency.reachdef.{ReachingStore, ReachingTransfer, ReachingValue}
 import brbo.common.GhostVariableUtils.GhostVariable.Resource
 import brbo.common.{CFGUtils, GhostVariableUtils, TargetMethod}
 import org.apache.logging.log4j.LogManager
@@ -11,7 +11,7 @@ import scala.collection.JavaConverters._
 import scala.collection.immutable.HashSet
 
 object DataDependency {
-  private val logger = LogManager.getLogger("brbo.boundinference.dependencyanalysis.DataDependency")
+  private val logger = LogManager.getLogger("brbo.boundinference.dependency.DataDependency")
 
   private val transfer = new ReachingTransfer()
   private val forwardAnalysisImpl = new ForwardAnalysisImpl[ReachingValue, ReachingStore, ReachingTransfer](transfer)

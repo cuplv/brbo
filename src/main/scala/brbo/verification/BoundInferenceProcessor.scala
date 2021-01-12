@@ -1,4 +1,4 @@
-package brbo.boundinference
+package brbo.verification
 
 import brbo.common.InstrumentUtils.FileFormat.JAVA_FORMAT
 import brbo.common.InstrumentUtils.InstrumentMode.ALL

@@ -1,4 +1,4 @@
-package brbo.boundinference
+package brbo.verification
 
 import brbo.StringCompare
 import brbo.common.Z3Solver

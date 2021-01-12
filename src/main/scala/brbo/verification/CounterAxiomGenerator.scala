@@ -1,4 +1,4 @@
-package brbo.boundinference
+package brbo.verification
 
 import brbo.common.GhostVariableUtils.GhostVariable.Counter
 import brbo.common.{GhostVariableUtils, Z3Solver}

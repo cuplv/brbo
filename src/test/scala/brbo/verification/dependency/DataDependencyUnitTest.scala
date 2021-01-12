@@ -1,7 +1,7 @@
-package brbo.boundinference.dependencyanalysis
+package brbo.verification.dependency
 
 import brbo.{StringCompare, TestCaseJavaProgram}
-import brbo.boundinference.BasicProcessor
+import brbo.verification.BasicProcessor
 import org.apache.logging.log4j.LogManager
 import org.scalatest.flatspec.AnyFlatSpec
 

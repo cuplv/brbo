@@ -1,6 +1,6 @@
 package brbo.common
 
-import brbo.boundinference.BasicProcessor
+import brbo.verification.BasicProcessor
 import brbo.common.InstrumentUtils.AtomicStatementInstrumentation
 import brbo.common.InstrumentUtils.InstrumentMode.InstrumentMode
 import org.apache.logging.log4j.LogManager

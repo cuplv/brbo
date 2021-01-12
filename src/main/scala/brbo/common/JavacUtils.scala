@@ -3,7 +3,7 @@ package brbo.common
 import java.io.{IOException, OutputStream, PrintStream}
 import java.net.URI
 
-import brbo.boundinference.EarlyStopException
+import brbo.verification.EarlyStopException
 import com.sun.tools.javac.main.JavaCompiler
 import com.sun.tools.javac.util.{Context, List, Options}
 import javax.annotation.processing.Processor

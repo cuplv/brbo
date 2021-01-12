@@ -1,7 +1,7 @@
 package brbo.common
 
 import brbo.StringCompare
-import brbo.boundinference.{BasicProcessor, BoundCheckingProcessor, BoundCheckingUnitTest}
+import brbo.verification.{BasicProcessor, BoundCheckingProcessor, BoundCheckingUnitTest}
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta}
 import brbo.common.InvariantInference.BeforeOrAfter.{AFTER, BEFORE}
 import brbo.common.InvariantInference.Locations

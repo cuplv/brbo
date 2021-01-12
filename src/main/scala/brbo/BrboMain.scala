@@ -1,6 +1,6 @@
 package brbo
 
-import brbo.boundinference.BoundInferenceProcessor
+import brbo.verification.BoundInferenceProcessor
 import brbo.common.JavacUtils
 import org.apache.commons.io.FilenameUtils
 import org.apache.logging.log4j.LogManager

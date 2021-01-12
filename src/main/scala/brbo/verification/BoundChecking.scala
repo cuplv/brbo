@@ -1,4 +1,4 @@
-package brbo.boundinference
+package brbo.verification
 
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, Resource}
 import brbo.common.InvariantInference.BeforeOrAfter.{AFTER, BEFORE}

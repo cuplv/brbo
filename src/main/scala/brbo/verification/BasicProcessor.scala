@@ -1,4 +1,4 @@
-package brbo.boundinference
+package brbo.verification
 
 import brbo.common.InstrumentUtils.InstrumentMode.InstrumentMode
 import brbo.common.InstrumentUtils.{AtomicStatementInstrumentation, InstrumentResult}

@@ -1,4 +1,4 @@
-package brbo.boundinference
+package brbo.verification
 
 import brbo.TestCase
 import brbo.common.JavacUtils

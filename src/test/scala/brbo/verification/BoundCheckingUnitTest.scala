@@ -1,7 +1,7 @@
-package brbo.boundinference
+package brbo.verification
 
 import brbo.TestCaseJavaProgram
-import brbo.boundinference.BoundChecking.DeltaCounterPair
+import brbo.verification.BoundChecking.DeltaCounterPair
 import brbo.common.Z3Solver
 import com.microsoft.z3.AST
 import com.sun.source.tree.MethodTree

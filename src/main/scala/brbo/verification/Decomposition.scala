@@ -1,4 +1,4 @@
-package brbo.boundinference
+package brbo.verification
 
 import brbo.common.TargetMethod
 import brbo.common.TypeUtils.BrboType.BrboType
