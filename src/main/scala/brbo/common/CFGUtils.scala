@@ -16,7 +16,7 @@ object CFGUtils {
     val visualizer = new DOTCFGVisualizer
     val args = new java.util.HashMap[java.lang.String, Object]
     args.put("outdir", "./output/cfg".asInstanceOf[Object])
-    args.put("verbose", "true".asInstanceOf[Object])
+    // args.put("verbose", "true".asInstanceOf[Object])
     visualizer.init(args)
     val res = visualizer.visualize(cfg, cfg.getEntryBlock, null)
     visualizer.shutdown()
