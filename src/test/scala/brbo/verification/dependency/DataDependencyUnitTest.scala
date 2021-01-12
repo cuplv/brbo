@@ -1,11 +1,9 @@
 package brbo.verification.dependency
 
-import brbo.{StringCompare, TestCaseJavaProgram}
 import brbo.verification.BasicProcessor
+import brbo.{StringCompare, TestCaseJavaProgram}
 import org.apache.logging.log4j.LogManager
 import org.scalatest.flatspec.AnyFlatSpec
-
-import scala.collection.immutable.HashSet
 
 class DataDependencyUnitTest extends AnyFlatSpec {
   private val logger = LogManager.getLogger(classOf[DataDependencyUnitTest])
@@ -75,23 +73,39 @@ object DataDependencyUnitTest {
       """Set(n)""".stripMargin
 
     val test05: String =
-      """class Test04 {
+      """class Test05 {
         |  void f(int n, int m, int l)
         |  {
         |    int a = 0;
+        |    int b = 0;
         |    int R = 0;
-        |    a = a + n;
-        |    R = R + a;
+        |    while (a > 0) {
+        |      a--;
+        |      b++;
+        |      while (b > 0) {
+        |        b--;
+        |        int i = n - 1;
+        |        while (i > 0) {
+        |          if (a > 0) {
+        |            R = R + 1;
+        |            a--;
+        |            b++;
+        |          }
+        |          i++;
+        |        }
+        |      }
+        |    }
         |  }
         |}""".stripMargin
     val test05ExpectedOutput =
-      """Set(n)""".stripMargin
+      """Set()""".stripMargin
 
     List[TestCaseJavaProgram](
       TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),
       TestCaseJavaProgram("Test02", test02, test02ExpectedOutput),
       TestCaseJavaProgram("Test03", test03, test03ExpectedOutput),
       TestCaseJavaProgram("Test04", test04, test04ExpectedOutput),
+      TestCaseJavaProgram("Test05", test05, test05ExpectedOutput),
     )
   }
 }

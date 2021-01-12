@@ -13,13 +13,13 @@ import scala.collection.immutable.HashSet
 
 object CFGUtils {
   def printPDF(cfg: ControlFlowGraph): Unit = {
-    val viz = new DOTCFGVisualizer
+    val visualizer = new DOTCFGVisualizer
     val args = new java.util.HashMap[java.lang.String, Object]
-    args.put("outdir", "./output/cfg")
-    // args.put("verbose", true)
-    viz.init(args)
-    val res = viz.visualize(cfg, cfg.getEntryBlock, null)
-    viz.shutdown()
+    args.put("outdir", "./output/cfg".asInstanceOf[Object])
+    args.put("verbose", "true".asInstanceOf[Object])
+    visualizer.init(args)
+    val res = visualizer.visualize(cfg, cfg.getEntryBlock, null)
+    visualizer.shutdown()
 
     if (res != null) {
       assert(res.get("dotFileName") != null, "@AssumeAssertion(nullness): specification")

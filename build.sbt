@@ -16,6 +16,8 @@ libraryDependencies += "commons-io" % "commons-io" % "2.5"
 
 libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2"
 
+libraryDependencies += "com.ibm.wala" % "com.ibm.wala.util" % "1.5.5"
+
 // Add tools.jar such that sbt can find it
 unmanagedJars in Compile ~= {
   uj: Classpath =>
