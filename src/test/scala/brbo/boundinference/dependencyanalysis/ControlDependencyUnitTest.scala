@@ -1,4 +1,4 @@
-package brbo.boundinference.dependencyanalysis.reachingdefinition
+package brbo.boundinference.dependencyanalysis
 
 class ControlDependencyUnitTest {
 

@@ -1,6 +1,6 @@
 package brbo.common
 
-import brbo.TestCaseJavaProgram
+import brbo.{StringCompare, TestCaseJavaProgram}
 import brbo.boundinference.BasicProcessor
 import brbo.common.InstrumentUtils.AtomicStatementInstrumentation
 import brbo.common.InstrumentUtils.InstrumentMode.{ALL, AT_MOST_ONCE}
@@ -14,7 +14,7 @@ class InstrumentUtilsUnitTest extends AnyFlatSpec {
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val result = InstrumentUtils.substituteAtomicStatements(targetMethod, AtomicStatementInstrumentation(_ => false, tree => tree.toString), 0, AT_MOST_ONCE)
-        assert(result.result == testCase.expectedOutput, s"Test ${testCase.className} failed!")
+        assert(StringCompare.ignoreWhitespaces(result.result, testCase.expectedOutput), s"Test ${testCase.className} failed!")
     })
   }
 
@@ -23,7 +23,7 @@ class InstrumentUtilsUnitTest extends AnyFlatSpec {
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val result = InstrumentUtils.substituteAtomicStatements(targetMethod, InstrumentUtils.defaultResourceAssignment, 0, AT_MOST_ONCE)
-        assert(result.result == testCase.expectedOutput, s"Test ${testCase.className} failed!")
+        assert(StringCompare.ignoreWhitespaces(result.result, testCase.expectedOutput), s"Test ${testCase.className} failed!")
     })
   }
 
@@ -32,7 +32,7 @@ class InstrumentUtilsUnitTest extends AnyFlatSpec {
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val result = InstrumentUtils.substituteAtomicStatements(targetMethod, InstrumentUtils.defaultResourceAssignment, 0, ALL)
-        assert(result.result == testCase.expectedOutput, s"Test ${testCase.className} failed!")
+        assert(StringCompare.ignoreWhitespaces(result.result, testCase.expectedOutput), s"Test ${testCase.className} failed!")
     })
   }
 }
@@ -352,7 +352,7 @@ object InstrumentUtilsUnitTest {
         |        for (int i = 0; i < n; i++) {
         |            R++;
         |        }
-        |        for (int i = 0; i < n; i++) {
+        |        for (int j = 0; j < n; j++) {
         |            R = R + 3;
         |        }
         |    }
@@ -368,10 +368,10 @@ object InstrumentUtilsUnitTest {
         |    }
         |  }
         |  {// For loop
-        |    int i = 0;
-        |    while (i < n) {
+        |    int j = 0;
+        |    while (j < n) {
         |      R = R + 3;
-        |      i++;
+        |      j++;
         |    }
         |  }
         |}""".stripMargin
@@ -514,7 +514,7 @@ object InstrumentUtilsUnitTest {
         |        for (int i = 0; i < n; i++) {
         |            R++;
         |        }
-        |        for (int i = 0; i < n; i++) {
+        |        for (int j = 0; j < n; j++) {
         |            R = R + 3;
         |        }
         |    }
@@ -530,10 +530,10 @@ object InstrumentUtilsUnitTest {
         |    }
         |  }
         |  {// For loop
-        |    int i = 0;
-        |    while (i < n) {
+        |    int j = 0;
+        |    while (j < n) {
         |      D100 = D100 + 3;
-        |      i++;;
+        |      j++;;
         |    }
         |  }
         |}""".stripMargin

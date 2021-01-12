@@ -20,20 +20,15 @@ class BoundCheckingUnitTest extends AnyFlatSpec {
   "Bound checking" should "succeed" in {
     BoundCheckingUnitTest.boundCheckingTests.foreach({
       case (testCase, solver, boundExpression) =>
-        val basicProcessor = BasicProcessor.run(testCase.className, testCase.inputProgram)
-        basicProcessor.assumeOneClassOneMethod()
-
-        val methodTree: MethodTree = basicProcessor.getMethods.head._1
-        val cfg = basicProcessor.getMethods.head._2
-        val className = basicProcessor.getEnclosingClass(methodTree).get.getSimpleName.toString
+        val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
 
         val deltaCounterPairs = Set[DeltaCounterPair](DeltaCounterPair("D100", "C1"))
         val result = BoundChecking.checkBound(
           solver,
-          className,
-          methodTree,
-          basicProcessor.getLineNumber,
-          cfg,
+          targetMethod.className,
+          targetMethod.methodTree,
+          targetMethod.getLineNumber,
+          targetMethod.cfg,
           deltaCounterPairs,
           boundExpression,
           printModelIfFail = false

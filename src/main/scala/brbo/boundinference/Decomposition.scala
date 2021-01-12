@@ -8,11 +8,11 @@ import org.apache.logging.log4j.LogManager
 class Decomposition(targetMethod: TargetMethod) {
   private val logger = LogManager.getLogger(classOf[Decomposition])
 
-  def computeDependencySet(location: Tree): Map[String, BrboType] = {
+  def computeDependencySet(location: Tree): Set[String] = {
     ???
   }
 
-  def computeModifiedSet(location: Tree): Map[String, BrboType] = {
+  def computeModifiedSet(location: Tree): Set[String] = {
     ???
   }
 

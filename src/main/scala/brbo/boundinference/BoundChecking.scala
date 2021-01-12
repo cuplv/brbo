@@ -5,7 +5,7 @@ import brbo.common.InvariantInference.BeforeOrAfter.{AFTER, BEFORE}
 import brbo.common.InvariantInference.Locations
 import brbo.common.TreeUtils.collectCommands
 import brbo.common.TypeUtils.BrboType.{BrboType, INT}
-import brbo.common.{GhostVariableUtils, InvariantInference, TargetMethod, TreeUtils, Z3Solver}
+import brbo.common._
 import com.microsoft.z3.{AST, Expr}
 import com.sun.source.tree.{AssertTree, MethodTree, Tree}
 import org.apache.logging.log4j.LogManager
@@ -28,11 +28,9 @@ object BoundChecking {
     val methodBody = methodTree.getBody
     assert(methodBody != null)
 
-    val inputVariables: Map[String, BrboType] = TreeUtils.getAllInputVariables(methodTree)
-    logger.debug(s"Input variables: $inputVariables")
-
-    val localVariables: Map[String, BrboType] = TreeUtils.getAllDeclaredVariables(methodBody)
-    logger.debug(s"Local variables: $localVariables")
+    val targetMethod = TargetMethod(className, methodTree, getLineNumber, cfg)
+    val inputVariables = targetMethod.inputVariables
+    val localVariables = targetMethod.localVariables
 
     val resourceVariable: (String, BrboType) = {
       val resourceVariables = localVariables.filter({ case (identifier, _) => GhostVariableUtils.isGhostVariable(identifier, Resource) })
@@ -59,7 +57,6 @@ object BoundChecking {
     }
     logger.info(s"For Z3, we declare these variables in the global scope: $globalScopeVariables")
 
-    val targetMethod = TargetMethod(className, methodTree, getLineNumber, cfg)
     val invariantInference = new InvariantInference(targetMethod)
     val invariants: Set[(AST, AST, AST)] = deltaCounterPairs.map({
       deltaCounterPair =>

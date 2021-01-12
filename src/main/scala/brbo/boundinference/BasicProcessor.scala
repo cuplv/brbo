@@ -126,6 +126,7 @@ class BasicProcessor extends BasicTypeProcessor {
 }
 
 object BasicProcessor {
+  @deprecated
   def run(className: String, sourceFileContents: String): BasicProcessor = {
     val basicProcessor = new BasicProcessor
     JavacUtils.runProcessor(className, sourceFileContents, basicProcessor)
