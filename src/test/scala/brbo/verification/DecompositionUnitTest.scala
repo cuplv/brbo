@@ -1,6 +1,6 @@
 package brbo.verification
 
-import brbo.TestCaseJavaProgram
+import brbo.{StringCompare, TestCaseJavaProgram}
 import brbo.verification.DecompositionUnitTest.taintSetTests
 import brbo.verification.dependency.ControlDependencyUnitTest
 import org.apache.logging.log4j.LogManager
@@ -13,7 +13,8 @@ class DecompositionUnitTest extends AnyFlatSpec {
     taintSetTests.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        println(Decomposition.computeTaintSet(targetMethod).toList.sortWith(_ < _))
+        val result = Decomposition.computeTaintSet(targetMethod).toList.sortWith(_ < _)
+        assert(StringCompare.ignoreWhitespaces(result.toString(), testCase.expectedOutput))
     })
   }
 }

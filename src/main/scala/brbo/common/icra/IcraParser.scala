@@ -25,7 +25,7 @@ class IcraParser(input: String) {
       val indexOfWhen = {
         val indexOfWhen = invariant.indexOf(keywordWhen)
         if (indexOfWhen == -1) {
-          logger.error(s"No invariant is inferred: $invariant")
+          logger.debug(s"No invariant is inferred: $invariant")
           invariant.length
         }
         else indexOfWhen

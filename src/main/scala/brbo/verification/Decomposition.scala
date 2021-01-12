@@ -44,16 +44,16 @@ object Decomposition {
     targetMethod.cfg.getAllNodes.asScala
       .filter({ node => GhostVariableUtils.extractGhostVariableUpdate(node, Resource).isDefined })
       .flatMap({ node =>
-        logger.error(s"Compute taint set for $node")
-        computeTaintSetHelper(node, dataDependency, controlDependency, new HashSet[Node])
+        logger.debug(s"Compute taint set for $node")
+        computeTaintSetDataHelper(node, dataDependency, controlDependency, new HashSet[Node])
       })
       .toSet
   }
 
-  private def computeTaintSetHelper(node: Node,
-                                    dataDependency: Map[Node, Set[ReachingValue]],
-                                    controlDependency: Map[Block, Set[Block]],
-                                    visited: Set[Node]): Set[String] = {
+  private def computeTaintSetDataHelper(node: Node,
+                                        dataDependency: Map[Node, Set[ReachingValue]],
+                                        controlDependency: Map[Block, Set[Block]],
+                                        visited: Set[Node]): Set[String] = {
     if (visited.contains(node)) return new HashSet[String]
 
     val assignmentExpression = node match {
@@ -65,7 +65,7 @@ object Decomposition {
       case Some(definitions) =>
         val usedVariables = CFGUtils.getUsedVariables(assignmentExpression)
         val newDefinitions = definitions.filter(definition => usedVariables.contains(definition.variable))
-        usedVariables ++ computeTaintSetHelperHelper(newDefinitions, dataDependency, controlDependency, visited + node)
+        usedVariables ++ computeTaintSetHelper(newDefinitions, dataDependency, controlDependency, visited + node)
       case None => new HashSet[String]
     }
 
@@ -78,15 +78,8 @@ object Decomposition {
             assert(predecessors.size == 1)
 
             val condition = predecessors.head.getLastNode
-            val usedVariables = CFGUtils.getUsedVariables(condition)
-            logger.error(s"Compute taint set for conditional node $condition (Used variables: $usedVariables)")
-
-            dataDependency.get(condition) match {
-              case Some(definitions) =>
-                val newDefinitions = definitions.filter(definition => usedVariables.contains(definition.variable))
-                usedVariables ++ computeTaintSetHelperHelper(newDefinitions, dataDependency, controlDependency, visited + node)
-              case None => new HashSet[String]
-            }
+            logger.debug(s"Compute taint set for conditional node $node")
+            computeTaintSetControlHelper(condition, dataDependency, controlDependency, visited + node)
         })
       case None => new HashSet[String]
     }
@@ -94,7 +87,39 @@ object Decomposition {
     set1 ++ set2
   }
 
-  private def computeTaintSetHelperHelper(definitions: Iterable[ReachingValue],
+  private def computeTaintSetControlHelper(node: Node,
+                                           dataDependency: Map[Node, Set[ReachingValue]],
+                                           controlDependency: Map[Block, Set[Block]],
+                                           visited: Set[Node]): Set[String] = {
+    if (visited.contains(node)) return new HashSet[String]
+    
+    val usedVariables = CFGUtils.getUsedVariables(node)
+
+    val set1 = dataDependency.get(node) match {
+      case Some(definitions) =>
+        val newDefinitions = definitions.filter(definition => usedVariables.contains(definition.variable))
+        usedVariables ++ computeTaintSetHelper(newDefinitions, dataDependency, controlDependency, visited + node)
+      case None => new HashSet[String]
+    }
+
+    val set2 = controlDependency.get(node.getBlock) match {
+      case Some(blocks) =>
+        blocks.flatMap({
+          block =>
+            assert(block.isInstanceOf[ConditionalBlock], s"Block ${node.getBlock.getUid} control depends on block ${block.getUid}")
+            val predecessors = block.getPredecessors.asScala
+            assert(predecessors.size == 1)
+
+            val condition = predecessors.head.getLastNode
+            computeTaintSetControlHelper(condition, dataDependency, controlDependency, visited + node)
+        })
+      case None => new HashSet[String]
+    }
+
+    set1 ++ set2
+  }
+
+  private def computeTaintSetHelper(definitions: Iterable[ReachingValue],
                                           dataDependency: Map[Node, Set[ReachingValue]],
                                           controlDependency: Map[Block, Set[Block]],
                                           visited: Set[Node]): Set[String] = {
@@ -102,8 +127,8 @@ object Decomposition {
       definition =>
         definition.node match {
           case Some(n) =>
-            logger.error(s"Compute taint set - Recursive call to $n")
-            computeTaintSetHelper(n, dataDependency, controlDependency, visited)
+            logger.debug(s"Compute taint set - Recursive call to $n")
+            computeTaintSetDataHelper(n, dataDependency, controlDependency, visited)
           case None => HashSet[String](definition.variable) // This definition comes from an input variable
         }
     }).toSet
