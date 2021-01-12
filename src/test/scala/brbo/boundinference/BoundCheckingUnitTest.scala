@@ -85,7 +85,7 @@ object BoundCheckingUnitTest {
       |  }
       |}""".stripMargin
 
-  private val test03 = // The resource is updated at 2 places
+  val test03: String = // The resource is updated at 2 places
     """class Test03 {
       |  void f(int n)
       |  {
@@ -105,7 +105,7 @@ object BoundCheckingUnitTest {
       |  }
       |}""".stripMargin
 
-  private val test04 = // The resource increases and decreases
+  val test04: String = // The resource increases and decreases
     """class Test04 {
       |  void f(int n)
       |  {

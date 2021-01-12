@@ -7,5 +7,12 @@ case class ReachingValue(node: Option[Node], variable: String) extends AbstractV
   override def leastUpperBound(other: ReachingValue): ReachingValue = {
     ???
   }
+
+  override def toString: String = {
+    node match {
+      case Some(n) => s"`$variable` in `${node.get}`"
+      case None => s"`$variable` (input)"
+    }
+  }
 }
 

@@ -26,24 +26,8 @@ class ReachingTransfer
 
   override def visitAssignment(n: AssignmentNode, p: TransferInput[ReachingValue, ReachingStore]): TransferResult[ReachingValue, ReachingStore] = {
     val inputDefinitions = super.visitAssignment(n, p).getRegularStore.definitions
-    val usedVariables = getUsedVariables(n.getExpression)
-    val newDefinitions =
-      inputDefinitions.filterNot({
-        value => usedVariables.contains(value.variable)
-      }) + ReachingValue(Some(n), n.getTarget.toString)
+    val definedVariable = n.getTarget.toString
+    val newDefinitions = inputDefinitions.filter(value => value.variable != definedVariable) + ReachingValue(Some(n), definedVariable)
     new RegularTransferResult(null, ReachingStore(newDefinitions))
-  }
-
-  private def getUsedVariables(n: Node): Set[String] = {
-    n match {
-      case n: LocalVariableNode => HashSet(n.getName)
-      case n: UnaryOperationNode => getUsedVariables(n.getOperand)
-      case n: TernaryExpressionNode =>
-        getUsedVariables(n.getConditionOperand) ++ getUsedVariables(n.getThenOperand) ++ getUsedVariables(n.getElseOperand)
-      case n: BinaryOperationNode =>
-        getUsedVariables(n.getLeftOperand) ++ getUsedVariables(n.getRightOperand)
-      case _: ValueLiteralNode => new HashSet[String]
-      case _ => throw new Exception(s"Reaching definition analysis - Node $n (type: ${n.getClass}) is not yet supported")
-    }
   }
 }
