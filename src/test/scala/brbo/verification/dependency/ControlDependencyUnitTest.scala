@@ -1,7 +1,6 @@
 package brbo.verification.dependency
 
 import brbo.verification.BasicProcessor
-import brbo.verification.dependency.ControlDependencyUnitTest.controlDependencyUnitTest
 import brbo.{StringCompare, TestCaseJavaProgram}
 import org.apache.logging.log4j.LogManager
 import org.scalatest.flatspec.AnyFlatSpec
@@ -10,7 +9,7 @@ class ControlDependencyUnitTest extends AnyFlatSpec {
   private val logger = LogManager.getLogger(classOf[ControlDependencyUnitTest])
 
   "Control dependency analysis" should "be correct" in {
-    controlDependencyUnitTest.foreach({
+    ControlDependencyUnitTest.controlDependencyUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val result = {

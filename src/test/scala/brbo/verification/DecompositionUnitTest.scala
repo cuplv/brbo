@@ -1,8 +1,6 @@
 package brbo.verification
 
 import brbo.{StringCompare, TestCaseJavaProgram}
-import brbo.verification.DecompositionUnitTest.taintSetTests
-import brbo.verification.dependency.ControlDependencyUnitTest
 import org.apache.logging.log4j.LogManager
 import org.scalatest.flatspec.AnyFlatSpec
 
@@ -10,7 +8,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
   private val logger = LogManager.getLogger(classOf[CounterAxiomGeneratorUnitTest])
 
   "Taint set computation" should "be correct" in {
-    taintSetTests.foreach({
+    DecompositionUnitTest.taintSetTests.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val result = Decomposition.computeTaintSet(targetMethod).toList.sortWith(_ < _)

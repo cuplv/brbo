@@ -2,6 +2,7 @@ package brbo.verification
 
 import brbo.common.GhostVariableUtils.GhostVariable.Resource
 import brbo.common.{CFGUtils, GhostVariableUtils, TargetMethod}
+import brbo.verification.Decomposition.Subprogram
 import brbo.verification.dependency.reachdef.ReachingValue
 import brbo.verification.dependency.{ControlDependency, DataDependency}
 import com.sun.source.tree.Tree
@@ -15,7 +16,7 @@ import scala.collection.immutable.HashSet
 class Decomposition(inputMethod: TargetMethod) {
   private val logger = LogManager.getLogger(classOf[Decomposition])
 
-  def computeTaintSet(location: Iterable[Tree]): Set[String] = {
+  def computeTaintSet(location: Subprogram): Set[String] = {
     val targetMethod = BasicProcessor.getTargetMethod(inputMethod.className, extractSubprogram(location))
     val dataDependency = DataDependency.computeDataDependency(targetMethod)
     val controlDependency = ControlDependency.computeControlDependency(targetMethod)
@@ -23,12 +24,28 @@ class Decomposition(inputMethod: TargetMethod) {
     ???
   }
 
-  def computeModifiedSet(location: Iterable[Tree]): Set[String] = {
+  def computeModifiedSet(location: Subprogram): Set[String] = {
     ???
   }
 
-  def extractSubprogram(location: Iterable[Tree]): String = {
+  def extractSubprogram(location: Subprogram): String = {
     ???
+  }
+
+  def enlarge(location: Subprogram): String = {
+    ???
+  }
+
+  def merge(location1: Subprogram, location2: Subprogram): String = {
+    ???
+  }
+
+  def interfere(program1: Subprogram, program2: Subprogram): Boolean = {
+    val modifiedSet1 = computeModifiedSet(program1)
+    val taintSet1 = computeTaintSet(program1)
+    val modifiedSet2 = computeModifiedSet(program2)
+    val taintSet2 = computeTaintSet(program2)
+    modifiedSet1.intersect(taintSet2).nonEmpty || modifiedSet2.intersect(taintSet1).nonEmpty
   }
 }
 
@@ -48,6 +65,16 @@ object Decomposition {
         computeTaintSetDataHelper(node, dataDependency, controlDependency, new HashSet[Node])
       })
       .toSet
+  }
+
+  def computeModifiedSet(targetMethod: TargetMethod): Set[String] = {
+    targetMethod.cfg.getAllNodes.asScala.foldLeft(new HashSet[String])({
+      (acc, node) =>
+        node match {
+          case assignmentNode: AssignmentNode => acc + assignmentNode.getTarget.toString
+          case _ => acc
+        }
+    })
   }
 
   private def computeTaintSetDataHelper(node: Node,
@@ -92,7 +119,7 @@ object Decomposition {
                                            controlDependency: Map[Block, Set[Block]],
                                            visited: Set[Node]): Set[String] = {
     if (visited.contains(node)) return new HashSet[String]
-    
+
     val usedVariables = CFGUtils.getUsedVariables(node)
 
     val set1 = dataDependency.get(node) match {
@@ -120,9 +147,9 @@ object Decomposition {
   }
 
   private def computeTaintSetHelper(definitions: Iterable[ReachingValue],
-                                          dataDependency: Map[Node, Set[ReachingValue]],
-                                          controlDependency: Map[Block, Set[Block]],
-                                          visited: Set[Node]): Set[String] = {
+                                    dataDependency: Map[Node, Set[ReachingValue]],
+                                    controlDependency: Map[Block, Set[Block]],
+                                    visited: Set[Node]): Set[String] = {
     definitions.flatMap({
       definition =>
         definition.node match {
@@ -133,4 +160,6 @@ object Decomposition {
         }
     }).toSet
   }
+
+  case class Subprogram(location: Iterable[Tree])
 }
