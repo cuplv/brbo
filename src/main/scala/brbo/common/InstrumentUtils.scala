@@ -354,6 +354,8 @@ object InstrumentUtils {
         |#define static_assert __VERIFIER_assert
         |#define assume __VERIFIER_assume
         |#define LARGE_INT 1000000
+        |#define true 1
+        |#define false 0
         |void __VERIFIER_assert(int cond) {
         |  if (!(cond)) {
         |    ERROR: __VERIFIER_error();
@@ -365,7 +367,21 @@ object InstrumentUtils {
         |    ERROR: __VERIFIER_error();
         |  }
         |  return;
-        |}""".stripMargin
+        |}
+        |int ndInt() {
+        |  return __VERIFIER_nondet_int();
+        |}
+        |int ndBool() {
+        |  int x = ndInt();
+        |  assume(x == 1 || x == 0);
+        |  return x;
+        |}
+        |int ndInt2(int lower, int upper) {
+        |  int x = ndInt();
+        |  assume(lower <= x && x <= upper);
+        |  return x;
+        |}
+        |""".stripMargin
 
     val methodSignature = {
       // TODO: A very hacky way to get the first line of a method definition
@@ -389,8 +405,8 @@ object InstrumentUtils {
           val endIndex = methodSignature.indexOf("(")
           s"${methodSignature.substring(0, startIndex + 1)}main${methodSignature.substring(endIndex)}"
         }
-        val replaceAssertOne = newMethodBody.replace("assert(true)", "assert(1)")
-        s"$cFilePrefix\n$replaceMethodSignature\n$replaceAssertOne"
+        // val replaceAssertOne = newMethodBody.replace("assert(true)", "assert(1)")
+        s"$cFilePrefix\n$replaceMethodSignature\n$newMethodBody"
     }
   }
 

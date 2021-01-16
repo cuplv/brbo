@@ -1,7 +1,5 @@
 package brbo.verification
 
-import brbo.common.InstrumentUtils.InstrumentMode.InstrumentMode
-import brbo.common.InstrumentUtils.{AtomicStatementInstrumentation, InstrumentResult}
 import brbo.common.{InstrumentUtils, JavacUtils, TargetMethod}
 import com.sun.source.tree.{ClassTree, CompilationUnitTree, MethodTree, Tree}
 import com.sun.source.util.{SourcePositions, TreePathScanner, Trees}
@@ -12,7 +10,7 @@ import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.UnderlyingAST.CFGMethod
 import org.checkerframework.dataflow.cfg.builder.CFGBuilder
-import org.checkerframework.javacutil.BasicTypeProcessor
+import org.checkerframework.javacutil.{BasicTypeProcessor, TreeUtils}
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable.HashMap
@@ -123,11 +121,15 @@ class BasicProcessor extends BasicTypeProcessor {
   def insertDeclarationAtEntry(): String = {
     ???
   }
+
+  def getEnclosingOfKind(tree: Tree, kind: Tree.Kind): Tree = {
+    val path = trees.get.getPath(rootTree.get, tree)
+    TreeUtils.enclosingOfKind(path, kind)
+  }
 }
 
 object BasicProcessor {
-  @deprecated
-  def run(className: String, sourceFileContents: String): BasicProcessor = {
+  private def run(className: String, sourceFileContents: String): BasicProcessor = {
     val basicProcessor = new BasicProcessor
     JavacUtils.runProcessor(className, sourceFileContents, basicProcessor)
     basicProcessor
@@ -142,6 +144,6 @@ object BasicProcessor {
   def getTargetMethod(className: String, sourceFileContents: String): TargetMethod = {
     val processor = run(className, sourceFileContents)
     processor.assumeOneClassOneMethod()
-    TargetMethod(className, processor.getMethods.head._1, processor.getLineNumber, processor.getMethods.head._2)
+    TargetMethod(className, processor.getMethods.head._1, processor.getLineNumber, processor.getMethods.head._2, processor.getEnclosingOfKind)
   }
 }

@@ -16,19 +16,15 @@ object BoundChecking {
   private val logger = LogManager.getLogger("brbo.boundinference.BoundChecking")
 
   def checkBound(solver: Z3Solver,
-                 className: String,
-                 methodTree: MethodTree,
-                 getLineNumber: Tree => Int,
-                 cfg: ControlFlowGraph,
+                 targetMethod: TargetMethod,
                  deltaCounterPairs: Set[DeltaCounterPair],
                  boundExpression: AST,
                  printModelIfFail: Boolean): Boolean = {
-    logger.info(s"Verifying bound $boundExpression in method ${methodTree.getName} of class $className")
+    logger.info(s"Verifying bound $boundExpression in method ${targetMethod.methodTree.getName} of class $targetMethod.className")
 
-    val methodBody = methodTree.getBody
+    val methodBody = targetMethod.methodTree.getBody
     assert(methodBody != null)
 
-    val targetMethod = TargetMethod(className, methodTree, getLineNumber, cfg)
     val inputVariables = targetMethod.inputVariables
     val localVariables = targetMethod.localVariables
 

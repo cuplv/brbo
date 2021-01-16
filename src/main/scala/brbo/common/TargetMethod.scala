@@ -17,7 +17,8 @@ import scala.collection.immutable.HashMap
 case class TargetMethod(className: String,
                         methodTree: MethodTree,
                         getLineNumber: Tree => Int,
-                        cfg: ControlFlowGraph) {
+                        cfg: ControlFlowGraph,
+                        enclosingTree: (Tree, Tree.Kind) => Tree) {
   private val logger = LogManager.getLogger(classOf[TargetMethod])
 
   val inputVariables: Map[String, BrboType] = TreeUtils.getAllInputVariables(methodTree)
@@ -27,4 +28,11 @@ case class TargetMethod(className: String,
     if (methodTree.getBody == null) new HashMap[String, BrboType]
     else TreeUtils.getAllDeclaredVariables(methodTree.getBody)
   logger.debug(s"[Method ${methodTree.getName}] Local variables: $localVariables")
+
+  def getMinimalEnclosingLoop(tree: Tree): Tree = {
+    val loop1 = enclosingTree(tree, Tree.Kind.DO_WHILE_LOOP)
+    val loop2 = enclosingTree(tree, Tree.Kind.FOR_LOOP)
+    val loop3 = enclosingTree(tree, Tree.Kind.WHILE_LOOP)
+    ???
+  }
 }

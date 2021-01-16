@@ -12,10 +12,8 @@ class CounterAxiomGeneratorUnitTest extends AnyFlatSpec {
   "Generating counter map" should "be correct" in {
     BoundCheckingUnitTest.counterGenerationTests.foreach({
       testCase =>
-        val basicProcessor = BasicProcessor.run(testCase.className, testCase.inputProgram)
-        basicProcessor.assumeOneClassOneMethod()
-
-        val methodTree: MethodTree = basicProcessor.getMethods.head._1
+        val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
+        val methodTree: MethodTree = targetMethod.methodTree
         val result = {
           val result = CounterAxiomGenerator.generateCounterMap(methodTree.getBody)
           result.toList.sortWith({
@@ -29,10 +27,8 @@ class CounterAxiomGeneratorUnitTest extends AnyFlatSpec {
   "Generating counter axioms" should "output correct predicates" in {
     BoundCheckingUnitTest.counterAxiomsTests.foreach({
       testCase =>
-        val basicProcessor = BasicProcessor.run(testCase.className, testCase.inputProgram)
-        basicProcessor.assumeOneClassOneMethod()
-
-        val methodTree: MethodTree = basicProcessor.getMethods.head._1
+        val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
+        val methodTree: MethodTree = targetMethod.methodTree
         val solver = new Z3Solver
         val result = CounterAxiomGenerator.generateCounterAxioms(solver, methodTree.getBody)
         assert(StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput))
