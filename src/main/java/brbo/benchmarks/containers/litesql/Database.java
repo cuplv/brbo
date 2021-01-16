@@ -2,55 +2,52 @@ package brbo.benchmarks.containers.litesql;
 
 import brbo.benchmarks.Common;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-
 public abstract class Database extends Common {
-  void upgradeTable(List<Integer> oldFields, List<Integer> newFields) {
-    int r = 0;
+  void upgradeTable(int oldFields, int newFields) {
+    int R = 0;
+    assert ((oldFields < 0 || newFields < 0) || R <= (oldFields + newFields));
 
-    List<Integer> toAdd = new ArrayList<>();
-    toAdd.addAll(newFields);
-    Iterator<Integer> iterator = oldFields.iterator();
-    while (iterator.hasNext()) {
-      Integer element = iterator.next();
+    int toAdd = 0;
+    toAdd += newFields;
+    int iterator = oldFields;
+    while (iterator > 0) {
+      iterator--;
       if (ndBool()) {
-        toAdd.remove(element);
+        toAdd--;
       }
     }
 
-    List<Integer> commonFields = new ArrayList<>();
-    Iterator<Integer> iterator1 = oldFields.iterator();
-    while (iterator1.hasNext()) {
-      Integer element1 = iterator1.next();
+    int commonFields = 0;
+    int iterator1 = oldFields;
+    while (iterator1 > 0) {
+      iterator1--;
       if (ndBool()) {
-        commonFields.add(element1);
+        commonFields++;
       }
     }
 
-    Iterator<Integer> iterator2 = toAdd.iterator();
-    while (iterator2.hasNext()) {
-      Integer element3 = iterator2.next();
+    int iterator2 = toAdd;
+    while (iterator2 > 0) {
+      iterator2--;
     }
 
-    List<Integer> cols = new ArrayList<>();
-    List<Integer> colNames = new ArrayList<>();
-
-    Iterator<Integer> iterator3 = commonFields.iterator();
-    while (iterator3.hasNext()) {
-      Integer element4 = iterator3.next();
-      cols.add(element4);
-      r = r + 1;
-      colNames.add(element4);
+    int cols = 0;
+    int colNames = 0;
+    int iterator3 = commonFields;
+    while (iterator3 > 0) {
+      iterator3--;
+      cols++;
+      R = R + 1;
+      colNames++;
     }
 
-    Iterator<Integer> iterator4 = toAdd.iterator();
-    while (iterator4.hasNext()) {
-      Integer element5 = iterator4.next();
-      cols.add(element5);
-      r = r + 1;
-      colNames.add(element5);
+    int iterator4 = toAdd;
+    while (iterator4 > 0) {
+      iterator4--;
+      cols++;
+      R = R + 1;
+      colNames++;
     }
+    // Yes; Yes ; Yes
   }
 }

@@ -2,27 +2,25 @@ package brbo.benchmarks.containers.stac;
 
 import brbo.benchmarks.Common;
 
-import java.util.*;
-
 public abstract class OutputHandler extends Common {
-  void addResultHelper(Map<Integer, Integer> map) {
-    int r = 0;
+  void addResultHelper(int map) {
+    int R = 0;
+    assert (map < 0 || R <= map);
 
-    Map<Integer, List<Integer>> results = new HashMap<>();
-    Iterator<Map.Entry<Integer, Integer>> iterator = map.entrySet().iterator();
-    while (iterator.hasNext()) {
-      Map.Entry<Integer, Integer> entry = iterator.next();
-      Integer fileName = entry.getKey();
-      Integer result = entry.getValue();
-      if (results.containsKey(fileName)) {
-        List<Integer> list = results.get(fileName);
-        list.add(result);
-        r = r + 1;
+    int iterator = map;
+    while (iterator > 0) {
+      int entry = ndInt(1, iterator);
+      iterator -= entry;
+      if (ndBool()) {
+        int list = ndInt();
+        list++; // Initial: The loop
+        R = R + 1;
       } else {
-        List<Integer> list = new ArrayList<>();
-        list.add(result);
-        results.put(fileName, list);
+        int list = 0;
+        list++; // Initial: The loop
+        R = R + 1;
       }
     }
+    // Yes; Yes; Yes
   }
 }

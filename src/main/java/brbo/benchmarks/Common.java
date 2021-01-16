@@ -12,6 +12,14 @@ public abstract class Common {
 
   /**
    *
+   * @param lower
+   * @param upper
+   * @return Return a non-deterministic integer in [lower, upper]
+   */
+  public abstract int ndInt(int lower, int upper);
+
+  /**
+   *
    * @return Non-deterministic boolean
    */
   public abstract boolean ndBool();

@@ -7,91 +7,85 @@ import java.util.Iterator;
 import java.util.List;
 
 public abstract class LitesqlGenCpp1 extends Common {
-  void writeObjRelationHandles(List<Handle> handles) {
-    int r = 0;
+  void writeObjRelationHandles(int handles) {
+    int R = 0;
+    assert (handles < 0 || R <= (1));
 
-    Iterator<Handle> iterator = handles.iterator();
-    while (iterator.hasNext()) {
-      Handle handle = iterator.next();
-      List<Integer> params = new ArrayList<>();
-      params.add(1);
-      r = r + 1;
+    int iterator = handles;
+    while (iterator > 0) {
+      int handle = ndInt(1, iterator);
+      iterator -= handle;
 
-      List<Integer> destObjects = handle.destObjects;
+      int params = 0;
+      params++;
+      R = R + 1;
 
-      Iterator<Integer> iterator1 = destObjects.iterator();
-      while (iterator1.hasNext()) {
-        Integer o = iterator1.next();
-        params.add(o);
-        r = r + 1;
+      int destObjects = ndInt(1, handle);
+      int iterator1 = destObjects;
+      while (iterator1 > 0) {
+        iterator1--;
+        params++;
+        R = R + 1;
       }
 
-      Relation rel = handle.relation;
-      List<Integer> fields = rel.fields;
-      Iterator<Integer> iterator2 = fields.iterator();
-      while (iterator2.hasNext()) {
-        Integer o2 = iterator2.next();
-        params.add(o2);
-        r = r + 1;
+      int rel = handle - destObjects;
+      int fields = rel;
+      int iterator2 = fields;
+      while (iterator2 > 0) {
+        iterator2--;
+        params++;
+        R = R + 1;
       }
-      r = r + (-params.size());
-      params.clear();
+      R = R + (-params);
+      params = 0;
 
-      params.add(1);
-      r = r + 1;
-      params.add(1);
-      r = r + 1;
+      params++;
+      R = R + 1;
+      params++;
+      R = R + 1;
 
       if (ndBool()) {
-        r = r + (-params.size());
-        params.clear();
+        R = R + (-params);
+        params = 0;
 
-        params.add(1);
-        r = r + 1;
-        params.add(1);
-        r = r + 1;
-        params.add(1);
-        r = r + 1;
+        params++;
+        R = R + 1;
+        params++;
+        R = R + 1;
+        params++;
+        R = R + 1;
       } else {
         if (ndBool()) {
-          Iterator<Integer> iterator3 = destObjects.iterator();
-          while (iterator3.hasNext()) {
-            Integer o2 = iterator3.next();
-            r = r + (-params.size());
-            params.clear();
+          int iterator3 = destObjects;
+          while (iterator3 > 0) {
+            iterator3--;
+            R = R + (-params);
+            params = 0;
 
-            params.add(1);
-            r = r + 1;
-            params.add(1);
-            r = r + 1;
-            params.add(1);
-            r = r + 1;
+            params++;
+            R = R + 1;
+            params++;
+            R = R + 1;
+            params++;
+            R = R + 1;
           }
         } else {
-          Iterator<Integer> iterator4 = destObjects.iterator();
-          while (iterator4.hasNext()) {
-            Integer o3 = iterator4.next();
-            r = r + (-params.size());
-            params.clear();
+          int iterator4 = destObjects;
+          while (iterator4 > 0) {
+            iterator4--;
+            R = R + (-params);
+            params = 0;
 
-            params.add(1);
-            r = r + 1;
-            params.add(1);
-            r = r + 1;
-            params.add(1);
-            r = r + 1;
+            params++;
+            R = R + 1;
+            params++;
+            R = R + 1;
+            params++;
+            R = R + 1;
           }
         }
       }
     }
-  }
-
-  class Handle {
-    Relation relation;
-    List<Integer> destObjects;
-  }
-
-  class Relation {
-    List<Integer> fields;
+    // ?; ?; ?
   }
 }

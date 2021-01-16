@@ -1,4 +1,4 @@
-package brbo.benchmarks.archive.containers.litesql;
+package brbo.benchmarks.containers.litesql;
 
 import brbo.benchmarks.Common;
 
@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-public abstract class LitesqlGenCpp2 extends Common {
+public abstract class LitesqlGenCpp2Arc extends Common {
   void writeRelMethods(List<Integer> related, List<Integer> fields) {
     int r = 0;
 

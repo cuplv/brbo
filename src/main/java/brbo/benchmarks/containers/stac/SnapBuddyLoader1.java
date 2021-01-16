@@ -2,32 +2,30 @@ package brbo.benchmarks.containers.stac;
 
 import brbo.benchmarks.Common;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-
 public abstract class SnapBuddyLoader1 extends Common {
-  void getPhotos(Map<Integer, List<Integer>> lines) {
-    int r = 0;
+  void getPhotos(int lines) {
+    int R = 0;
+    assert (lines < 0 || R <= lines);
 
-    List<List<Integer>> photos = new ArrayList<>();
-    Iterator<Map.Entry<Integer, List<Integer>>> iterator = lines.entrySet().iterator();
-    while (iterator.hasNext()) {
-      Map.Entry<Integer, List<Integer>> entry = iterator.next();
-      List<Integer> filters = new ArrayList<>();
-      List<Integer> filterIds = entry.getValue();
-      Iterator<Integer> iterator1 = filterIds.iterator();
-      while (iterator1.hasNext()) {
-        Integer filter = iterator1.next();
+    int photos = 0;
+    int iterator = lines;
+    while (iterator > 0) {
+      int entry = ndInt(4, iterator);
+      iterator -= entry;
+      int filters = 0;
+      int filterIds = entry - 4;
+      int iterator1 = filterIds;
+      while (iterator1 > 0) {
+        iterator1--;
         if (ndBool()) {
-          filters.add(filter);
-          r = r + 1;
+          filters++;
+          R = R + 1; // Initial AST: The loop body of the inner loop
         }
       }
       if (ndBool()) {
-        photos.add(filters);
+        photos++;
       }
     }
+    // Yes; Yes; Yes
   }
 }

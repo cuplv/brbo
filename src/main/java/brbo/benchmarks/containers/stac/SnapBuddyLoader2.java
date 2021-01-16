@@ -2,48 +2,47 @@ package brbo.benchmarks.containers.stac;
 
 import brbo.benchmarks.Common;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-
 public abstract class SnapBuddyLoader2 extends Common {
-  void getPhotos(Map<List<Integer>, List<Integer>> lines) {
-    int r = 0;
+  void getPhotos(int lines) {
+    int R = 0;
+    assert (lines < 0 || R <= lines);
 
-    List<List<Integer>> photoIdList = new ArrayList<>();
-    List<List<Integer>> friendIdList = new ArrayList<>();
-    Iterator<Map.Entry<List<Integer>, List<Integer>>> iterator = lines.entrySet().iterator();
-    while (iterator.hasNext()) {
-      Map.Entry<List<Integer>, List<Integer>> entry = iterator.next();
+    int photoIdList = 0;
+    int friendIdList = 0;
 
-      List<Integer> photoIds = new ArrayList<>();
-      List<Integer> photoIdentities = entry.getKey();
-      Iterator<Integer> iterator1 = photoIdentities.iterator();
-      while (iterator1.hasNext()) {
-        Integer photoId = iterator1.next();
+    int iterator = lines;
+    while (iterator > 0) {
+      int entry = ndInt(2, iterator);
+      iterator -= entry;
+
+      int photoIds = 0;
+      int photoIdentities = ndInt(1, entry);
+      int iterator1 = entry;
+      while (iterator1 > 0) {
+        iterator1--;
         if (ndBool()) {
-          photoIds.add(photoId);
-          r = r + 1;
+          photoIds++;
+          R = R + 1;
         }
       }
       if (ndBool()) {
-        photoIdList.add(photoIds);
+        photoIdList++;
       }
 
-      List<Integer> friendIds = new ArrayList<>();
-      List<Integer> friendIdentities = entry.getValue();
-      Iterator<Integer> iterator2 = friendIdentities.iterator();
-      while (iterator2.hasNext()) {
-        Integer friendId = iterator2.next();
+      int friendIds = 0;
+      int friendIdentities = entry - photoIdentities;
+      int iterator2 = friendIdentities;
+      while (iterator2 > 0) {
+        iterator2--;
         if (ndBool()) {
-          friendIds.add(friendId);
-          r = r + 1;
+          friendIds++;
+          R = R + 1;
         }
       }
       if (ndBool()) {
-        friendIdList.add(friendIds);
+        friendIdList++;
       }
     }
+    // No (Imprecise due to interference); No (Same as ICRA); No (Cannot verify complex invariants inside loops)
   }
 }

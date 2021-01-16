@@ -3,26 +3,23 @@ package brbo.benchmarks.containers.stac;
 import brbo.benchmarks.Common;
 
 public abstract class TemplateEngine extends Common {
-  void replaceTagsBuilder(String text) {
-    int r = 0;
-    assert (r <= text.length());
+  void replaceTagsBuilder(int text) {
+    int R = 0;
+    assert (text < 0 || R <= text);
 
     int linePointer = 0;
     int startTagLocation = 0;
     int endTagLocation = 0;
-    StringBuilder stringBuilder = new StringBuilder();
-    while (endTagLocation < text.length() - 1) {
-      startTagLocation = ndInt();
-      assume(startTagLocation > endTagLocation && startTagLocation < text.length());
-      endTagLocation = ndInt();
-      assume(startTagLocation < endTagLocation && endTagLocation < text.length());
-      String string = text.substring(linePointer, startTagLocation);
-      stringBuilder.append(string);
-      r = r + string.length();
+    int stringBuilder = 0;
+    while (endTagLocation < text - 1) {
+      startTagLocation = ndInt(endTagLocation + 1, text - 1);
+      endTagLocation = ndInt(startTagLocation + 1, text - 1);
+      stringBuilder += startTagLocation - linePointer;
+      R = R + startTagLocation - linePointer;
       linePointer = endTagLocation;
     }
-    String string = text.substring(linePointer, text.length());
-    stringBuilder.append(string);
-    r = r + string.length();
+    stringBuilder += text - linePointer;
+    R = R + text - linePointer;
   }
+  // No (Imprecise); Yes; Yes (Same as Brbo)
 }
