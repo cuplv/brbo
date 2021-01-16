@@ -9,7 +9,7 @@ public abstract class OutputHandler extends Common {
 
     int iterator = map;
     while (iterator > 0) {
-      int entry = ndInt(1, iterator);
+      int entry = ndInt2(1, iterator);
       iterator -= entry;
       if (ndBool()) {
         int list = ndInt();

@@ -16,7 +16,7 @@ public abstract class Common {
    * @param upper
    * @return Return a non-deterministic integer in [lower, upper]
    */
-  public abstract int ndInt(int lower, int upper);
+  public abstract int ndInt2(int lower, int upper);
 
   /**
    *
