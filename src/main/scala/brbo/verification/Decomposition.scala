@@ -51,7 +51,7 @@ class Decomposition(inputMethod: TargetMethod) {
               case Some(updateNode) =>
                 updateNode.update match {
                   case _: LiteralTree =>
-                    // The initial subprogram is the minimal enclosing loop
+                    // The initial subprogram is the minimal enclosing loop when `R` is updated by a constant
                     val subprogram = {
                       inputMethod.getMinimalEnclosingLoop(statement) match {
                         case Some(enclosingLoop) => enclosingLoop
@@ -88,18 +88,49 @@ class Decomposition(inputMethod: TargetMethod) {
   }
 
   def merge(subprogram1: Subprogram, subprogram2: Subprogram): Subprogram = {
-    val minimalEnclosingTree = subprogram2.minimalEnclosingTree
-
-    var p = inputMethod.getPath(subprogram1.astNodes.head)
-    while (p != null) {
-      val leaf: Tree = p.getLeaf
-      assert(leaf != null)
-      if (leaf == minimalEnclosingTree)
-        return Subprogram(List(leaf.asInstanceOf[StatementTree]))
-      p = p.getParentPath
+    (subprogram1.minimalEnclosingBlock, subprogram2.minimalEnclosingBlock) match {
+      case (Some(minimalEnclosingBlock1), Some(minimalEnclosingBlock2))
+        if minimalEnclosingBlock1 == minimalEnclosingBlock2 =>
+        val head = {
+          val head1 = minimalEnclosingBlock1.getStatements.indexOf(subprogram1.astNodes.head)
+          val head2 = minimalEnclosingBlock1.getStatements.indexOf(subprogram2.astNodes.head)
+          assert(head1 != -1 && head2 != -1)
+          if (head1 <= head2) head1 else head2
+        }
+        val last = {
+          val last1 = minimalEnclosingBlock1.getStatements.indexOf(subprogram1.astNodes.last)
+          val last2 = minimalEnclosingBlock1.getStatements.indexOf(subprogram2.astNodes.last)
+          assert(last1 != -1 && last2 != -1)
+          if (last1 >= last2) last1 else last2
+        }
+        return Subprogram(minimalEnclosingBlock1.getStatements.asScala.slice(head, last + 1).toList)
+      case _ =>
+        var p = inputMethod.getPath(subprogram1.astNodes.head)
+        while (p != null) {
+          val leaf: Tree = p.getLeaf
+          assert(leaf != null)
+          val allTrees = TreeUtils.collectTrees(leaf.asInstanceOf[StatementTree])
+          if (subprogram2.innerTrees.subsetOf(allTrees)) {
+            leaf match {
+              case blockTree: BlockTree =>
+                val statements = blockTree.getStatements.asScala.toList
+                val statements2 = statements.filter({
+                  statement =>
+                    val trees = TreeUtils.collectTrees(statement)
+                    trees.intersect(subprogram1.innerTrees).nonEmpty || trees.intersect(subprogram2.innerTrees).nonEmpty
+                })
+                val startIndex = statements.indexOf(statements2.head)
+                val endIndex = statements.indexOf(statements2.last)
+                assert(startIndex != -1 && endIndex != -1)
+                return Subprogram(statements.slice(startIndex, endIndex + 1))
+              case _ => return Subprogram(List(leaf.asInstanceOf[StatementTree]))
+            }
+          }
+          p = p.getParentPath
+        }
     }
 
-    throw new Exception(s"Unable to merge $subprogram1 and $subprogram2\nMinimal enclosing tree of Subprogram2 is $minimalEnclosingTree")
+    throw new Exception(s"Unable to merge $subprogram1 and $subprogram2")
   }
 
   def eliminateEnvironmentInterference(subprograms: Subprograms): Subprograms = {
@@ -126,33 +157,36 @@ class Decomposition(inputMethod: TargetMethod) {
     assert(subprograms.programs.contains(subprogram))
 
     val headAstNode = subprogram.astNodes.head
-    val newAstNodes: List[Tree] = inputMethod.getPath(subprogram.minimalEnclosingTree).getParentPath.getLeaf match {
-      case null =>
-        logger.error(s"Enlarging but there is no minimal enclosing tree for minimal enclosing tree ${subprogram.minimalEnclosingTree}")
-        List(headAstNode)
-      case minimalEnclosingTree2 =>
-        minimalEnclosingTree2 match {
-          case blockTree: BlockTree =>
-            val statements = blockTree.getStatements
-            statements.indexOf(headAstNode) match {
-              case -1 => throw new Exception(s"Unexpected")
-              case index =>
-                if (index == 0) {
-                  statements.indexOf(subprogram.astNodes.last) match {
-                    case -1 => throw new Exception(s"Unexpected")
-                    case index2 =>
-                      if (index2 == statements.size() - 1) {
-                        List(inputMethod.getPath(headAstNode).getParentPath.getLeaf)
-                      }
-                      else {
-                        subprogram.astNodes :+ blockTree.getStatements.get(index + 1)
-                      }
+    val newAstNodes: List[Tree] = subprogram.minimalEnclosingBlock match {
+      case Some(minimalEnclosingBlock) =>
+        val statements = minimalEnclosingBlock.getStatements
+        statements.indexOf(headAstNode) match {
+          case -1 => throw new Exception(s"Unexpected")
+          case index =>
+            if (index == 0) {
+              statements.indexOf(subprogram.astNodes.last) match {
+                case -1 => throw new Exception(s"Unexpected")
+                case index2 =>
+                  if (index2 == statements.size() - 1) {
+                    List(inputMethod.getPath(headAstNode).getParentPath.getLeaf)
                   }
-                }
-                else blockTree.getStatements.get(index - 1) :: subprogram.astNodes
+                  else {
+                    subprogram.astNodes :+ statements.get(index + 1)
+                  }
+              }
             }
-          case tree@(_: IfTree | _: ForLoopTree | _: WhileLoopTree) => List(tree)
-          case _ => throw new Exception(s"Unsupported minimal enclosing AST node $minimalEnclosingTree2")
+            else statements.get(index - 1) :: subprogram.astNodes
+        }
+      case None =>
+        inputMethod.getPath(subprogram.minimalEnclosingTree).getParentPath.getLeaf match {
+          case null =>
+            logger.error(s"There is no minimal enclosing tree for minimal enclosing tree ${subprogram.minimalEnclosingTree}")
+            List(headAstNode)
+          case minimalEnclosingTree2 =>
+            minimalEnclosingTree2 match {
+              case tree@(_: IfTree | _: ForLoopTree | _: WhileLoopTree) => List(tree)
+              case _ => throw new Exception(s"Unsupported minimal enclosing AST node $minimalEnclosingTree2")
+            }
         }
     }
 
@@ -163,10 +197,12 @@ class Decomposition(inputMethod: TargetMethod) {
     var newSubprograms = subprograms
     var continue = true
     while (continue) {
-      newSubprograms.zip(newSubprograms).find(pair => overlap(pair._1, pair._2)) match {
-        case Some(pair) =>
-          val newSubprogram = merge(pair._1, pair._2)
-          newSubprograms = newSubprograms - pair._1 - pair._2 + newSubprogram
+      MathUtils.crossJoin(List(newSubprograms, newSubprograms)).find({
+        subprograms => overlap(subprograms.head, subprograms.tail.head)
+      }) match {
+        case Some(subprograms) =>
+          val newSubprogram = merge(subprograms.head, subprograms.tail.head)
+          newSubprograms = newSubprograms - subprograms.head - subprograms.tail.head + newSubprogram
         case None => continue = false
       }
     }
@@ -192,11 +228,15 @@ class Decomposition(inputMethod: TargetMethod) {
   }
 
   def findInterference(subprograms: Subprograms): Option[(Subprogram, Subprogram)] = {
-    subprograms.programs.zip(subprograms.programs).find({
-      case (subprogram1, subprogram2) =>
-        if (interfere(subprogram1, subprogram2)) true
+    // subprograms.head, subprograms.tail.head
+    MathUtils.crossJoin(List(subprograms.programs, subprograms.programs)).find({
+      subprograms2 =>
+        if (interfere(subprograms2.head, subprograms2.tail.head)) true
         else false
-    })
+    }) match {
+      case Some(subprograms3) => Some(subprograms3.head, subprograms3.tail.head)
+      case None => None
+    }
   }
 
   /**
@@ -217,8 +257,13 @@ class Decomposition(inputMethod: TargetMethod) {
   case class Subprogram(astNodes: List[StatementTree]) {
     assert(astNodes.nonEmpty)
 
+    override def toString: String = {
+      val nodes = astNodes.map(t => t.toString).mkString("\n")
+      s"Subprogram(\n$nodes\n)"
+    }
+
     val innerTrees: Set[StatementTree] = astNodes.foldLeft(new HashSet[StatementTree])({
-      (acc, astNode) => acc ++ TreeUtils.collectTrees(astNode.asInstanceOf[StatementTree])
+      (acc, astNode) => acc ++ TreeUtils.collectTrees(astNode)
     })
 
     val minimalEnclosingTree: StatementTree = {
@@ -232,6 +277,17 @@ class Decomposition(inputMethod: TargetMethod) {
       }
     }
 
+    val minimalEnclosingBlock: Option[BlockTree] = {
+      org.checkerframework.javacutil.TreeUtils.enclosingOfKind(inputMethod.getPath(astNodes.head), Tree.Kind.BLOCK) match {
+        case null => throw new Exception("Unexpected")
+        case blockTree: BlockTree =>
+          if (blockTree.getStatements.contains(astNodes.head)) Some(blockTree)
+          else None
+      }
+    }
+    assert(minimalEnclosingBlock.isEmpty || astNodes.size == 1 || minimalEnclosingTree == minimalEnclosingBlock.get)
+    assert(minimalEnclosingBlock.nonEmpty || minimalEnclosingTree == astNodes.head)
+
     private val declaredLocalVariables = TreeUtils.collectCommands(astNodes).foldLeft(new HashSet[String])({
       (acc, tree) =>
         tree match {
@@ -242,13 +298,16 @@ class Decomposition(inputMethod: TargetMethod) {
 
     val javaProgramRepresentation: String = {
       // Assume all variables have distinct names
-      val declarations = inputMethod.localVariables.filterKeys(key => !declaredLocalVariables.contains(key)).map({
-        case (identifier, typ) => BrboType.variableDeclarationAndInitialization(identifier, typ, JAVA_FORMAT)
-      }).mkString("\n")
+      val parameters =
+        (inputMethod.inputVariables ++ inputMethod.localVariables)
+          .filterKeys(key => !declaredLocalVariables.contains(key))
+          .map({ case (identifier, typ) => BrboType.variableDeclaration(identifier, typ) })
+          .mkString(", ")
       val methodBody = astNodes.map(tree => tree.toString).mkString("\n")
       InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(
         inputMethod,
-        s"{\n$declarations\n$methodBody\n}",
+        Some(parameters),
+        s"{\n$methodBody\n}",
         JAVA_FORMAT,
         2
       )
@@ -259,8 +318,10 @@ class Decomposition(inputMethod: TargetMethod) {
 
   case class Subprograms(programs: Set[Subprogram]) {
     // Any two subprograms should not overlap with each other
-    programs.zip(programs).foreach({
-      case (program1, program2) =>
+    MathUtils.crossJoin(List(programs, programs)).foreach({
+      programs2 =>
+        val program1 = programs2.head
+        val program2 = programs2.tail.head
         if (program1 != program2) assert(!overlap(program1, program2), s"Overlapping subprograms:\n$program1\n$program2")
     })
   }

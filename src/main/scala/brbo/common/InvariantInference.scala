@@ -103,6 +103,7 @@ class InvariantInference(targetMethod: TargetMethod) {
     val newMethodBody = result.result
     InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(
       targetMethod,
+      None,
       newMethodBody,
       C_FORMAT,
       indent

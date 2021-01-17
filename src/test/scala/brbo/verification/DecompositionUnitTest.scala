@@ -1,11 +1,12 @@
 package brbo.verification
 
+import brbo.common.MathUtils
 import brbo.{StringCompare, TestCaseJavaProgram}
 import org.apache.logging.log4j.LogManager
 import org.scalatest.flatspec.AnyFlatSpec
 
 class DecompositionUnitTest extends AnyFlatSpec {
-  private val logger = LogManager.getLogger(classOf[CounterAxiomGeneratorUnitTest])
+  private val logger = LogManager.getLogger(classOf[DecompositionUnitTest])
 
   "Taint set computation" should "be correct" in {
     DecompositionUnitTest.taintSetTests.foreach({
@@ -31,7 +32,21 @@ class DecompositionUnitTest extends AnyFlatSpec {
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val decomposition = new Decomposition(targetMethod)
+        val initialSubprograms: Set[decomposition.Subprogram] = decomposition.initializeSubprograms()
+        val result: Traversable[decomposition.Subprogram] = MathUtils.crossJoin(List(initialSubprograms, initialSubprograms)).map({
+          subprograms =>
+            val subprogram1 = subprograms.head
+            val subprogram2 = subprograms.tail.head
+            val mergeResult = decomposition.merge(subprogram1, subprogram2)
+            logger.debug(s"$subprogram1 --- $subprogram2 --- $mergeResult")
+            mergeResult
+        }).toSet
+        assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput))
     })
+  }
+
+  "Enlarging subprograms" should "be correct" in {
+
   }
 }
 
@@ -208,7 +223,13 @@ object DecompositionUnitTest {
         |    R = R + a;
         |  }
         |}""".stripMargin
-    val test01ExpectedOutput = "List(Subprogram(List(R = R + 1;)), Subprogram(List(R = R + a;)))"
+    val test01ExpectedOutput =
+      """Subprogram(
+        |R = R + 1;
+        |)
+        |Subprogram(
+        |R = R + a;
+        |)""".stripMargin
 
     val test02 =
       """class Test02 {
@@ -230,15 +251,20 @@ object DecompositionUnitTest {
         |  }
         |}""".stripMargin
     val test02ExpectedOutput =
-      """List(Subprogram(List(for (int i = 0; i < m; i++) {
+      """Subprogram(
+        |for (int i = 0; i < m; i++) {
         |    if (a < n) {
         |        R = R + 2;
         |    }
-        |})), Subprogram(List(while (a < n) {
+        |}
+        |)
+        |Subprogram(
+        |while (a < n) {
         |    if (a > m) {
         |        R = R + 1;
         |    }
-        |})))""".stripMargin
+        |}
+        |)""".stripMargin
 
     List[TestCaseJavaProgram](
       TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),
@@ -254,36 +280,92 @@ object DecompositionUnitTest {
         |    int a = 0;
         |    int R = 0;
         |    R = R + 1;
+        |    a = a + 2;
         |    R = R + a;
         |  }
         |}""".stripMargin
-    val test01ExpectedOutput = ""
+    val test01ExpectedOutput =
+      """Subprogram(
+        |R = R + 1;
+        |)
+        |Subprogram(
+        |R = R + 1;
+        |a = a + 2;
+        |R = R + a;
+        |)
+        |Subprogram(
+        |R = R + a;
+        |)""".stripMargin
 
     val test02 =
       """class Test02 {
         |  void f(int n, int m)
         |  {
-        |    int a = 0;
+        |    int b = 0;
         |    int R = 0;
-        |    while (a < n) {
-        |      if (a > m) {
+        |    while (b < n) {
+        |      if (b > m) {
         |        R = R + 1;
         |      }
         |    }
-        |
-        |    for (int i = 0; i < m; i++) {
-        |      if (a < n) {
-        |        R = R + 2;
-        |      }
-        |    }
+        |    b = b + 3;
+        |    R = R + b;
         |  }
         |}""".stripMargin
     val test02ExpectedOutput =
-      """""".stripMargin
+      """Subprogram(
+        |R = R + b;
+        |)
+        |Subprogram(
+        |while (b < n) {
+        |    if (b > m) {
+        |        R = R + 1;
+        |    }
+        |}
+        |)
+        |Subprogram(
+        |while (b < n) {
+        |    if (b > m) {
+        |        R = R + 1;
+        |    }
+        |}
+        |b = b + 3;
+        |R = R + b;
+        |)""".stripMargin
+
+    val test03 =
+      """class Test03 {
+        |  void f(int n, int m)
+        |  {
+        |    int c = 0;
+        |    int R = 0;
+        |    while (c < n) {
+        |      if (c > m) {
+        |        R = R + c;
+        |      }
+        |    }
+        |    c = c + 5;
+        |    R = R + c;
+        |  }
+        |}""".stripMargin
+    val test03ExpectedOutput =
+      """Subprogram(
+        |R = R + c;
+        |)
+        |Subprogram(
+        |while (c < n) {
+        |    if (c > m) {
+        |        R = R + c;
+        |    }
+        |}
+        |c = c + 5;
+        |R = R + c;
+        |)""".stripMargin
 
     List[TestCaseJavaProgram](
       TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),
       TestCaseJavaProgram("Test02", test02, test02ExpectedOutput),
+      TestCaseJavaProgram("Test03", test03, test03ExpectedOutput),
     )
   }
 }

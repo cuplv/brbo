@@ -339,12 +339,14 @@ object InstrumentUtils {
   /**
    *
    * @param targetMethod  The method whose body will be replaced
+   * @param newParameters The new method parameters
    * @param newMethodBody The new method body
    * @param fileFormat    The file format of the output string
    * @param indent        The indent before the method signature in the output
    * @return A valid Java or C program that contains the new method body
    */
   def replaceMethodBodyAndGenerateSourceCode(targetMethod: TargetMethod,
+                                             newParameters: Option[String],
                                              newMethodBody: String,
                                              fileFormat: FileFormat,
                                              indent: Int): String = {
@@ -385,7 +387,10 @@ object InstrumentUtils {
         |""".stripMargin
 
     val methodSignature: String = {
-      val parameters = targetMethod.inputVariables.map(pair => BrboType.variableDeclaration(pair._1, pair._2)).mkString(", ")
+      val parameters = newParameters match {
+        case Some(parameters) => parameters
+        case None => targetMethod.inputVariables.map(pair => BrboType.variableDeclaration(pair._1, pair._2)).mkString(", ")
+      }
       s"${BrboType.toString(targetMethod.returnType, fileFormat)} ${targetMethod.methodTree.getName.toString}($parameters)"
     }
     fileFormat match {
