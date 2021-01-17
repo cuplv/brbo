@@ -129,7 +129,7 @@ object BoundCheckingUnitTest {
       |  }
       |}""".stripMargin
 
-  private val doWhileTest =
+  /*private val doWhileTest =
     """class DoWhileTest {
       |  void f(int n) {
       |    int i = 0;
@@ -137,7 +137,7 @@ object BoundCheckingUnitTest {
       |      i++;
       |    } while (i < n);
       |  }
-      |}""".stripMargin
+      |}""".stripMargin*/
 
   private val forLoopTest =
     """class ForLoopTest {
@@ -183,7 +183,7 @@ object BoundCheckingUnitTest {
         |    return;
         |},C0), (int i = 0,C1), (i++;,C2), (int j = 0,C3), (j = i + 1;,C4), (;,C5), (assert (j >= 0);,C6), (return;,C7))""".stripMargin
 
-    val doWhileTestExpected =
+    /*val doWhileTestExpected =
       """List(({
         |    int i = 0;
         |    do {
@@ -193,7 +193,7 @@ object BoundCheckingUnitTest {
         |    i++;
         |} while (i < n);,C2), ({
         |    i++;
-        |},C3), (i++;,C4))""".stripMargin
+        |},C3), (i++;,C4))""".stripMargin*/
 
     val forLoopTestExpected =
       """List(({
@@ -238,7 +238,7 @@ object BoundCheckingUnitTest {
 
     HashSet[TestCaseJavaProgram](
       TestCaseJavaProgram("BlockTest", blockTest, blockTestExpected),
-      TestCaseJavaProgram("DoWhileTest", doWhileTest, doWhileTestExpected),
+      // TestCaseJavaProgram("DoWhileTest", doWhileTest, doWhileTestExpected),
       TestCaseJavaProgram("ForLoopTest", forLoopTest, forLoopTestExpected),
       TestCaseJavaProgram("IfTest", ifTest, ifTestExpected),
       TestCaseJavaProgram("WhileLoopTest", whileLoopTest, whileLoopExpected),
@@ -269,7 +269,7 @@ object BoundCheckingUnitTest {
         |     true
         |     true)""".stripMargin
 
-    val doWhileTestExpected =
+    /*val doWhileTestExpected =
       """(and (>= (+ C1 1) C0)
         |     (>= C0 C1)
         |     (>= (+ C2 1) C1)
@@ -278,7 +278,7 @@ object BoundCheckingUnitTest {
         |     (>= C3 C2)
         |     (>= (+ C4 1) C3)
         |     (>= C3 C4)
-        |     true)""".stripMargin
+        |     true)""".stripMargin*/
 
     val forLoopTestExpected =
       """(and (>= (+ C1 1) C0)
@@ -320,7 +320,7 @@ object BoundCheckingUnitTest {
 
     HashSet[TestCaseJavaProgram](
       TestCaseJavaProgram("BlockTest", blockTest, blockTestExpected),
-      TestCaseJavaProgram("DoWhileTest", doWhileTest, doWhileTestExpected),
+      // TestCaseJavaProgram("DoWhileTest", doWhileTest, doWhileTestExpected),
       TestCaseJavaProgram("ForLoopTest", forLoopTest, forLoopTestExpected),
       TestCaseJavaProgram("IfTest", ifTest, ifTestExpected),
       TestCaseJavaProgram("WhileLoopTest", whileLoopTest, whileLoopExpected),

@@ -52,12 +52,13 @@ object CounterAxiomGenerator {
         })
       case _: ClassTree => throwException("Unexpected class tree")
       case tree: DoWhileLoopTree =>
-        map = map + (tree -> generateCounterId(id))
+        /*map = map + (tree -> generateCounterId(id))
         newId = newId + 1
 
         val (newMap, newNewId) = generateCounterMapHelper(tree.getStatement, newId)
         map = map ++ newMap
-        newId = newNewId
+        newId = newNewId*/
+        throwException("Not yet support do while loop")
       case _: EnhancedForLoopTree => throwException("Not yet support enhanced for loop")
       case tree: ForLoopTree =>
         map = map + (tree -> generateCounterId(id))
@@ -148,12 +149,13 @@ object CounterAxiomGenerator {
         }
       case _: ClassTree => throwException("Unexpected class tree")
       case tree: DoWhileLoopTree =>
-        val counter0 = solver.mkIntVar(counterMap(tree))
+        /*val counter0 = solver.mkIntVar(counterMap(tree))
         val counter1 = solver.mkIntVar(counterMap(tree.getStatement))
         solver.mkAnd(
           solver.mkGe(counter1, counter0),
           generateCounterAxiomsHelper(solver, tree.getStatement, counterMap)
-        )
+        )*/
+        throwException("Not yet support do while loop")
       case _: EnhancedForLoopTree => throwException("Not yet support enhanced for loop")
       case tree: ForLoopTree =>
         val initializers = tree.getInitializer.asScala

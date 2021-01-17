@@ -2,7 +2,7 @@ package brbo.verification
 
 import brbo.common.{InstrumentUtils, JavacUtils, TargetMethod}
 import com.sun.source.tree.{ClassTree, CompilationUnitTree, MethodTree, Tree}
-import com.sun.source.util.{SourcePositions, TreePathScanner, Trees}
+import com.sun.source.util.{SourcePositions, TreePath, TreePathScanner, Trees}
 import javax.annotation.processing.SupportedAnnotationTypes
 import javax.lang.model.SourceVersion
 import org.apache.commons.io.FilenameUtils
@@ -10,7 +10,7 @@ import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.UnderlyingAST.CFGMethod
 import org.checkerframework.dataflow.cfg.builder.CFGBuilder
-import org.checkerframework.javacutil.{BasicTypeProcessor, TreeUtils}
+import org.checkerframework.javacutil.BasicTypeProcessor
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable.HashMap
@@ -122,10 +122,7 @@ class BasicProcessor extends BasicTypeProcessor {
     ???
   }
 
-  def getEnclosingOfKind(tree: Tree, kind: Tree.Kind): Tree = {
-    val path = trees.get.getPath(rootTree.get, tree)
-    TreeUtils.enclosingOfKind(path, kind)
-  }
+  def getPath(tree: Tree): TreePath = trees.get.getPath(rootTree.get, tree)
 }
 
 object BasicProcessor {
@@ -144,6 +141,6 @@ object BasicProcessor {
   def getTargetMethod(className: String, sourceFileContents: String): TargetMethod = {
     val processor = run(className, sourceFileContents)
     processor.assumeOneClassOneMethod()
-    TargetMethod(className, processor.getMethods.head._1, processor.getLineNumber, processor.getMethods.head._2, processor.getEnclosingOfKind)
+    TargetMethod(className, processor.getMethods.head._1, processor.getMethods.head._2, processor.getLineNumber, processor.getPath)
   }
 }

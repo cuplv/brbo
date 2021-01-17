@@ -178,10 +178,11 @@ object InstrumentUtils {
       case _: ClassTree => errorInstrumentResult(s"Cannot instrument a class tree at line ${getLineNumber(tree)}")
       case _: ContinueTree => instrumentation.instrument(tree, state, indent, cfg)
       case tree3: DoWhileLoopTree =>
-        val result = substituteAtomicStatementHelper(tree3.getStatement, state, indent)
+        /*val result = substituteAtomicStatementHelper(tree3.getStatement, state, indent)
         InstrumentResult(
           s"${spaces}do\n${result.result}\n${spaces}while ${tree3.getCondition.toString};",
-          result.state)
+          result.state)*/
+        errorInstrumentResult(s"Not yet support do while loop at line ${getLineNumber(tree)}")
       case _: EmptyStatementTree => instrumentation.instrument(tree, state, indent, cfg)
       case _: EnhancedForLoopTree => errorInstrumentResult(s"Not yet support enhanced for loop at line ${getLineNumber(tree)}")
       /*s"${spaces}for (${tree.getVariable} : ${tree.getExpression}) {\n" +
@@ -273,9 +274,10 @@ object InstrumentUtils {
       case _: ClassTree => assert(assertion = false, "Unreachable"); ""
       case tree: ContinueTree => spaces + tree.toString + ";"
       case tree: DoWhileLoopTree =>
-        s"${spaces}do\n" +
+        /*s"${spaces}do\n" +
           substituteAllAtomicStatementsWith(tree.getStatement, deltaVariable, targetBlock, indent, cfg) +
-          s"\n${spaces}while (${tree.getCondition.toString});"
+          s"\n${spaces}while (${tree.getCondition.toString});"*/
+        assert(assertion = false, "Unreachable"); ""
       case _: EmptyStatementTree => spaces
       case _: EnhancedForLoopTree => assert(assertion = false, "Unreachable"); ""
       /*s"${spaces}for (${tree.getVariable} : ${tree.getExpression}) {\n" +

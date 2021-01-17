@@ -1,7 +1,10 @@
 package brbo.common
 
+import java.util
+
 import brbo.common.TypeUtils.BrboType.BrboType
 import com.sun.source.tree.{MethodTree, Tree}
+import com.sun.source.util.TreePath
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
 
@@ -16,9 +19,9 @@ import scala.collection.immutable.HashMap
  */
 case class TargetMethod(className: String,
                         methodTree: MethodTree,
-                        getLineNumber: Tree => Int,
                         cfg: ControlFlowGraph,
-                        enclosingTree: (Tree, Tree.Kind) => Tree) {
+                        getLineNumber: Tree => Int,
+                        getPath: Tree => TreePath) {
   private val logger = LogManager.getLogger(classOf[TargetMethod])
 
   val inputVariables: Map[String, BrboType] = TreeUtils.getAllInputVariables(methodTree)
@@ -29,10 +32,13 @@ case class TargetMethod(className: String,
     else TreeUtils.getAllDeclaredVariables(methodTree.getBody)
   logger.debug(s"[Method ${methodTree.getName}] Local variables: $localVariables")
 
-  def getMinimalEnclosingLoop(tree: Tree): Tree = {
-    val loop1 = enclosingTree(tree, Tree.Kind.DO_WHILE_LOOP)
-    val loop2 = enclosingTree(tree, Tree.Kind.FOR_LOOP)
-    val loop3 = enclosingTree(tree, Tree.Kind.WHILE_LOOP)
-    ???
+  def getMinimalEnclosingLoop(tree: Tree): Option[Tree] = {
+    val kinds = new util.HashSet[Tree.Kind]()
+    kinds.add(Tree.Kind.FOR_LOOP)
+    kinds.add(Tree.Kind.WHILE_LOOP)
+    org.checkerframework.javacutil.TreeUtils.enclosingOfKind(getPath(tree), kinds) match {
+      case null => None
+      case loop => Some(loop)
+    }
   }
 }

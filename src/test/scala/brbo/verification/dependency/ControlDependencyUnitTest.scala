@@ -44,9 +44,9 @@ object ControlDependencyUnitTest {
         |  }
         |}""".stripMargin
     val test01ExpectedOutput =
-      """218 -> List()
-        |220 -> List()
-        |221 -> List()""".stripMargin
+      """194 -> List()
+        |196 -> List()
+        |197 -> List()""".stripMargin
 
     val test02: String =
       """class Test02 {
@@ -59,11 +59,11 @@ object ControlDependencyUnitTest {
         |  }
         |}""".stripMargin
     val test02ExpectedOutput =
-      """223 -> List()
-        |225 -> List()
-        |226 -> List()
-        |227 -> List()
-        |231 -> List(227)""".stripMargin
+      """199 -> List()
+        |201 -> List()
+        |202 -> List()
+        |203 -> List()
+        |207 -> List(203)""".stripMargin
 
     val test03: String =
       """class Test03 {
@@ -87,18 +87,18 @@ object ControlDependencyUnitTest {
         |  }
         |}""".stripMargin
     val test03ExpectedOutput =
-      """235 -> List()
-        |237 -> List()
-        |238 -> List()
-        |239 -> List(240)
-        |240 -> List()
-        |244 -> List(240)
-        |245 -> List(240)
-        |249 -> List(245)
-        |250 -> List(245, 251)
-        |251 -> List(245)
-        |255 -> List(251)
-        |257 -> List(245)""".stripMargin
+      """211 -> List()
+        |213 -> List()
+        |214 -> List()
+        |215 -> List(216)
+        |216 -> List()
+        |220 -> List(216)
+        |221 -> List(216)
+        |225 -> List(221)
+        |226 -> List(221, 227)
+        |227 -> List(221)
+        |231 -> List(227)
+        |233 -> List(221)""".stripMargin
 
     List[TestCaseJavaProgram](
       TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),

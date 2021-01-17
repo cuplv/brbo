@@ -82,7 +82,7 @@ object InstrumentUtilsUnitTest {
         |  }
         |}""".stripMargin
 
-    val doWhileTest =
+    /*val doWhileTest =
       """class DoWhileTest {
         |    void f(int n) {
         |        int i = 0;
@@ -99,7 +99,7 @@ object InstrumentUtilsUnitTest {
         |    i++;;
         |  }
         |  while (i >= 0);
-        |}""".stripMargin
+        |}""".stripMargin*/
 
     val emptyTest =
       """class EmptyTest {
@@ -215,7 +215,7 @@ object InstrumentUtilsUnitTest {
       TestCaseJavaProgram("AssertTest", assertTest, assertTestExpected),
       TestCaseJavaProgram("BreakTest", breakTest, breakTestExpected),
       TestCaseJavaProgram("ContinueTest", continueTest, continueTestExpected),
-      TestCaseJavaProgram("DoWhileTest", doWhileTest, doWhileTestExpected),
+      // TestCaseJavaProgram("DoWhileTest", doWhileTest, doWhileTestExpected),
       TestCaseJavaProgram("EmptyTest", emptyTest, emptyTestExpected),
       TestCaseJavaProgram("ForLoopTest", forLoopTest, forLoopTestExpected),
       TestCaseJavaProgram("IfTest", ifTest, ifTestExpected),

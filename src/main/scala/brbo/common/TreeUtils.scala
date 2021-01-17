@@ -7,7 +7,7 @@ import com.sun.source.tree._
 import javax.lang.model.`type`.TypeMirror
 
 import scala.collection.JavaConverters._
-import scala.collection.immutable.HashMap
+import scala.collection.immutable.{HashMap, HashSet}
 
 object TreeUtils {
   def getAllInputVariables(methodTree: MethodTree): Map[String, BrboType] = {
@@ -92,15 +92,9 @@ object TreeUtils {
     }
   }
 
-  private def collectCommands(statements: Iterable[StatementTree]): List[StatementTree] = {
-    statements.foldLeft(List[StatementTree]())({
-      (acc, statement) => collectCommands(statement) ::: acc
-    })
-  }
-
   def collectCommands(statement: StatementTree): List[StatementTree] = {
     def throwException(message: String): Nothing = {
-      throw new Exception(s"Collect commands - $message in AST: $statement")
+      throw new Exception(s"$message in AST: $statement")
     }
 
     if (statement == null) return Nil
@@ -110,7 +104,7 @@ object TreeUtils {
         tree :: Nil
       case tree: BlockTree => collectCommands(tree.getStatements.asScala)
       case _: ClassTree => throwException("Unexpected class tree")
-      case tree: DoWhileLoopTree => collectCommands(tree.getStatement)
+      case _: DoWhileLoopTree => throwException("Not yet support do while loop tree") // collectCommands(tree.getStatement)
       case _: EnhancedForLoopTree => throwException("Not yet support enhanced for tree")
       case tree: ForLoopTree =>
         val statements = tree.getInitializer.asScala.toList ::: tree.getStatement :: tree.getUpdate.asScala.toList
@@ -123,5 +117,37 @@ object TreeUtils {
       case _: TryTree => throwException("Not yet support try tree")
       case tree: WhileLoopTree => collectCommands(tree.getStatement)
     }
+  }
+
+  private def collectCommands(statements: Iterable[StatementTree]): List[StatementTree] = {
+    statements.foldLeft(List[StatementTree]())({
+      (acc, statement) => collectCommands(statement) ::: acc
+    })
+  }
+
+  /**
+   *
+   * @param tree
+   * @return All statement trees that are enclosed in `tree`
+   */
+  def collectTrees(tree: StatementTree): Set[StatementTree] = {
+    val set: Set[StatementTree] =
+      tree match {
+        case _@(_: AssertTree | _: BreakTree | _: ContinueTree | _: EmptyStatementTree |
+                _: ExpressionStatementTree | _: ReturnTree | _: VariableTree) => new HashSet[StatementTree]()
+        case tree2: BlockTree => collectTrees(tree2.getStatements.asScala)
+        case tree2: ForLoopTree =>
+          collectTrees(tree2.getInitializer.asScala) ++ collectTrees(tree2.getStatement) ++ collectTrees(tree2.getUpdate.asScala)
+        case tree2: IfTree =>
+          collectTrees(tree2.getThenStatement) ++ collectTrees(tree2.getElseStatement)
+        case tree2: LabeledStatementTree => collectTrees(tree2.getStatement)
+        case tree2: WhileLoopTree => collectTrees(tree2)
+        case _ => throw new Exception(s"Not yet support tree $tree (type: ${tree.getClass})")
+      }
+    set + tree
+  }
+
+  private def collectTrees(trees: Iterable[StatementTree]): Set[StatementTree] = {
+    trees.foldLeft(new HashSet[StatementTree])({ (acc, tree) => acc ++ collectTrees(tree) })
   }
 }
