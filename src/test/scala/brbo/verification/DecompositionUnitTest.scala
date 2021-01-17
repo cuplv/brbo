@@ -60,6 +60,14 @@ class DecompositionUnitTest extends AnyFlatSpec {
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val decomposition = new Decomposition(targetMethod)
+        val initialSubprograms: Set[decomposition.Subprogram] = decomposition.initializeSubprograms()
+        val result: Set[decomposition.Subprogram] = initialSubprograms.map({
+          subprogram =>
+            val enlargeResult = decomposition.enlarge(subprogram)
+            logger.debug(enlargeResult)
+            enlargeResult
+        })
+        assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput))
     })
   }
 }
@@ -446,7 +454,11 @@ object DecompositionUnitTest {
         |  }
         |}""".stripMargin
     val test01ExpectedOutput =
-      """""".stripMargin
+      """Subprogram(
+        |{
+        |    R = R + a;
+        |}
+        |)""".stripMargin
 
     val test02 =
       """class Test02 {
@@ -461,7 +473,10 @@ object DecompositionUnitTest {
         |  }
         |}""".stripMargin
     val test02ExpectedOutput =
-      """""".stripMargin
+      """Subprogram(
+        |b = b + 2;
+        |R = R + b;
+        |)""".stripMargin
 
     val test03 =
       """class Test03 {
@@ -476,7 +491,10 @@ object DecompositionUnitTest {
         |  }
         |}""".stripMargin
     val test03ExpectedOutput =
-      """""".stripMargin
+      """Subprogram(
+        |R = R + c;
+        |c = c + 3;
+        |)""".stripMargin
 
     val test04 =
       """class Test04 {
@@ -488,6 +506,10 @@ object DecompositionUnitTest {
         |      R = R + d;
         |  }
         |}""".stripMargin
+    val test04ExpectedOutput =
+      """Subprogram(
+        |if (d < n) R = R + d;
+        |)""".stripMargin
 
     val test05 =
       """class Test05 {
@@ -497,8 +519,14 @@ object DecompositionUnitTest {
         |    int R = 0;
         |    if (e < n)
         |      R = R + e;
+        |    else
+        |      e = e + 2;
         |  }
         |}""".stripMargin
+    val test05ExpectedOutput =
+      """Subprogram(
+        |if (e < n) R = R + e; else e = e + 2;
+        |)""".stripMargin
 
     val test06 =
       """class Test06 {
@@ -510,14 +538,18 @@ object DecompositionUnitTest {
         |      R = R + f;
         |  }
         |}""".stripMargin
+    val test06ExpectedOutput =
+      """Subprogram(
+        |for (int i = 0; i < n; i++) R = R + f;
+        |)""".stripMargin
 
     List[TestCaseJavaProgram](
       TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),
       TestCaseJavaProgram("Test02", test02, test02ExpectedOutput),
       TestCaseJavaProgram("Test03", test03, test03ExpectedOutput),
-      TestCaseJavaProgram("Test04", test04, test03ExpectedOutput),
-      TestCaseJavaProgram("Test05", test05, test03ExpectedOutput),
-      TestCaseJavaProgram("Test06", test06, test03ExpectedOutput),
+      TestCaseJavaProgram("Test04", test04, test04ExpectedOutput),
+      TestCaseJavaProgram("Test05", test05, test05ExpectedOutput),
+      TestCaseJavaProgram("Test06", test06, test06ExpectedOutput),
     )
   }
 }

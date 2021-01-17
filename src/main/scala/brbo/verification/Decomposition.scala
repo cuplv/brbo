@@ -141,7 +141,7 @@ class Decomposition(inputMethod: TargetMethod) {
     while (continue) {
       newSubprograms.programs.find(subprogram => interferedByEnvironment(subprogram, newSubprograms)) match {
         case Some(interferedSubprogram) =>
-          val newSubprogram: Subprogram = enlarge(interferedSubprogram, newSubprograms)
+          val newSubprogram: Subprogram = enlarge(interferedSubprogram)
           newSubprograms = mergeIfOverlap(newSubprograms.programs - interferedSubprogram + newSubprogram)
         case None => continue = false
       }
@@ -156,9 +156,7 @@ class Decomposition(inputMethod: TargetMethod) {
    *         - It encloses the input subprogram
    *         - It does not overlap with other subprograms
    */
-  def enlarge(subprogram: Subprogram, subprograms: Subprograms): Subprogram = {
-    assert(subprograms.programs.contains(subprogram))
-
+  def enlarge(subprogram: Subprogram): Subprogram = {
     val headAstNode = subprogram.astNodes.head
     val newAstNodes: List[Tree] = subprogram.minimalEnclosingBlock match {
       case Some(minimalEnclosingBlock) =>
