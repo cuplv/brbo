@@ -45,8 +45,22 @@ class DecompositionUnitTest extends AnyFlatSpec {
     })
   }
 
-  "Enlarging subprograms" should "be correct" in {
+  "Merging subprograms if they overlap" should "be correct" in {
+    DecompositionUnitTest.mergeIfOverlapSubprogramsUnitTest.foreach({
+      testCase =>
+        val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
+        val decomposition = new Decomposition(targetMethod)
+        val result = decomposition.mergeIfOverlap(decomposition.initializeSubprograms())
+        assert(StringCompare.ignoreWhitespaces(result.programs, testCase.expectedOutput))
+    })
+  }
 
+  "Enlarging subprograms" should "be correct" in {
+    DecompositionUnitTest.enlargeSubprogramsUnitTest.foreach({
+      testCase =>
+        val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
+        val decomposition = new Decomposition(targetMethod)
+    })
   }
 }
 
@@ -366,6 +380,144 @@ object DecompositionUnitTest {
       TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),
       TestCaseJavaProgram("Test02", test02, test02ExpectedOutput),
       TestCaseJavaProgram("Test03", test03, test03ExpectedOutput),
+    )
+  }
+
+  val mergeIfOverlapSubprogramsUnitTest: List[TestCaseJavaProgram] = {
+    val test01 =
+      """class Test01 {
+        |  void f(int n, int m)
+        |  {
+        |    int a = 0;
+        |    int R = 0;
+        |    R = R + 1;
+        |    a = a + 2;
+        |    R = R + a;
+        |  }
+        |}""".stripMargin
+    val test01ExpectedOutput =
+      """Subprogram(
+        |R = R + 1;
+        |)
+        |Subprogram(
+        |R = R + a;
+        |)""".stripMargin
+
+    val test02 =
+      """class Test02 {
+        |  void f(int n, int m)
+        |  {
+        |    int b = 0;
+        |    int R = 0;
+        |    while (b < n) {
+        |      if (b > m) {
+        |        R = R + 1;
+        |        R = R + b;
+        |      }
+        |    }
+        |  }
+        |}""".stripMargin
+    val test02ExpectedOutput =
+      """Subprogram(
+        |while (b < n) {
+        |    if (b > m) {
+        |        R = R + 1;
+        |        R = R + b;
+        |    }
+        |}
+        |)""".stripMargin
+
+    List[TestCaseJavaProgram](
+      TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),
+      TestCaseJavaProgram("Test02", test02, test02ExpectedOutput),
+    )
+  }
+
+  val enlargeSubprogramsUnitTest: List[TestCaseJavaProgram] = {
+    val test01 =
+      """class Test01 {
+        |  void f(int n, int m)
+        |  {
+        |    int a = 0;
+        |    int R = 0;
+        |    {
+        |      R = R + a;
+        |    }
+        |  }
+        |}""".stripMargin
+    val test01ExpectedOutput =
+      """""".stripMargin
+
+    val test02 =
+      """class Test02 {
+        |  void f(int n, int m)
+        |  {
+        |    int b = 0;
+        |    int R = 0;
+        |    {
+        |      b = b + 2;
+        |      R = R + b;
+        |    }
+        |  }
+        |}""".stripMargin
+    val test02ExpectedOutput =
+      """""".stripMargin
+
+    val test03 =
+      """class Test03 {
+        |  void f(int n, int m)
+        |  {
+        |    int c = 0;
+        |    int R = 0;
+        |    {
+        |      R = R + c;
+        |      c = c + 3;
+        |    }
+        |  }
+        |}""".stripMargin
+    val test03ExpectedOutput =
+      """""".stripMargin
+
+    val test04 =
+      """class Test04 {
+        |  void f(int n, int m)
+        |  {
+        |    int d = 0;
+        |    int R = 0;
+        |    if (d < n)
+        |      R = R + d;
+        |  }
+        |}""".stripMargin
+
+    val test05 =
+      """class Test05 {
+        |  void f(int n, int m)
+        |  {
+        |    int e = 0;
+        |    int R = 0;
+        |    if (e < n)
+        |      R = R + e;
+        |  }
+        |}""".stripMargin
+
+    val test06 =
+      """class Test06 {
+        |  void f(int n, int m)
+        |  {
+        |    int f = 0;
+        |    int R = 0;
+        |    for (int i = 0; i < n; i++)
+        |      R = R + f;
+        |  }
+        |}""".stripMargin
+
+    List[TestCaseJavaProgram](
+      TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),
+      TestCaseJavaProgram("Test02", test02, test02ExpectedOutput),
+      TestCaseJavaProgram("Test03", test03, test03ExpectedOutput),
+      TestCaseJavaProgram("Test04", test04, test03ExpectedOutput),
+      TestCaseJavaProgram("Test05", test05, test03ExpectedOutput),
+      TestCaseJavaProgram("Test06", test06, test03ExpectedOutput),
     )
   }
 }

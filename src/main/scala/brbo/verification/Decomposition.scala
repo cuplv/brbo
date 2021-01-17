@@ -55,7 +55,9 @@ class Decomposition(inputMethod: TargetMethod) {
                     val subprogram = {
                       inputMethod.getMinimalEnclosingLoop(statement) match {
                         case Some(enclosingLoop) => enclosingLoop
-                        case None => statement
+                        case None =>
+                          logger.trace(s"Resource update `$statement` does not have an enclosing loop")
+                          statement
                       }
                     }
                     logger.trace(s"Resource update `$statement`'s initial subprogram is `$subprogram`")
@@ -134,12 +136,13 @@ class Decomposition(inputMethod: TargetMethod) {
   }
 
   def eliminateEnvironmentInterference(subprograms: Subprograms): Subprograms = {
-    var newSubprograms = subprograms
+    var newSubprograms: Subprograms = subprograms
     var continue = true
     while (continue) {
       newSubprograms.programs.find(subprogram => interferedByEnvironment(subprogram, newSubprograms)) match {
         case Some(interferedSubprogram) =>
-          newSubprograms = enlarge(interferedSubprogram, newSubprograms)
+          val newSubprogram: Subprogram = enlarge(interferedSubprogram, newSubprograms)
+          newSubprograms = mergeIfOverlap(newSubprograms.programs - interferedSubprogram + newSubprogram)
         case None => continue = false
       }
     }
@@ -153,7 +156,7 @@ class Decomposition(inputMethod: TargetMethod) {
    *         - It encloses the input subprogram
    *         - It does not overlap with other subprograms
    */
-  def enlarge(subprogram: Subprogram, subprograms: Subprograms): Subprograms = {
+  def enlarge(subprogram: Subprogram, subprograms: Subprograms): Subprogram = {
     assert(subprograms.programs.contains(subprogram))
 
     val headAstNode = subprogram.astNodes.head
@@ -190,19 +193,20 @@ class Decomposition(inputMethod: TargetMethod) {
         }
     }
 
-    mergeIfOverlap(subprograms.programs - subprogram + Subprogram(newAstNodes.map(tree => tree.asInstanceOf[StatementTree])))
+    Subprogram(newAstNodes.map(tree => tree.asInstanceOf[StatementTree]))
   }
 
   def mergeIfOverlap(subprograms: Set[Subprogram]): Subprograms = {
-    var newSubprograms = subprograms
+    var newSubprograms: Set[Subprogram] = subprograms
     var continue = true
     while (continue) {
-      MathUtils.crossJoin(List(newSubprograms, newSubprograms)).find({
-        subprograms => overlap(subprograms.head, subprograms.tail.head)
-      }) match {
-        case Some(subprograms) =>
-          val newSubprogram = merge(subprograms.head, subprograms.tail.head)
-          newSubprograms = newSubprograms - subprograms.head - subprograms.tail.head + newSubprogram
+      MathUtils.crossJoin2(newSubprograms, newSubprograms)
+        .filter(pair => pair._1 != pair._2)
+        .find({ pair => overlap(pair._1, pair._2) })
+      match {
+        case Some(pair) =>
+          val newSubprogram = merge(pair._1, pair._2)
+          newSubprograms = newSubprograms - pair._1 - pair._2 + newSubprogram
         case None => continue = false
       }
     }
@@ -324,6 +328,11 @@ class Decomposition(inputMethod: TargetMethod) {
         val program2 = programs2.tail.head
         if (program1 != program2) assert(!overlap(program1, program2), s"Overlapping subprograms:\n$program1\n$program2")
     })
+
+    override def toString: String = {
+      val subprograms = programs.map(x => x.toString).toList.mkString("\n")
+      s"Subprograms(\n$subprograms\n)"
+    }
   }
 
 }
