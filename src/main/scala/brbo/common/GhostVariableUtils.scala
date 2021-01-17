@@ -1,7 +1,7 @@
 package brbo.common
 
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, GhostVariable, Resource}
-import com.sun.source.tree.{AssignmentTree, BinaryTree, Tree}
+import com.sun.source.tree.{AssignmentTree, BinaryTree, ExpressionTree, Tree}
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.node.{AssignmentNode, Node, NumericalAdditionNode}
 
@@ -90,7 +90,7 @@ object GhostVariableUtils {
     })
   }
 
-  def extractGhostVariableUpdate(tree: Tree, typ: GhostVariable): Option[GhostVariableUpdateTree] = {
+  def extractGhostVariableUpdate(tree: ExpressionTree, typ: GhostVariable): Option[GhostVariableUpdateTree] = {
     tree match {
       case tree: AssignmentTree =>
         // Must be in the form of g = g + e
@@ -100,7 +100,7 @@ object GhostVariableUtils {
             case rhs: BinaryTree =>
               if (rhs.getLeftOperand.toString == ghostVariable) Some(GhostVariableUpdateTree(ghostVariable, rhs.getRightOperand))
               else {
-                logger.warn(s"Assignment to ghost variable `$ghostVariable` is not in the form of `$ghostVariable = $ghostVariable + e`!")
+                logger.fatal(s"Assignment to ghost variable `$ghostVariable` is not in the form of `$ghostVariable = $ghostVariable + e`!")
                 None
               }
             case _ => None

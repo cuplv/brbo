@@ -9,4 +9,12 @@ object StringCompare {
     }
     result
   }
+
+  def ignoreWhitespaces(actual: Iterable[Any], expected: String): Boolean = {
+    ignoreWhitespaces(toSortedString(actual), expected)
+  }
+
+  def toSortedString(iterable: Iterable[Any]): String = {
+    iterable.map(x => x.toString).toList.sortWith(_ < _).toString()
+  }
 }

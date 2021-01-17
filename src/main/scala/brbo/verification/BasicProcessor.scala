@@ -118,10 +118,6 @@ class BasicProcessor extends BasicTypeProcessor {
     assert(getMethods.size == 1, s"We should analyze exactly one class. Instead, we have `$getMethods`")
   }
 
-  def insertDeclarationAtEntry(): String = {
-    ???
-  }
-
   def getPath(tree: Tree): TreePath = trees.get.getPath(rootTree.get, tree)
 }
 

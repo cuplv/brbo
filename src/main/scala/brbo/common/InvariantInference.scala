@@ -15,7 +15,6 @@ import org.checkerframework.dataflow.cfg.node.Node
 class InvariantInference(targetMethod: TargetMethod) {
   private val logger = LogManager.getLogger(classOf[InvariantInference])
 
-  private val className = targetMethod.className
   private val methodTree = targetMethod.methodTree
 
   /**
@@ -103,8 +102,7 @@ class InvariantInference(targetMethod: TargetMethod) {
     )
     val newMethodBody = result.result
     InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(
-      methodTree,
-      className,
+      targetMethod,
       newMethodBody,
       C_FORMAT,
       indent

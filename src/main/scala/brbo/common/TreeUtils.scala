@@ -119,7 +119,7 @@ object TreeUtils {
     }
   }
 
-  private def collectCommands(statements: Iterable[StatementTree]): List[StatementTree] = {
+  def collectCommands(statements: Iterable[StatementTree]): List[StatementTree] = {
     statements.foldLeft(List[StatementTree]())({
       (acc, statement) => collectCommands(statement) ::: acc
     })
@@ -131,6 +131,8 @@ object TreeUtils {
    * @return All statement trees that are enclosed in `tree`
    */
   def collectTrees(tree: StatementTree): Set[StatementTree] = {
+    if (tree == null) return new HashSet[StatementTree]
+
     val set: Set[StatementTree] =
       tree match {
         case _@(_: AssertTree | _: BreakTree | _: ContinueTree | _: EmptyStatementTree |
@@ -141,7 +143,7 @@ object TreeUtils {
         case tree2: IfTree =>
           collectTrees(tree2.getThenStatement) ++ collectTrees(tree2.getElseStatement)
         case tree2: LabeledStatementTree => collectTrees(tree2.getStatement)
-        case tree2: WhileLoopTree => collectTrees(tree2)
+        case tree2: WhileLoopTree => collectTrees(tree2.getStatement)
         case _ => throw new Exception(s"Not yet support tree $tree (type: ${tree.getClass})")
       }
     set + tree

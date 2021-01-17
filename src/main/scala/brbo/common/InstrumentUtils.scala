@@ -3,6 +3,7 @@ package brbo.common
 import brbo.common.GhostVariableUtils.GhostVariable.Resource
 import brbo.common.InstrumentUtils.FileFormat.{C_FORMAT, FileFormat, JAVA_FORMAT}
 import brbo.common.InstrumentUtils.InstrumentMode.{ALL, AT_MOST_ONCE, InstrumentMode}
+import brbo.common.TypeUtils.BrboType
 import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
@@ -337,15 +338,13 @@ object InstrumentUtils {
 
   /**
    *
-   * @param methodTree    The method whose body will be replaced
-   * @param className     The class name of the method
+   * @param targetMethod  The method whose body will be replaced
    * @param newMethodBody The new method body
    * @param fileFormat    The file format of the output string
    * @param indent        The indent before the method signature in the output
    * @return A valid Java or C program that contains the new method body
    */
-  def replaceMethodBodyAndGenerateSourceCode(methodTree: MethodTree,
-                                             className: String,
+  def replaceMethodBodyAndGenerateSourceCode(targetMethod: TargetMethod,
                                              newMethodBody: String,
                                              fileFormat: FileFormat,
                                              indent: Int): String = {
@@ -385,21 +384,14 @@ object InstrumentUtils {
         |}
         |""".stripMargin
 
-    val methodSignature = {
-      // TODO: A very hacky way to get the first line of a method definition
-      val lines = methodTree.toString.split("\n")
-      // https://stackoverflow.com/a/39259747
-      // lines(1).replace(" {", "")
-      var firstLine = lines(1)
-      firstLine = firstLine.replaceAll("\\n", "")
-      firstLine = firstLine.replaceAll("\\r", "")
-      assert(firstLine.endsWith(" {"))
-      firstLine.substring(0, firstLine.length - 2)
+    val methodSignature: String = {
+      val parameters = targetMethod.inputVariables.map(pair => BrboType.variableDeclaration(pair._1, pair._2)).mkString(", ")
+      s"${BrboType.toString(targetMethod.returnType, fileFormat)} ${targetMethod.methodTree.getName.toString}($parameters)"
     }
     fileFormat match {
       case JAVA_FORMAT =>
         val spaces = " " * indent
-        s"class $className {\n$spaces$methodSignature\n$newMethodBody\n}"
+        s"class ${targetMethod.className} {\n$spaces$methodSignature\n$newMethodBody\n}"
       case C_FORMAT =>
         val replaceMethodSignature = {
           // ICRA requires there exists a method named as `main`

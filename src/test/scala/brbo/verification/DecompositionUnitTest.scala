@@ -15,6 +15,24 @@ class DecompositionUnitTest extends AnyFlatSpec {
         assert(StringCompare.ignoreWhitespaces(result.toString(), testCase.expectedOutput))
     })
   }
+
+  "Initializing subprograms" should "be correct" in {
+    DecompositionUnitTest.initializeSubprogramsUnitTest.foreach({
+      testCase =>
+        val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
+        val decomposition = new Decomposition(targetMethod)
+        val result = decomposition.initializeSubprograms()
+        assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput))
+    })
+  }
+
+  "Merging subprograms" should "be correct" in {
+    DecompositionUnitTest.mergeSubprogramsUnitTest.foreach({
+      testCase =>
+        val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
+        val decomposition = new Decomposition(targetMethod)
+    })
+  }
 }
 
 object DecompositionUnitTest {
@@ -172,6 +190,96 @@ object DecompositionUnitTest {
         |  }
         |}""".stripMargin
     val test02ExpectedOutput = ""
+
+    List[TestCaseJavaProgram](
+      TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),
+      TestCaseJavaProgram("Test02", test02, test02ExpectedOutput),
+    )
+  }
+
+  val initializeSubprogramsUnitTest: List[TestCaseJavaProgram] = {
+    val test01 =
+      """class Test01 {
+        |  void f(int n, int m)
+        |  {
+        |    int a = 0;
+        |    int R = 0;
+        |    R = R + 1;
+        |    R = R + a;
+        |  }
+        |}""".stripMargin
+    val test01ExpectedOutput = "List(Subprogram(List(R = R + 1;)), Subprogram(List(R = R + a;)))"
+
+    val test02 =
+      """class Test02 {
+        |  void f(int n, int m)
+        |  {
+        |    int a = 0;
+        |    int R = 0;
+        |    while (a < n) {
+        |      if (a > m) {
+        |        R = R + 1;
+        |      }
+        |    }
+        |
+        |    for (int i = 0; i < m; i++) {
+        |      if (a < n) {
+        |        R = R + 2;
+        |      }
+        |    }
+        |  }
+        |}""".stripMargin
+    val test02ExpectedOutput =
+      """List(Subprogram(List(for (int i = 0; i < m; i++) {
+        |    if (a < n) {
+        |        R = R + 2;
+        |    }
+        |})), Subprogram(List(while (a < n) {
+        |    if (a > m) {
+        |        R = R + 1;
+        |    }
+        |})))""".stripMargin
+
+    List[TestCaseJavaProgram](
+      TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),
+      TestCaseJavaProgram("Test02", test02, test02ExpectedOutput),
+    )
+  }
+
+  val mergeSubprogramsUnitTest: List[TestCaseJavaProgram] = {
+    val test01 =
+      """class Test01 {
+        |  void f(int n, int m)
+        |  {
+        |    int a = 0;
+        |    int R = 0;
+        |    R = R + 1;
+        |    R = R + a;
+        |  }
+        |}""".stripMargin
+    val test01ExpectedOutput = ""
+
+    val test02 =
+      """class Test02 {
+        |  void f(int n, int m)
+        |  {
+        |    int a = 0;
+        |    int R = 0;
+        |    while (a < n) {
+        |      if (a > m) {
+        |        R = R + 1;
+        |      }
+        |    }
+        |
+        |    for (int i = 0; i < m; i++) {
+        |      if (a < n) {
+        |        R = R + 2;
+        |      }
+        |    }
+        |  }
+        |}""".stripMargin
+    val test02ExpectedOutput =
+      """""".stripMargin
 
     List[TestCaseJavaProgram](
       TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),

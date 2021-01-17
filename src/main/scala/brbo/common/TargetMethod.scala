@@ -2,7 +2,7 @@ package brbo.common
 
 import java.util
 
-import brbo.common.TypeUtils.BrboType.BrboType
+import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT, VOID}
 import com.sun.source.tree.{MethodTree, Tree}
 import com.sun.source.util.TreePath
 import org.apache.logging.log4j.LogManager
@@ -31,6 +31,13 @@ case class TargetMethod(className: String,
     if (methodTree.getBody == null) new HashMap[String, BrboType]
     else TreeUtils.getAllDeclaredVariables(methodTree.getBody)
   logger.debug(s"[Method ${methodTree.getName}] Local variables: $localVariables")
+
+  val returnType: BrboType = methodTree.getReturnType.toString match {
+    case "int" => INT
+    case "boolean" => BOOL
+    case "void" => VOID
+    case _ => throw new Exception(s"Unexpected return type: ${methodTree.getReturnType} (Kind: ${methodTree.getReturnType.getKind})")
+  }
 
   def getMinimalEnclosingLoop(tree: Tree): Option[Tree] = {
     val kinds = new util.HashSet[Tree.Kind]()

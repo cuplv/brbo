@@ -1,7 +1,9 @@
 package brbo.verification
 
 import brbo.common.GhostVariableUtils.GhostVariable.Resource
-import brbo.common.{CFGUtils, GhostVariableUtils, TargetMethod, TreeUtils}
+import brbo.common.InstrumentUtils.FileFormat.JAVA_FORMAT
+import brbo.common.TypeUtils.BrboType
+import brbo.common._
 import brbo.verification.dependency.reachdef.ReachingValue
 import brbo.verification.dependency.{ControlDependency, DataDependency}
 import com.sun.source.tree._
@@ -18,7 +20,7 @@ class Decomposition(inputMethod: TargetMethod) {
   private val commands = TreeUtils.collectCommands(inputMethod.methodTree.getBody)
 
   def decompose(): String = {
-    var subprograms = initializeSubprograms()
+    var subprograms = eliminateEnvironmentInterference(mergeIfOverlap(initializeSubprograms()))
     var continue = true
     while (continue) {
       val interferedSubprograms = findInterference(subprograms)
@@ -40,28 +42,31 @@ class Decomposition(inputMethod: TargetMethod) {
     insertResets(subprograms)
   }
 
-  def initializeSubprograms(): Subprograms = {
-    val initialSubprograms = commands.foldLeft(new HashSet[Subprogram])({
+  def initializeSubprograms(): Set[Subprogram] = {
+    commands.foldLeft(new HashSet[Subprogram])({
       (acc, statement) =>
-        GhostVariableUtils.extractGhostVariableUpdate(statement, Resource) match {
-          case Some(updateNode) =>
-            updateNode.update match {
-              case _: LiteralTree =>
-                // The initial subprogram is the minimal enclosing loop
-                val subprogram = {
-                  inputMethod.getMinimalEnclosingLoop(statement) match {
-                    case Some(enclosingLoop) => enclosingLoop
-                    case None => statement
-                  }
+        statement match {
+          case expressionStatementTree: ExpressionStatementTree =>
+            GhostVariableUtils.extractGhostVariableUpdate(expressionStatementTree.getExpression, Resource) match {
+              case Some(updateNode) =>
+                updateNode.update match {
+                  case _: LiteralTree =>
+                    // The initial subprogram is the minimal enclosing loop
+                    val subprogram = {
+                      inputMethod.getMinimalEnclosingLoop(statement) match {
+                        case Some(enclosingLoop) => enclosingLoop
+                        case None => statement
+                      }
+                    }
+                    logger.trace(s"Resource update `$statement`'s initial subprogram is `$subprogram`")
+                    acc + Subprogram(List(subprogram.asInstanceOf[StatementTree]))
+                  case _ => acc + Subprogram(List(statement))
                 }
-                logger.error(s"Resource update `$statement`'s initial subprogram is `$subprogram`")
-                acc + Subprogram(List(subprogram))
-              case _ => acc + Subprogram(List(statement))
+              case None => acc
             }
-          case None => acc
+          case _ => acc
         }
     })
-    eliminateEnvironmentInterference(mergeIfOverlap(initialSubprograms))
   }
 
   def insertResets(subprograms: Subprograms): String = {
@@ -83,27 +88,18 @@ class Decomposition(inputMethod: TargetMethod) {
   }
 
   def merge(subprogram1: Subprogram, subprogram2: Subprogram): Subprogram = {
-    val minimalCommonTree = {
-      if (subprogram2.astNodes.size == 1)
-        subprogram2.astNodes.head
-      else {
-        inputMethod.getPath(subprogram2.astNodes.head).getParentPath.getLeaf match {
-          case blockTree: BlockTree => blockTree
-          case _ => throw new Exception(s"Unexpected")
-        }
-      }
-    }
+    val minimalEnclosingTree = subprogram2.minimalEnclosingTree
 
     var p = inputMethod.getPath(subprogram1.astNodes.head)
     while (p != null) {
       val leaf: Tree = p.getLeaf
       assert(leaf != null)
-      if (leaf == minimalCommonTree)
-        return Subprogram(List(leaf))
+      if (leaf == minimalEnclosingTree)
+        return Subprogram(List(leaf.asInstanceOf[StatementTree]))
       p = p.getParentPath
     }
 
-    throw new Exception(s"Unable to merge $subprogram1 and $subprogram2\nMinimal common tree of Subprogram2 is $minimalCommonTree")
+    throw new Exception(s"Unable to merge $subprogram1 and $subprogram2\nMinimal enclosing tree of Subprogram2 is $minimalEnclosingTree")
   }
 
   def eliminateEnvironmentInterference(subprograms: Subprograms): Subprograms = {
@@ -130,12 +126,12 @@ class Decomposition(inputMethod: TargetMethod) {
     assert(subprograms.programs.contains(subprogram))
 
     val headAstNode = subprogram.astNodes.head
-    val newAstNodes: List[Tree] = inputMethod.getPath(headAstNode).getParentPath.getLeaf match {
+    val newAstNodes: List[Tree] = inputMethod.getPath(subprogram.minimalEnclosingTree).getParentPath.getLeaf match {
       case null =>
-        logger.error(s"Enlarging but there is no enclosing tree for $headAstNode")
+        logger.error(s"Enlarging but there is no minimal enclosing tree for minimal enclosing tree ${subprogram.minimalEnclosingTree}")
         List(headAstNode)
-      case immediateEnclosingAstNode =>
-        immediateEnclosingAstNode match {
+      case minimalEnclosingTree2 =>
+        minimalEnclosingTree2 match {
           case blockTree: BlockTree =>
             val statements = blockTree.getStatements
             statements.indexOf(headAstNode) match {
@@ -156,11 +152,11 @@ class Decomposition(inputMethod: TargetMethod) {
                 else blockTree.getStatements.get(index - 1) :: subprogram.astNodes
             }
           case tree@(_: IfTree | _: ForLoopTree | _: WhileLoopTree) => List(tree)
-          case _ => throw new Exception(s"Unsupported immediate enclosing AST node $immediateEnclosingAstNode")
+          case _ => throw new Exception(s"Unsupported minimal enclosing AST node $minimalEnclosingTree2")
         }
     }
 
-    mergeIfOverlap(subprograms.programs - subprogram + Subprogram(newAstNodes))
+    mergeIfOverlap(subprograms.programs - subprogram + Subprogram(newAstNodes.map(tree => tree.asInstanceOf[StatementTree])))
   }
 
   def mergeIfOverlap(subprograms: Set[Subprogram]): Subprograms = {
@@ -218,18 +214,47 @@ class Decomposition(inputMethod: TargetMethod) {
     modifiedSet1.intersect(taintSet2).nonEmpty || modifiedSet2.intersect(taintSet1).nonEmpty
   }
 
-  case class Subprogram(astNodes: List[Tree]) {
+  case class Subprogram(astNodes: List[StatementTree]) {
     assert(astNodes.nonEmpty)
-
-    val targetMethod: TargetMethod = BasicProcessor.getTargetMethod(inputMethod.className, toJavaProgram)
 
     val innerTrees: Set[StatementTree] = astNodes.foldLeft(new HashSet[StatementTree])({
       (acc, astNode) => acc ++ TreeUtils.collectTrees(astNode.asInstanceOf[StatementTree])
     })
 
-    def toJavaProgram: String = {
-      ???
+    val minimalEnclosingTree: StatementTree = {
+      if (astNodes.size == 1)
+        astNodes.head
+      else {
+        inputMethod.getPath(astNodes.head).getParentPath.getLeaf match {
+          case blockTree: BlockTree => blockTree
+          case null => throw new Exception(s"No minimal enclosing tree for $this")
+        }
+      }
     }
+
+    private val declaredLocalVariables = TreeUtils.collectCommands(astNodes).foldLeft(new HashSet[String])({
+      (acc, tree) =>
+        tree match {
+          case variableTree: VariableTree => acc + variableTree.getName.toString
+          case _ => acc
+        }
+    }).toList.sortWith(_ < _)
+
+    val javaProgramRepresentation: String = {
+      // Assume all variables have distinct names
+      val declarations = inputMethod.localVariables.filterKeys(key => !declaredLocalVariables.contains(key)).map({
+        case (identifier, typ) => BrboType.variableDeclarationAndInitialization(identifier, typ, JAVA_FORMAT)
+      }).mkString("\n")
+      val methodBody = astNodes.map(tree => tree.toString).mkString("\n")
+      InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(
+        inputMethod,
+        s"{\n$declarations\n$methodBody\n}",
+        JAVA_FORMAT,
+        2
+      )
+    }
+
+    val targetMethod: TargetMethod = BasicProcessor.getTargetMethod(inputMethod.className, javaProgramRepresentation)
   }
 
   case class Subprograms(programs: Set[Subprogram]) {
