@@ -82,8 +82,20 @@ class DecompositionUnitTest extends AnyFlatSpec {
     })
   }
 
-  "Deciding interference" should "be correct" in {
-
+  "Deciding subsequent execution" should "be correct" in {
+    DecompositionUnitTest.subsequentExecutionUnitTest.foreach({
+      testCase =>
+        val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
+        val decomposition = new Decomposition(targetMethod)
+        val initialSubprograms: List[decomposition.Subprogram] = decomposition.initializeSubprograms().toList
+        val result = MathUtils.crossJoin2(initialSubprograms, initialSubprograms).map({
+          case (subprogram1, subprogram2) =>
+            logger.debug(s"Subprogram 1: $subprogram1")
+            logger.debug(s"Subprogram 2: $subprogram2")
+            decomposition.subsequentExecution(subprogram1, subprogram2)
+        })
+        assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
+    })
   }
 
   "Decomposition" should "succeed" in {
@@ -628,6 +640,42 @@ object DecompositionUnitTest {
       TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),
       TestCaseJavaProgram("Test02", test02, test02ExpectedOutput),
       TestCaseJavaProgram("Test03", test03, test03ExpectedOutput),
+    )
+  }
+
+  val subsequentExecutionUnitTest: List[TestCaseJavaProgram] = {
+    val test01 =
+      """class Test01 {
+        |  void f(int n, int m) {
+        |    int it = n;
+        |    int R = 0;
+        |    while (it > 0) {
+        |      it--;
+        |      R = R + m;
+        |    }
+        |    R = R + n;
+        |  }
+        |}""".stripMargin
+    val test01ExpectedOutput = "false\nfalse\ntrue\ntrue"
+
+    val test02 =
+      """class Test02 {
+        |  void f(int n, int m) {
+        |    int it = n;
+        |    int R = 0;
+        |    it++;
+        |    while (it > 0) {
+        |      it--;
+        |      R = R + m;
+        |      R = R + n;
+        |    }
+        |  }
+        |}""".stripMargin
+    val test02ExpectedOutput = "true\ntrue\ntrue\ntrue"
+
+    List[TestCaseJavaProgram](
+      TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),
+      TestCaseJavaProgram("Test02", test02, test02ExpectedOutput),
     )
   }
 }

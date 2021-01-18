@@ -240,12 +240,10 @@ object TreeUtils {
     trees.map(tree => treeToString(tree, indent)).mkString(";\n")
   }
 
-  private val loopKinds = new java.util.HashSet[Tree.Kind]()
-  loopKinds.add(Tree.Kind.FOR_LOOP)
-  loopKinds.add(Tree.Kind.WHILE_LOOP)
+  val loopKinds: Set[Tree.Kind] = HashSet[Tree.Kind](Tree.Kind.FOR_LOOP, Tree.Kind.WHILE_LOOP)
 
   def getMinimalEnclosingLoop(path: TreePath): Option[Tree] = {
-    org.checkerframework.javacutil.TreeUtils.enclosingOfKind(path, loopKinds) match {
+    org.checkerframework.javacutil.TreeUtils.enclosingOfKind(path, loopKinds.asJava) match {
       case null => None
       case loop => Some(loop)
     }

@@ -85,28 +85,19 @@ class Decomposition(inputMethod: TargetMethod) {
         }
         return Subprogram(minimalEnclosingBlock1.getStatements.asScala.slice(head, last + 1).toList)
       case _ =>
-        var p = inputMethod.getPath(subprogram1.astNodes.head)
-        while (p != null) {
-          val leaf: Tree = p.getLeaf
-          assert(leaf != null)
-          val allTrees = TreeUtils.collectStatementTrees(leaf.asInstanceOf[StatementTree])
-          if (subprogram2.innerTrees.subsetOf(allTrees)) {
-            leaf match {
-              case blockTree: BlockTree =>
-                val statements = blockTree.getStatements.asScala.toList
-                val statements2 = statements.filter({
-                  statement =>
-                    val trees = TreeUtils.collectStatementTrees(statement)
-                    trees.intersect(subprogram1.innerTrees).nonEmpty || trees.intersect(subprogram2.innerTrees).nonEmpty
-                })
-                val startIndex = statements.indexOf(statements2.head)
-                val endIndex = statements.indexOf(statements2.last)
-                assert(startIndex != -1 && endIndex != -1)
-                return Subprogram(statements.slice(startIndex, endIndex + 1))
-              case _ => return Subprogram(List(leaf.asInstanceOf[StatementTree]))
-            }
-          }
-          p = p.getParentPath
+        getAllCommonEnclosingTrees(subprogram1, subprogram2).last match {
+          case blockTree: BlockTree =>
+            val statements = blockTree.getStatements.asScala.toList
+            val statements2 = statements.filter({
+              statement =>
+                val trees = TreeUtils.collectStatementTrees(statement)
+                trees.intersect(subprogram1.innerTrees).nonEmpty || trees.intersect(subprogram2.innerTrees).nonEmpty
+            })
+            val startIndex = statements.indexOf(statements2.head)
+            val endIndex = statements.indexOf(statements2.last)
+            assert(startIndex != -1 && endIndex != -1)
+            return Subprogram(statements.slice(startIndex, endIndex + 1))
+          case tree@_ => return Subprogram(List(tree.asInstanceOf[StatementTree]))
         }
     }
 
@@ -215,10 +206,10 @@ class Decomposition(inputMethod: TargetMethod) {
     assert(subprograms.programs.contains(subprogram))
 
     val modifiedSet = environmentModifiedSet(subprogram, subprograms)
-    logger.error(s"Environment modified set: `$modifiedSet`")
+    logger.debug(s"Environment modified set: `$modifiedSet`")
 
     val taintSet = Decomposition.computeTaintSet(subprogram.targetMethod, debug = false)
-    logger.error(s"Taint set `$taintSet` of subprogram\n$subprogram")
+    logger.debug(s"Taint set `$taintSet` of subprogram\n$subprogram")
 
     modifiedSet.intersect(taintSet).nonEmpty
   }
@@ -235,6 +226,46 @@ class Decomposition(inputMethod: TargetMethod) {
     }
   }
 
+  def getAllCommonEnclosingTrees(subprogram1: Subprogram, subprogram2: Subprogram): List[StatementTree] = {
+    var allCommonEnclosingTrees: List[StatementTree] = Nil
+    var continue = true
+    var p = inputMethod.getPath(subprogram1.astNodes.head)
+    while (p != null && continue) {
+      val leaf = p.getLeaf
+      assert(leaf != null)
+      leaf match {
+        case statementTree: StatementTree =>
+          val allTrees = TreeUtils.collectStatementTrees(statementTree)
+          if (subprogram2.innerTrees.subsetOf(allTrees)) {
+            allCommonEnclosingTrees = statementTree :: allCommonEnclosingTrees
+          }
+        case _ => continue = false
+      }
+      p = p.getParentPath
+    }
+    allCommonEnclosingTrees
+  }
+
+  def subsequentExecution(subprogram1: Subprogram, subprogram2: Subprogram): Boolean = {
+    val commonTrees = getAllCommonEnclosingTrees(subprogram1, subprogram2)
+    if (commonTrees.exists(tree => TreeUtils.loopKinds.contains(tree.getKind))) {
+      true
+    }
+    else {
+      commonTrees.find(tree => tree.isInstanceOf[BlockTree]) match {
+        case Some(blockTree) =>
+          val statements = blockTree.asInstanceOf[BlockTree].getStatements.asScala
+          val trees = statements.map(statement => TreeUtils.collectStatementTrees(statement))
+          val index1 = trees.indexWhere(tree => subprogram1.innerTrees.subsetOf(tree))
+          val index2 = trees.indexWhere(tree => subprogram2.innerTrees.subsetOf(tree))
+          assert(index1 != -1)
+          assert(index2 != -1)
+          index1 < index2
+        case None => throw new Exception("Unexpected")
+      }
+    }
+  }
+
   /**
    *
    * @param subprogram1 Subprogram 1
@@ -242,13 +273,20 @@ class Decomposition(inputMethod: TargetMethod) {
    * @return If subprogram 1 may interfere with subprogram 2's resource usage
    */
   def interfere(subprogram1: Subprogram, subprogram2: Subprogram): Boolean = {
-    // TODO: Check if there exists a path from subprogram1's exit to subprogram2's entry
+    // First check if there exists a path from subprogram1's exit to subprogram2's entry
+    if (!subsequentExecution(subprogram1, subprogram2)) {
+      logger.debug(s"Subprogram 2 cannot be subsequently executed after subprogram 1")
+      logger.debug(s"Subprogram 1:\n$subprogram1")
+      logger.debug(s"Subprogram 2:\n$subprogram2")
+      return false
+    }
+
     val modifiedSet1 = Decomposition.computeModifiedSet(subprogram1.targetMethod)
     val taintSet2 = Decomposition.computeTaintSet(subprogram2.targetMethod, debug = false)
-    logger.error(s"Subprogram 1:\n$subprogram1")
-    logger.error(s"Subprogram 1 modified set: $modifiedSet1")
-    logger.error(s"Subprogram 2:\n$subprogram2")
-    logger.error(s"Subprogram 2 taint set: $taintSet2")
+    logger.debug(s"Subprogram 1:\n$subprogram1")
+    logger.debug(s"Subprogram 1 modified set: $modifiedSet1")
+    logger.debug(s"Subprogram 2:\n$subprogram2")
+    logger.debug(s"Subprogram 2 taint set: $taintSet2")
     modifiedSet1.intersect(taintSet2).nonEmpty
   }
 
@@ -260,10 +298,7 @@ class Decomposition(inputMethod: TargetMethod) {
       s"Subprogram(\n$nodes\n)"
     }
 
-    val innerTrees: Set[StatementTree] = astNodes.foldLeft(new HashSet[StatementTree])({
-      (acc, astNode) => acc ++ TreeUtils.collectStatementTrees(astNode)
-    })
-
+    val innerTrees: Set[StatementTree] = astNodes.flatMap({ astNode => TreeUtils.collectStatementTrees(astNode) }).toSet
     val commands: List[StatementTree] = TreeUtils.collectCommands(astNodes)
 
     val minimalEnclosingTree: StatementTree = {
