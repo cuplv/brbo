@@ -92,6 +92,42 @@ object TreeUtils {
     }
   }
 
+  /**
+   *
+   * @param statementTree
+   * @return The first tree in the tree that may serve as a key in CFG's map `treeLookup` and `unaryAssignNodeLookup`
+   *
+   */
+  /*def getFirstCommandTree(statementTree: StatementTree): Option[Tree] = {
+    if (statementTree == null) return None
+
+    statementTree match {
+      case _@(_: AssertTree | _: BreakTree |
+              _: ContinueTree | _: EmptyStatementTree) => None // These trees don't serve as keys
+      case tree@(_: VariableTree | _: ReturnTree) => Some(tree)
+      case tree: ExpressionStatementTree => Some(tree.getExpression)
+      case tree: BlockTree =>
+        val statements = tree.getStatements.asScala
+        if (statements.isEmpty) None
+        else {
+          statements.find(statement => getFirstCommandTree(statement) != null) match {
+            case Some(statement) => getFirstCommandTree(statement)
+            case None => None
+          }
+        }
+      case tree: ForLoopTree =>
+        val statements = tree.getInitializer.asScala.toList ::: tree.getStatement :: tree.getUpdate.asScala.toList
+        statements.find(statement => getFirstCommandTree(statement) != null) match {
+          case Some(statement) => getFirstCommandTree(statement)
+          case None => None
+        }
+      case tree: IfTree =>
+      case tree: LabeledStatementTree =>
+      case tree: WhileLoopTree =>
+      case _ => throw new Exception(s"Not yet support tree $statementTree (type: ${statementTree.getClass})")
+    }
+  }*/
+
   def collectCommands(statement: StatementTree): List[StatementTree] = {
     def throwException(message: String): Nothing = {
       throw new Exception(s"$message in AST: $statement")
@@ -130,26 +166,62 @@ object TreeUtils {
    * @param tree
    * @return All statement trees that are enclosed in `tree`
    */
-  def collectTrees(tree: StatementTree): Set[StatementTree] = {
+  def collectStatementTrees(tree: StatementTree): Set[StatementTree] = {
     if (tree == null) return new HashSet[StatementTree]
 
     val set: Set[StatementTree] =
       tree match {
         case _@(_: AssertTree | _: BreakTree | _: ContinueTree | _: EmptyStatementTree |
                 _: ExpressionStatementTree | _: ReturnTree | _: VariableTree) => new HashSet[StatementTree]()
-        case tree2: BlockTree => collectTrees(tree2.getStatements.asScala)
+        case tree2: BlockTree => collectStatementTrees(tree2.getStatements.asScala)
         case tree2: ForLoopTree =>
-          collectTrees(tree2.getInitializer.asScala) ++ collectTrees(tree2.getStatement) ++ collectTrees(tree2.getUpdate.asScala)
+          collectStatementTrees(tree2.getInitializer.asScala) ++ collectStatementTrees(tree2.getStatement) ++ collectStatementTrees(tree2.getUpdate.asScala)
         case tree2: IfTree =>
-          collectTrees(tree2.getThenStatement) ++ collectTrees(tree2.getElseStatement)
-        case tree2: LabeledStatementTree => collectTrees(tree2.getStatement)
-        case tree2: WhileLoopTree => collectTrees(tree2.getStatement)
+          collectStatementTrees(tree2.getThenStatement) ++ collectStatementTrees(tree2.getElseStatement)
+        case tree2: LabeledStatementTree => collectStatementTrees(tree2.getStatement)
+        case tree2: WhileLoopTree => collectStatementTrees(tree2.getStatement)
         case _ => throw new Exception(s"Not yet support tree $tree (type: ${tree.getClass})")
       }
     set + tree
   }
 
-  private def collectTrees(trees: Iterable[StatementTree]): Set[StatementTree] = {
-    trees.foldLeft(new HashSet[StatementTree])({ (acc, tree) => acc ++ collectTrees(tree) })
+  private def collectStatementTrees(trees: Iterable[StatementTree]): Set[StatementTree] = {
+    trees.foldLeft(new HashSet[StatementTree])({ (acc, tree) => acc ++ collectStatementTrees(tree) })
+  }
+
+  def collectConditionTrees(tree: StatementTree): Set[ExpressionTree] = {
+    if (tree == null) return new HashSet[ExpressionTree]
+
+    tree match {
+      case _@(_: AssertTree | _: BreakTree | _: ContinueTree | _: EmptyStatementTree |
+              _: ExpressionStatementTree | _: ReturnTree | _: VariableTree) => new HashSet[ExpressionTree]
+      case tree2: BlockTree => collectConditionTrees(tree2.getStatements.asScala)
+      case tree2: ForLoopTree =>
+        collectConditionTrees(tree2.getInitializer.asScala) ++ collectConditionTrees(tree2.getStatement) ++
+          collectConditionTrees(tree2.getUpdate.asScala) + tree2.getCondition
+      case tree2: IfTree =>
+        collectConditionTrees(tree2.getThenStatement) ++ collectConditionTrees(tree2.getElseStatement) + tree2.getCondition
+      case tree2: LabeledStatementTree => collectConditionTrees(tree2.getStatement)
+      case tree2: WhileLoopTree => collectConditionTrees(tree2.getStatement) + tree2.getCondition
+      case _ => throw new Exception(s"Not yet support tree $tree (type: ${tree.getClass})")
+    }
+  }
+
+  private def collectConditionTrees(trees: Iterable[StatementTree]): Set[ExpressionTree] = {
+    trees.foldLeft(new HashSet[ExpressionTree])({ (acc, tree) => acc ++ collectConditionTrees(tree) })
+  }
+
+  def modifiedVariables(tree: StatementTree): Set[String] = {
+    collectCommands(tree).foldLeft(new HashSet[String])({
+      (acc, command) =>
+        command match {
+          case expressionStatementTree: ExpressionStatementTree =>
+            expressionStatementTree.getExpression match {
+              case assignmentTree: AssignmentTree => acc + assignmentTree.getVariable.toString
+              case _ => acc
+            }
+          case _ => acc
+        }
+    })
   }
 }

@@ -2,7 +2,10 @@ package brbo.common
 
 import java.util
 
+import brbo.common.CFGUtils.deepCopyGraph
 import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT, VOID}
+import brbo.verification.dependency.BrboNode
+import com.ibm.wala.util.graph.NumberedGraph
 import com.sun.source.tree.{MethodTree, Tree}
 import com.sun.source.util.TreePath
 import org.apache.logging.log4j.LogManager
@@ -38,6 +41,8 @@ case class TargetMethod(className: String,
     case "void" => VOID
     case _ => throw new Exception(s"Unexpected return type: ${methodTree.getReturnType} (Kind: ${methodTree.getReturnType.getKind})")
   }
+
+  val (numberedGraph: NumberedGraph[BrboNode], rootOfNumberedGraph: BrboNode) = deepCopyGraph(cfg, transpose = false)
 
   def getMinimalEnclosingLoop(tree: Tree): Option[Tree] = {
     val kinds = new util.HashSet[Tree.Kind]()

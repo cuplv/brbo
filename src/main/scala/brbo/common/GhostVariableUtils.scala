@@ -37,12 +37,12 @@ object GhostVariableUtils {
     }
   }
 
-  case class GhostVariableUpdateNode(identifier: String, update: Node) {
-    override def toString: String = s"$identifier = $identifier + $update"
+  case class GhostVariableUpdateNode(identifier: String, increment: Node) {
+    override def toString: String = s"$identifier = $identifier + $increment"
   }
 
-  case class GhostVariableUpdateTree(identifier: String, update: Tree) {
-    override def toString: String = s"$identifier = $identifier + $update"
+  case class GhostVariableUpdateTree(identifier: String, increment: Tree) {
+    override def toString: String = s"$identifier = $identifier + $increment"
   }
 
   def extractDeltaVariableReset(cfgNode: Node): Option[String] = {

@@ -6,6 +6,7 @@ import brbo.common.TypeUtils.BrboType
 import brbo.common._
 import brbo.verification.dependency.reachdef.ReachingValue
 import brbo.verification.dependency.{ControlDependency, DataDependency}
+import com.sun.source.tree.Tree.Kind
 import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.block.{Block, ConditionalBlock}
@@ -19,7 +20,7 @@ class Decomposition(inputMethod: TargetMethod) {
 
   private val commands = TreeUtils.collectCommands(inputMethod.methodTree.getBody)
 
-  def decompose(): String = {
+  def decompose(): Subprograms = {
     var subprograms = eliminateEnvironmentInterference(mergeIfOverlap(initializeSubprograms()))
     var continue = true
     while (continue) {
@@ -30,43 +31,22 @@ class Decomposition(inputMethod: TargetMethod) {
       else {
         val pair = interferedSubprograms.head
         logger.error(s"Subprogram ${pair._1} interferes with ${pair._2}")
-        if (pair._1 == pair._2) {
-          subprograms = enlargeNoInterference(pair._1, subprograms)
+        val newSubprogram = {
+          if (pair._1 == pair._2) enlarge(pair._1)
+          else merge(pair._1, pair._2)
         }
-        else {
-          val newSubprogram = merge(pair._1, pair._2)
-          subprograms = mergeIfOverlap(subprograms.programs - pair._1 - pair._2 + newSubprogram)
-        }
+        subprograms = mergeIfOverlap(subprograms.programs - pair._1 - pair._2 + newSubprogram)
       }
     }
-    insertResets(subprograms)
+    subprograms
   }
 
   def initializeSubprograms(): Set[Subprogram] = {
     commands.foldLeft(new HashSet[Subprogram])({
       (acc, statement) =>
-        statement match {
-          case expressionStatementTree: ExpressionStatementTree =>
-            GhostVariableUtils.extractGhostVariableUpdate(expressionStatementTree.getExpression, Resource) match {
-              case Some(updateNode) =>
-                updateNode.update match {
-                  case _: LiteralTree =>
-                    // The initial subprogram is the minimal enclosing loop when `R` is updated by a constant
-                    val subprogram = {
-                      inputMethod.getMinimalEnclosingLoop(statement) match {
-                        case Some(enclosingLoop) => enclosingLoop
-                        case None =>
-                          logger.trace(s"Resource update `$statement` does not have an enclosing loop")
-                          statement
-                      }
-                    }
-                    logger.trace(s"Resource update `$statement`'s initial subprogram is `$subprogram`")
-                    acc + Subprogram(List(subprogram.asInstanceOf[StatementTree]))
-                  case _ => acc + Subprogram(List(statement))
-                }
-              case None => acc
-            }
-          case _ => acc
+        Decomposition.initializeSubprogramFromStatement(statement, inputMethod) match {
+          case Some((statement, _)) => acc + Subprogram(List(statement))
+          case None => acc
         }
     })
   }
@@ -82,7 +62,6 @@ class Decomposition(inputMethod: TargetMethod) {
    *         - It encloses the input subprogram
    *         - It does not overlap with other subprograms
    *         - No interference: It does not interfere with itself
-   *         - No interference: The environment does not interfere with it
    */
   def enlargeNoInterference(subprogram: Subprogram, subprograms: Subprograms): Subprograms = {
     assert(subprograms.programs.contains(subprogram))
@@ -111,14 +90,14 @@ class Decomposition(inputMethod: TargetMethod) {
         while (p != null) {
           val leaf: Tree = p.getLeaf
           assert(leaf != null)
-          val allTrees = TreeUtils.collectTrees(leaf.asInstanceOf[StatementTree])
+          val allTrees = TreeUtils.collectStatementTrees(leaf.asInstanceOf[StatementTree])
           if (subprogram2.innerTrees.subsetOf(allTrees)) {
             leaf match {
               case blockTree: BlockTree =>
                 val statements = blockTree.getStatements.asScala.toList
                 val statements2 = statements.filter({
                   statement =>
-                    val trees = TreeUtils.collectTrees(statement)
+                    val trees = TreeUtils.collectStatementTrees(statement)
                     trees.intersect(subprogram1.innerTrees).nonEmpty || trees.intersect(subprogram2.innerTrees).nonEmpty
                 })
                 val startIndex = statements.indexOf(statements2.head)
@@ -216,12 +195,13 @@ class Decomposition(inputMethod: TargetMethod) {
   }
 
   def environmentModifiedSet(subprograms: Subprograms): Set[String] = {
-    ???
+    subprograms.programs.flatMap(subprogram => subprogram.astNodes.flatMap(tree => TreeUtils.modifiedVariables(tree)))
   }
 
   def interferedByEnvironment(subprogram: Subprogram, subprograms: Subprograms): Boolean = {
     assert(subprograms.programs.contains(subprogram))
 
+    // TODO: Environment interfere only if there exists a path to the environment
     val modifiedSet = environmentModifiedSet(subprograms)
     val taintSet = Decomposition.computeTaintSet(subprogram.targetMethod)
 
@@ -265,7 +245,7 @@ class Decomposition(inputMethod: TargetMethod) {
     }
 
     val innerTrees: Set[StatementTree] = astNodes.foldLeft(new HashSet[StatementTree])({
-      (acc, astNode) => acc ++ TreeUtils.collectTrees(astNode)
+      (acc, astNode) => acc ++ TreeUtils.collectStatementTrees(astNode)
     })
 
     val minimalEnclosingTree: StatementTree = {
@@ -336,7 +316,48 @@ class Decomposition(inputMethod: TargetMethod) {
 }
 
 object Decomposition {
-  private val logger = LogManager.getLogger("brbo.boundinference.dependency.Decomposition")
+  private val logger = LogManager.getLogger("brbo.verification.Decomposition")
+
+  case class InitialSubprogram(body: StatementTree, entryNode: Node)
+
+  /**
+   *
+   * @param statement    The statement from which we generate an initial subprogram
+   * @param targetMethod The method that encloses the above statement
+   * @return The initial program and its entry node in the CFG
+   */
+  def initializeSubprogramFromStatement(statement: StatementTree, targetMethod: TargetMethod): Option[(StatementTree, Node)] = {
+    statement match {
+      case expressionStatementTree: ExpressionStatementTree =>
+        GhostVariableUtils.extractGhostVariableUpdate(expressionStatementTree.getExpression, Resource) match {
+          case Some(updateTree) =>
+            val updateNode = CFGUtils.getNodesCorrespondingToExpressionStatementTree(statement, targetMethod.cfg)
+
+            updateTree.increment match {
+              case literalTree: LiteralTree =>
+                assert(literalTree.getKind == Kind.INT_LITERAL)
+                // The initial subprogram is the minimal enclosing loop when `R` is updated by a constant
+                val subprogram: StatementTree = {
+                  targetMethod.getMinimalEnclosingLoop(statement) match {
+                    case Some(enclosingLoop) => enclosingLoop
+                    case None =>
+                      logger.trace(s"Resource update `$statement` does not have an enclosing loop")
+                      statement
+                  }
+                }.asInstanceOf[StatementTree]
+                val entryNode: Node = CFGUtils.entryOfMinimalEnclosingLoop(updateNode, targetMethod) match {
+                  case Some(entryNode) => entryNode
+                  case None => updateNode
+                }
+                logger.trace(s"Resource update `$statement`'s initial subprogram is `$subprogram`. Entry node is `$entryNode`")
+                Some(subprogram, entryNode)
+              case _ => Some(statement, updateNode)
+            }
+          case None => None
+        }
+      case _ => None
+    }
+  }
 
   def computeModifiedSet(targetMethod: TargetMethod): Set[String] = {
     targetMethod.cfg.getAllNodes.asScala.foldLeft(new HashSet[String])({
@@ -348,12 +369,109 @@ object Decomposition {
     })
   }
 
+  /**
+   *
+   * @param targetMethod
+   * @return Compute the variables that any `r+=e` data depends on in the input method
+   */
   def computeTaintSet(targetMethod: TargetMethod): Set[String] = {
     val dataDependency = DataDependency.computeDataDependency(targetMethod)
-    val controlDependency = ControlDependency.computeControlDependency(targetMethod)
+    val controlDependency = {
+      val controlDependency = ControlDependency.computeControlDependency(targetMethod)
+      ControlDependency.reverseControlDependency(controlDependency)
+    }
 
-    // Treat `r+=e` when `e` is constant differently from `r+=e` when `e` is constant
-    ???
+    TreeUtils.collectCommands(targetMethod.methodTree.getBody).flatMap({
+      statement =>
+        initializeSubprogramFromStatement(statement, targetMethod) match {
+          case Some((initialSubprogram, entryNode)) =>
+            logger.error(s"Compute taint set for $initialSubprogram")
+            val conditionTrees = TreeUtils.collectConditionTrees(initialSubprogram)
+
+            val correspondingNode = CFGUtils.getNodesCorrespondingToExpressionStatementTree(statement, targetMethod.cfg)
+            logger.error(s"Expression Tree $statement corresponds to node $correspondingNode")
+
+            // Treat `r+=e` when `e` is constant differently from `r+=e` when `e` is constant
+            val dataDependentVariables: Set[String] = GhostVariableUtils.extractGhostVariableUpdate(statement.asInstanceOf[ExpressionStatementTree].getExpression, Resource) match {
+              case Some(updateTree) =>
+                updateTree match {
+                  case _: LiteralTree =>
+                    logger.error(s"The update in `$statement` is constant")
+                    controlDependency.get(correspondingNode.getBlock) match {
+                      case Some(blocks) =>
+                        blocks.flatMap({
+                          block =>
+                            assert(block.isInstanceOf[ConditionalBlock], s"Block ${correspondingNode.getBlock.getUid} control depends on block ${block.getUid}")
+                            val predecessors = block.getPredecessors.asScala
+                            assert(predecessors.size == 1)
+
+                            // Check if the predecessor block is in the subprogram
+                            val conditionNode = predecessors.head.getLastNode
+                            val conditionTree = conditionNode.getTree.asInstanceOf[ExpressionTree]
+
+                            logger.error(s"The condition node is `$conditionNode`")
+                            if (conditionTrees.contains(conditionTree)) {
+                              CFGUtils.getUsedVariables(conditionNode)
+                            }
+                            else new HashSet[String]
+                        })
+                      case None => new HashSet[String]
+                    }
+                  case _ =>
+                    logger.error(s"The update in statement `$statement` is not constant")
+                    CFGUtils.getUsedVariables(correspondingNode.asInstanceOf[AssignmentNode].getExpression)
+                }
+              case None => throw new Exception("Unexpected")
+            }
+            logger.error(s"Data dependent variables are $dataDependentVariables")
+
+            // Compute transitive data dependency for the above variables, starting from the entry node of initial subprogram
+            computeTaintData(dataDependentVariables, entryNode, dataDependency)
+          case None => new HashSet[String]
+        }
+    }).toSet
+  }
+
+  private def computeTaintData(dataDependentVariables: Set[String],
+                               initialLocation: Node,
+                               dataDependency: Map[Node, Set[ReachingValue]]): Set[String] = {
+    dataDependency.get(initialLocation) match {
+      case Some(definitions) =>
+        val newDefinitions = definitions.filter(definition => dataDependentVariables.contains(definition.variable))
+        newDefinitions.flatMap({
+          definition =>
+            definition.node match {
+              case Some(n) =>
+                computeTaintSetDataHelper(n, dataDependency, HashSet[Node](initialLocation))
+              case None => HashSet[String](definition.variable) // This definition comes from an input variable
+            }
+        })
+      case None => new HashSet[String]
+    }
+  }
+
+  private def computeTaintSetDataHelper(node: Node, dataDependency: Map[Node, Set[ReachingValue]], visited: Set[Node]): Set[String] = {
+    if (visited.contains(node)) return new HashSet[String]
+    logger.error(s"Visiting $node")
+
+    val assignmentExpression = node match {
+      case assignmentNode: AssignmentNode => assignmentNode.getExpression
+      case _ => throw new Exception(s"Expecting assignment node $node (Type: ${node.getClass})")
+    }
+
+    dataDependency.get(node) match {
+      case Some(definitions) =>
+        val usedVariables = CFGUtils.getUsedVariables(assignmentExpression)
+        val newDefinitions = definitions.filter(definition => usedVariables.contains(definition.variable))
+        newDefinitions.flatMap({
+          definition =>
+            definition.node match {
+              case Some(n) => computeTaintSetDataHelper(n, dataDependency, visited + node)
+              case None => HashSet[String](definition.variable) // This definition comes from an input variable
+            }
+        })
+      case None => new HashSet[String]
+    }
   }
 
   @deprecated
@@ -372,6 +490,7 @@ object Decomposition {
       .toSet
   }
 
+  @deprecated
   private def computeTaintSetDataHelper(node: Node,
                                         dataDependency: Map[Node, Set[ReachingValue]],
                                         controlDependency: Map[Block, Set[Block]],
@@ -409,6 +528,7 @@ object Decomposition {
     set1 ++ set2
   }
 
+  @deprecated
   private def computeTaintSetControlHelper(node: Node,
                                            dataDependency: Map[Node, Set[ReachingValue]],
                                            controlDependency: Map[Block, Set[Block]],
@@ -441,6 +561,7 @@ object Decomposition {
     set1 ++ set2
   }
 
+  @deprecated
   private def computeTaintSetHelper(definitions: Iterable[ReachingValue],
                                     dataDependency: Map[Node, Set[ReachingValue]],
                                     controlDependency: Map[Block, Set[Block]],

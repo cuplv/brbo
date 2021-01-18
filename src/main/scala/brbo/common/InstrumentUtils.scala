@@ -28,7 +28,7 @@ object InstrumentUtils {
           expressionStatement.getExpression match {
             case assignmentTree: AssignmentTree =>
               val update = GhostVariableUtils.extractGhostVariableUpdate(assignmentTree, Resource)
-              s"$defaultDeltaVariable = $defaultDeltaVariable + ${update.get.update}"
+              s"$defaultDeltaVariable = $defaultDeltaVariable + ${update.get.increment}"
             case unaryTree: UnaryTree =>
               unaryTree.getKind match {
                 case Tree.Kind.PREFIX_DECREMENT | Tree.Kind.POSTFIX_DECREMENT => s"$defaultDeltaVariable = $defaultDeltaVariable - 1"
