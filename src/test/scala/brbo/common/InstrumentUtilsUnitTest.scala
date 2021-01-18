@@ -14,7 +14,7 @@ class InstrumentUtilsUnitTest extends AnyFlatSpec {
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val result = InstrumentUtils.substituteAtomicStatements(targetMethod, AtomicStatementInstrumentation(_ => false, tree => tree.toString), 0, AT_MOST_ONCE)
-        assert(StringCompare.ignoreWhitespaces(result.result, testCase.expectedOutput), s"Test ${testCase.className} failed!")
+        assert(StringCompare.ignoreWhitespaces(result.result, testCase.expectedOutput, s"Test ${testCase.className} failed!"))
     })
   }
 
@@ -23,7 +23,7 @@ class InstrumentUtilsUnitTest extends AnyFlatSpec {
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val result = InstrumentUtils.substituteAtomicStatements(targetMethod, InstrumentUtils.defaultResourceAssignment, 0, AT_MOST_ONCE)
-        assert(StringCompare.ignoreWhitespaces(result.result, testCase.expectedOutput), s"Test ${testCase.className} failed!")
+        assert(StringCompare.ignoreWhitespaces(result.result, testCase.expectedOutput, s"Test ${testCase.className} failed!"))
     })
   }
 
@@ -32,7 +32,7 @@ class InstrumentUtilsUnitTest extends AnyFlatSpec {
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val result = InstrumentUtils.substituteAtomicStatements(targetMethod, InstrumentUtils.defaultResourceAssignment, 0, ALL)
-        assert(StringCompare.ignoreWhitespaces(result.result, testCase.expectedOutput), s"Test ${testCase.className} failed!")
+        assert(StringCompare.ignoreWhitespaces(result.result, testCase.expectedOutput, s"Test ${testCase.className} failed!"))
     })
   }
 }

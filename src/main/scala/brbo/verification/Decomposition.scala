@@ -10,7 +10,7 @@ import com.sun.source.tree.Tree.Kind
 import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.block.{Block, ConditionalBlock}
-import org.checkerframework.dataflow.cfg.node.{AssignmentNode, IntegerLiteralNode, Node, ValueLiteralNode}
+import org.checkerframework.dataflow.cfg.node._
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable.HashSet
@@ -30,7 +30,6 @@ class Decomposition(inputMethod: TargetMethod) {
       }
       else {
         val pair = interferedSubprograms.head
-        logger.error(s"Subprogram ${pair._1} interferes with ${pair._2}")
         val newSubprogram = {
           if (pair._1 == pair._2) enlarge(pair._1)
           else merge(pair._1, pair._2)
@@ -194,18 +193,33 @@ class Decomposition(inputMethod: TargetMethod) {
     subprogram1.innerTrees.intersect(subprogram2.innerTrees).nonEmpty
   }
 
-  def environmentModifiedSet(subprograms: Subprograms): Set[String] = {
-    subprograms.programs.flatMap(subprogram => subprogram.astNodes.flatMap(tree => TreeUtils.modifiedVariables(tree)))
+  def environmentModifiedSet(subprogram: Subprogram, subprograms: Subprograms): Set[String] = {
+    // Environment interferes only if there exists a path from the subprgram to the environment
+    TreeUtils.getMaximalEnclosingLoop(inputMethod.getPath(subprogram.astNodes.head)) match {
+      case Some(maximalLoop) =>
+        logger.debug(s"Maximal enclosing loop: $maximalLoop")
+        val environmentCommands = TreeUtils.collectCommands(maximalLoop.asInstanceOf[StatementTree]).filter({
+          command =>
+            !subprograms.programs.exists({ subprogram => subprogram.commands.contains(command) })
+        })
+        logger.debug(s"Environment commands: $environmentCommands")
+        environmentCommands
+          .flatMap(statement => TreeUtils.modifiedVariables(statement))
+          .toSet
+          .filter(identifier => !GhostVariableUtils.isGhostVariable(identifier, Resource))
+      case None => new HashSet[String]
+    }
   }
 
   def interferedByEnvironment(subprogram: Subprogram, subprograms: Subprograms): Boolean = {
     assert(subprograms.programs.contains(subprogram))
 
-    // TODO: Environment interfere only if there exists a path to the environment
-    val modifiedSet = environmentModifiedSet(subprograms)
-    val taintSet = Decomposition.computeTaintSet(subprogram.targetMethod)
+    val modifiedSet = environmentModifiedSet(subprogram, subprograms)
+    logger.error(s"Environment modified set: `$modifiedSet`")
 
-    logger.error(s"Environment modified set $modifiedSet overlaps with taintset $taintSet of subprogram $subprogram")
+    val taintSet = Decomposition.computeTaintSet(subprogram.targetMethod, debug = false)
+    logger.error(s"Taint set `$taintSet` of subprogram\n$subprogram")
+
     modifiedSet.intersect(taintSet).nonEmpty
   }
 
@@ -223,17 +237,19 @@ class Decomposition(inputMethod: TargetMethod) {
 
   /**
    *
-   * @param subprogram1
-   * @param subprogram2
-   * @return If subprogram1 may interfere with subprogram2's resource usage
+   * @param subprogram1 Subprogram 1
+   * @param subprogram2 Subprogram 2
+   * @return If subprogram 1 may interfere with subprogram 2's resource usage
    */
   def interfere(subprogram1: Subprogram, subprogram2: Subprogram): Boolean = {
     // TODO: Check if there exists a path from subprogram1's exit to subprogram2's entry
     val modifiedSet1 = Decomposition.computeModifiedSet(subprogram1.targetMethod)
-    val taintSet1 = Decomposition.computeTaintSet(subprogram1.targetMethod)
-    val modifiedSet2 = Decomposition.computeModifiedSet(subprogram2.targetMethod)
-    val taintSet2 = Decomposition.computeTaintSet(subprogram2.targetMethod)
-    modifiedSet1.intersect(taintSet2).nonEmpty || modifiedSet2.intersect(taintSet1).nonEmpty
+    val taintSet2 = Decomposition.computeTaintSet(subprogram2.targetMethod, debug = false)
+    logger.error(s"Subprogram 1:\n$subprogram1")
+    logger.error(s"Subprogram 1 modified set: $modifiedSet1")
+    logger.error(s"Subprogram 2:\n$subprogram2")
+    logger.error(s"Subprogram 2 taint set: $taintSet2")
+    modifiedSet1.intersect(taintSet2).nonEmpty
   }
 
   case class Subprogram(astNodes: List[StatementTree]) {
@@ -247,6 +263,8 @@ class Decomposition(inputMethod: TargetMethod) {
     val innerTrees: Set[StatementTree] = astNodes.foldLeft(new HashSet[StatementTree])({
       (acc, astNode) => acc ++ TreeUtils.collectStatementTrees(astNode)
     })
+
+    val commands: List[StatementTree] = TreeUtils.collectCommands(astNodes)
 
     val minimalEnclosingTree: StatementTree = {
       if (astNodes.size == 1)
@@ -285,7 +303,7 @@ class Decomposition(inputMethod: TargetMethod) {
           .filterKeys(key => !declaredLocalVariables.contains(key))
           .map({ case (identifier, typ) => BrboType.variableDeclaration(identifier, typ) })
           .mkString(", ")
-      val methodBody = astNodes.map(tree => tree.toString).mkString("\n")
+      val methodBody = astNodes.map(tree => s"${tree.toString};").mkString("\n")
       InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(
         inputMethod,
         Some(parameters),
@@ -318,7 +336,10 @@ class Decomposition(inputMethod: TargetMethod) {
 object Decomposition {
   private val logger = LogManager.getLogger("brbo.verification.Decomposition")
 
-  case class InitialSubprogram(body: StatementTree, entryNode: Node)
+  def debugOrError(message: String, debug: Boolean): Unit = {
+    if (debug) logger.error(message)
+    else logger.debug(message)
+  }
 
   /**
    *
@@ -338,7 +359,7 @@ object Decomposition {
                 assert(literalTree.getKind == Kind.INT_LITERAL)
                 // The initial subprogram is the minimal enclosing loop when `R` is updated by a constant
                 val subprogram: StatementTree = {
-                  targetMethod.getMinimalEnclosingLoop(statement) match {
+                  TreeUtils.getMinimalEnclosingLoop(targetMethod.getPath(statement)) match {
                     case Some(enclosingLoop) => enclosingLoop
                     case None =>
                       logger.trace(s"Resource update `$statement` does not have an enclosing loop")
@@ -360,98 +381,88 @@ object Decomposition {
   }
 
   def computeModifiedSet(targetMethod: TargetMethod): Set[String] = {
-    targetMethod.cfg.getAllNodes.asScala.foldLeft(new HashSet[String])({
-      (acc, node) =>
-        node match {
-          case assignmentNode: AssignmentNode => acc + assignmentNode.getTarget.toString
-          case _ => acc
-        }
-    })
+    targetMethod.cfg.getAllNodes.asScala
+      .foldLeft(new HashSet[String])({
+        (acc, node) =>
+          node match {
+            case assignmentNode: AssignmentNode => acc + assignmentNode.getTarget.toString
+            case _ => acc
+          }
+      })
+      .filter(identifier => !GhostVariableUtils.isGhostVariable(identifier, Resource))
   }
 
   /**
    *
-   * @param targetMethod
-   * @return Compute the variables that any `r+=e` data depends on in the input method
+   * @param targetMethod The method to compute a taint set
+   * @return Compute the variables that any `r+=e` in the input method data depends on
    */
-  def computeTaintSet(targetMethod: TargetMethod): Set[String] = {
+  def computeTaintSet(targetMethod: TargetMethod, debug: Boolean): Set[String] = {
     val dataDependency = DataDependency.computeDataDependency(targetMethod)
     val controlDependency = {
       val controlDependency = ControlDependency.computeControlDependency(targetMethod)
       ControlDependency.reverseControlDependency(controlDependency)
     }
 
-    TreeUtils.collectCommands(targetMethod.methodTree.getBody).flatMap({
+    val taintSet = TreeUtils.collectCommands(targetMethod.methodTree.getBody).flatMap({
       statement =>
         initializeSubprogramFromStatement(statement, targetMethod) match {
           case Some((initialSubprogram, entryNode)) =>
-            logger.debug(s"Compute taint set for `$initialSubprogram`")
+            debugOrError(s"Compute taint set for `$initialSubprogram`", debug)
             val conditionTrees = TreeUtils.collectConditionTreesWithoutBrackets(initialSubprogram)
 
             val correspondingNode = CFGUtils.getNodesCorrespondingToExpressionStatementTree(statement, targetMethod.cfg)
-            logger.debug(s"Expression Tree `$statement` corresponds to node `$correspondingNode`")
+            debugOrError(s"Expression Tree `$statement` corresponds to node `$correspondingNode`", debug)
 
             // Treat `r+=e` when `e` is constant differently from `r+=e` when `e` is constant
             val dataDependentVariables: Set[String] = GhostVariableUtils.extractGhostVariableUpdate(correspondingNode, Resource) match {
               case Some(update) =>
                 update.increment match {
                   case updateNode: ValueLiteralNode =>
-                    logger.debug(s"The update in `$statement` is constant")
+                    debugOrError(s"The update in `$statement` is constant", debug)
                     updateNode match {
                       case _: IntegerLiteralNode =>
-                        controlDependency.get(correspondingNode.getBlock) match {
-                          case Some(blocks) =>
-                            logger.debug(s"Node `$correspondingNode` control depends on blocks: $blocks")
-                            blocks.flatMap({
-                              block =>
-                                assert(block.isInstanceOf[ConditionalBlock], s"Block ${correspondingNode.getBlock.getUid} control depends on block ${block.getUid}")
-                                val predecessors = block.getPredecessors.asScala
-                                assert(predecessors.size == 1)
-
-                                // Check if the predecessor block is in the subprogram
-                                val conditionNode = predecessors.head.getLastNode
-                                val conditionTree = conditionNode.getTree.asInstanceOf[ExpressionTree]
-
-                                logger.debug(s"The condition node is `$conditionNode`")
-                                logger.trace(s"The condition tree is `$conditionTree` (hash code: ${conditionTree.hashCode()})")
-                                conditionTrees.foreach(t => logger.trace(s"Condition tree `$t` (hash code: ${t.hashCode()})"))
-                                if (conditionTrees.contains(conditionTree)) {
-                                  CFGUtils.getUsedVariables(conditionNode)
-                                }
-                                else new HashSet[String]
-                            })
-                          case None =>
-                            logger.debug(s"Node `$correspondingNode` control depends on no blocks")
-                            new HashSet[String]
-                        }
+                        computeTransitiveControlDependency(correspondingNode, controlDependency, new HashSet[Node], debug).flatMap({
+                          conditionNode =>
+                            val conditionTree = conditionNode.getTree.asInstanceOf[ExpressionTree]
+                            debugOrError(s"The condition node is `$conditionNode`", debug)
+                            logger.trace(s"The condition tree is `$conditionTree` (hash code: ${conditionTree.hashCode()})")
+                            conditionTrees.foreach(t => logger.trace(s"Condition tree `$t` (hash code: ${t.hashCode()})"))
+                            if (conditionTrees.contains(conditionTree)) {
+                              CFGUtils.getUsedVariables(conditionNode)
+                            }
+                            else new HashSet[String]
+                        })
                       case _ => throw new Exception(s"Unsupported literal node `$updateNode`")
                     }
                   case _ =>
-                    logger.debug(s"The update in statement `$statement` is not constant")
+                    debugOrError(s"The update in statement `$statement` is not constant", debug)
                     CFGUtils.getUsedVariables(correspondingNode.asInstanceOf[AssignmentNode].getExpression)
                 }
               case None => throw new Exception("Unexpected")
             }
-            logger.debug(s"Data dependent variables are $dataDependentVariables")
+            debugOrError(s"Data dependent variables are $dataDependentVariables", debug)
 
             // Compute transitive data dependency for the above variables, starting from the entry node of initial subprogram
-            computeTaintData(dataDependentVariables, entryNode, dataDependency)
+            computeTransitiveDataDependencyInputsOnly(dataDependentVariables, entryNode, dataDependency, debug)
           case None => new HashSet[String]
         }
-    }).toSet
+    })
+    taintSet.filter(identifier => !GhostVariableUtils.isGhostVariable(identifier, Resource)).toSet
   }
 
-  private def computeTaintData(dataDependentVariables: Set[String],
-                               initialLocation: Node,
-                               dataDependency: Map[Node, Set[ReachingValue]]): Set[String] = {
+  private def computeTransitiveDataDependencyInputsOnly(seedVariables: Set[String],
+                                                        initialLocation: Node,
+                                                        dataDependency: Map[Node, Set[ReachingValue]],
+                                                        debug: Boolean): Set[String] = {
     dataDependency.get(initialLocation) match {
       case Some(definitions) =>
-        val newDefinitions = definitions.filter(definition => dataDependentVariables.contains(definition.variable))
+        val newDefinitions = definitions.filter(definition => seedVariables.contains(definition.variable))
         newDefinitions.flatMap({
           definition =>
             definition.node match {
               case Some(n) =>
-                computeTaintSetDataHelper(n, dataDependency, HashSet[Node](initialLocation))
+                computeTransitiveDataDependencyInputsOnlyHelper(n, dataDependency, HashSet[Node](initialLocation), debug)
               case None => HashSet[String](definition.variable) // This definition comes from an input variable
             }
         })
@@ -459,29 +470,55 @@ object Decomposition {
     }
   }
 
-  private def computeTaintSetDataHelper(node: Node, dataDependency: Map[Node, Set[ReachingValue]], visited: Set[Node]): Set[String] = {
+  private def computeTransitiveDataDependencyInputsOnlyHelper(node: Node,
+                                                              dataDependency: Map[Node, Set[ReachingValue]],
+                                                              visited: Set[Node],
+                                                              debug: Boolean): Set[String] = {
     if (visited.contains(node)) return new HashSet[String]
-    logger.debug(s"Compute data dependency for node `$node`")
+    debugOrError(s"Compute data dependency for node `$node`", debug)
 
-    val assignmentExpression = node match {
-      case assignmentNode: AssignmentNode => assignmentNode.getExpression
-      case _ => throw new Exception(s"Expecting assignment node $node (Type: ${node.getClass})")
+    val usedVariables: Set[String] = node match {
+      case assignmentNode: AssignmentNode => CFGUtils.getUsedVariables(assignmentNode.getExpression)
+      case methodInvocationNode: MethodInvocationNode =>
+        methodInvocationNode.getArguments.asScala.flatMap(node => CFGUtils.getUsedVariables(node)).toSet
+      case _ => throw new Exception(s"Expecting assignment or method invocation node $node (Type: ${node.getClass})")
     }
+    debugOrError(s"Used variables: $usedVariables", debug)
 
     dataDependency.get(node) match {
       case Some(definitions) =>
-        val usedVariables = CFGUtils.getUsedVariables(assignmentExpression)
-        logger.debug(s"Used variables: $usedVariables")
         val newDefinitions = definitions.filter(definition => usedVariables.contains(definition.variable))
-        logger.debug(s"Reaching definitions: $newDefinitions")
+        debugOrError(s"Reaching definitions: $newDefinitions", debug)
         newDefinitions.flatMap({
           definition =>
             definition.node match {
-              case Some(n) => computeTaintSetDataHelper(n, dataDependency, visited + node)
+              case Some(n) => computeTransitiveDataDependencyInputsOnlyHelper(n, dataDependency, visited + node, debug)
               case None => HashSet[String](definition.variable) // This definition comes from an input variable
             }
         })
       case None => new HashSet[String]
+    }
+  }
+
+  private def computeTransitiveControlDependency(node: Node,
+                                                 controlDependency: Map[Block, Set[Block]],
+                                                 visited: Set[Node],
+                                                 debug: Boolean): Set[Node] = {
+    if (visited.contains(node)) return new HashSet[Node]
+    debugOrError(s"Visiting node `$node`", debug)
+
+    controlDependency.get(node.getBlock) match {
+      case Some(blocks) =>
+        blocks.flatMap({
+          block =>
+            assert(block.isInstanceOf[ConditionalBlock], s"Block ${node.getBlock.getUid} control depends on block ${block.getUid}")
+            val predecessors = block.getPredecessors.asScala
+            assert(predecessors.size == 1)
+
+            val condition = predecessors.head.getLastNode
+            computeTransitiveControlDependency(condition, controlDependency, visited + node, debug) + condition
+        })
+      case None => new HashSet[Node]
     }
   }
 

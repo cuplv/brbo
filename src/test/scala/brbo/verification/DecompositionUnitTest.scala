@@ -14,7 +14,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val decomposition = new Decomposition(targetMethod)
         val result = decomposition.initializeSubprograms()
-        assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput))
+        assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
     })
   }
 
@@ -32,7 +32,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
             logger.debug(s"$subprogram1 --- $subprogram2 --- $mergeResult")
             mergeResult
         }).toSet
-        assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput))
+        assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
     })
   }
 
@@ -42,7 +42,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val decomposition = new Decomposition(targetMethod)
         val result = decomposition.mergeIfOverlap(decomposition.initializeSubprograms())
-        assert(StringCompare.ignoreWhitespaces(result.programs, testCase.expectedOutput))
+        assert(StringCompare.ignoreWhitespaces(result.programs, testCase.expectedOutput, testCase.className))
     })
   }
 
@@ -58,7 +58,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
             logger.debug(enlargeResult)
             enlargeResult
         })
-        assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput))
+        assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
     })
   }
 
@@ -66,8 +66,33 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.taintSetTests.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val result = Decomposition.computeTaintSet(targetMethod)
-        assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput))
+        val result = Decomposition.computeTaintSet(targetMethod, debug = false)
+        assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
+    })
+  }
+
+  "Computing environment modified set" should "be correct" in {
+    DecompositionUnitTest.environmentModifiedSetUnitTest.foreach({
+      testCase =>
+        val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
+        val decomposition = new Decomposition(targetMethod)
+        val subprograms = decomposition.mergeIfOverlap(decomposition.initializeSubprograms())
+        val result = decomposition.environmentModifiedSet(subprograms.programs.head, subprograms)
+        assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
+    })
+  }
+
+  "Deciding interference" should "be correct" in {
+
+  }
+
+  "Decomposition" should "succeed" in {
+    DecompositionUnitTest.decompositionUnitTest.foreach({
+      testCase =>
+        val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
+        val decomposition = new Decomposition(targetMethod)
+        // val result = decomposition.decompose()
+        // println(result)
     })
   }
 }
@@ -200,6 +225,7 @@ object DecompositionUnitTest {
         |  }
         |}""".stripMargin
     val test01ExpectedOutput = ""
+
     val test02 =
       """class Test02 {
         |  void f(int text, int templateds, int separator) {
@@ -211,15 +237,15 @@ object DecompositionUnitTest {
         |      int start = 0;
         |      int end = 0;
         |      while (true) {
-        |        start = ndInt(end + 1, text);
+        |        start = end + text; // ndInt(end + 1, text);
         |        if (start == text) break;
-        |        end = ndInt(start + 1, text);
+        |        end = start + text; // ndInt(start + 1, text);
         |        sb += start - index;
-        |        R = R + start - index;
+        |        R = R + (start - index);
         |        index = end;
         |      }
         |      sb += text - index;
-        |      R = R + text - index;
+        |      R = R + (text - index);
         |      sb += separator;
         |      R = R + separator;
         |      i++;
@@ -550,6 +576,58 @@ object DecompositionUnitTest {
       TestCaseJavaProgram("Test04", test04, test04ExpectedOutput),
       TestCaseJavaProgram("Test05", test05, test05ExpectedOutput),
       TestCaseJavaProgram("Test06", test06, test06ExpectedOutput),
+    )
+  }
+
+  val environmentModifiedSetUnitTest: List[TestCaseJavaProgram] = {
+    val test01 =
+      """class Test01 {
+        |  void f(int n, int m) {
+        |    int it = n;
+        |    int R = 0;
+        |    while (it > 0) {
+        |      it--;
+        |      R = R + m;
+        |    }
+        |  }
+        |}""".stripMargin
+    val test01ExpectedOutput = "it"
+
+    val test02 =
+      """class Test02 {
+        |  void f(int n, int m) {
+        |    int it = n;
+        |    int R = 0;
+        |    it++;
+        |    while (it > 0) {
+        |      it--;
+        |      R = R + 1;
+        |    }
+        |  }
+        |}""".stripMargin
+    val test02ExpectedOutput = ""
+
+    val test03 =
+      """class Test03 {
+        |  void f(int n, int m, int l) {
+        |    int it = n;
+        |    int R = 0;
+        |    while (it > 0) {
+        |      it--;
+        |      int it2 = m;
+        |      while (it2 > 0) {
+        |        it2--;
+        |        R = R + 1;
+        |      }
+        |    }
+        |  }
+        |}""".stripMargin
+    val test03ExpectedOutput = "it\nit2"
+
+    List[TestCaseJavaProgram](
+      TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),
+      TestCaseJavaProgram("Test02", test02, test02ExpectedOutput),
+      TestCaseJavaProgram("Test03", test03, test03ExpectedOutput),
     )
   }
 }

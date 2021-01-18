@@ -49,7 +49,7 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
           )
         )
         logger.debug(result)
-        assert(StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput))
+        assert(StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput, testCase.className))
     })
   }
 
@@ -87,7 +87,7 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
           )
         )
         logger.debug(result)
-        assert(StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput))
+        assert(StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput, testCase.className))
     })
   }
 
@@ -125,7 +125,7 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
           )
         )
         logger.debug(result)
-        assert(StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput))
+        assert(StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput, testCase.className))
     })
   }
 }

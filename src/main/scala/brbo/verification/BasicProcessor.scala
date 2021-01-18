@@ -122,9 +122,18 @@ class BasicProcessor extends BasicTypeProcessor {
 }
 
 object BasicProcessor {
+  private val logger = LogManager.getLogger("brbo.verification.BasicProcessor")
+
   private def run(className: String, sourceFileContents: String): BasicProcessor = {
     val basicProcessor = new BasicProcessor
-    JavacUtils.runProcessor(className, sourceFileContents, basicProcessor)
+    try {
+      JavacUtils.runProcessor(className, sourceFileContents, basicProcessor)
+    }
+    catch {
+      case e: Exception =>
+        logger.fatal(s"Compilation error for program:\n$sourceFileContents")
+        throw e
+    }
     basicProcessor
   }
 

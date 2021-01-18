@@ -1,21 +1,21 @@
 package brbo
 
 object StringCompare {
-  def ignoreWhitespaces(actual: String, expected: String): Boolean = {
+  def ignoreWhitespaces(actual: String, expected: String, message: String): Boolean = {
     val result = actual.replaceAll("(?s)\\s+", " ").trim == expected.replaceAll("(?s)\\s+", " ").trim
     if (!result) {
       val lineSeparator = "------------------------------------------\n"
-      println(s"Actual:\n$lineSeparator$actual\nExpected:\n$lineSeparator$expected\n$lineSeparator")
+      println(s"Error message: $message\nActual:\n$lineSeparator$actual\nExpected:\n$lineSeparator$expected\n$lineSeparator")
     }
     result
   }
 
-  def ignoreWhitespaces(actual: Iterable[Any], expected: String): Boolean = ignoreWhitespaces(Left(actual), expected)
+  def ignoreWhitespaces(actual: Iterable[Any], expected: String, message: String): Boolean = ignoreWhitespaces(Left(actual), expected, message)
 
-  def ignoreWhitespaces(actual: Traversable[Any], expected: String): Boolean = ignoreWhitespaces(Right(actual), expected)
+  def ignoreWhitespaces(actual: Traversable[Any], expected: String, message: String): Boolean = ignoreWhitespaces(Right(actual), expected, message)
 
-  private def ignoreWhitespaces(actual: Either[Iterable[Any], Traversable[Any]], expected: String): Boolean = {
-    ignoreWhitespaces(toSortedString(actual), expected)
+  private def ignoreWhitespaces(actual: Either[Iterable[Any], Traversable[Any]], expected: String, message: String): Boolean = {
+    ignoreWhitespaces(toSortedString(actual), expected, message)
   }
 
   def toSortedString(iterableOrTraversable: Either[Iterable[Any], Traversable[Any]]): String = {

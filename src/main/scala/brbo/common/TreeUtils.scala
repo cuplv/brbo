@@ -4,12 +4,16 @@ import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT}
 import com.microsoft.z3.AST
 import com.sun.source.tree.Tree.Kind
 import com.sun.source.tree._
+import com.sun.source.util.TreePath
 import javax.lang.model.`type`.TypeMirror
+import org.apache.logging.log4j.LogManager
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable.{HashMap, HashSet}
 
 object TreeUtils {
+  private val logger = LogManager.getLogger("brbo.common.TreeUtils")
+
   def getAllInputVariables(methodTree: MethodTree): Map[String, BrboType] = {
     val parameters = methodTree.getParameters.asScala.foldLeft(HashMap[String, TypeMirror]())({
       (acc, param) => acc + (param.getName.toString -> org.checkerframework.javacutil.TreeUtils.typeOf(param.getType))
@@ -185,10 +189,79 @@ object TreeUtils {
           case expressionStatementTree: ExpressionStatementTree =>
             expressionStatementTree.getExpression match {
               case assignmentTree: AssignmentTree => acc + assignmentTree.getVariable.toString
+              case unaryTree: UnaryTree =>
+                unaryTree.getKind match {
+                  case Tree.Kind.POSTFIX_INCREMENT | Tree.Kind.PREFIX_INCREMENT |
+                       Tree.Kind.POSTFIX_DECREMENT | Tree.Kind.PREFIX_DECREMENT => acc + unaryTree.getExpression.toString
+                  case _ => acc
+                }
               case _ => acc
             }
+          case variableTree: VariableTree =>
+            if (variableTree.getInitializer != null) {
+              logger.warn(s"Considering variable declarations as modifying variables: `$tree`")
+              acc + variableTree.getName.toString
+            }
+            else acc
           case _ => acc
         }
+    })
+  }
+
+  private val INDENT = 2
+
+  @deprecated
+  def treeToString(tree: StatementTree, indent: Int): String = {
+    if (tree == null) return ""
+
+    val indentString: String = " " * indent
+    tree match {
+      case _@(_: AssertTree | _: BreakTree | _: ContinueTree | _: EmptyStatementTree |
+              _: ExpressionStatementTree | _: ReturnTree | _: VariableTree) => s"$indentString${tree.toString}"
+      case tree2: BlockTree =>
+        s"$indentString{\n${treeToString(tree2.getStatements.asScala, indent + INDENT)}\n$indentString}"
+      case tree2: ForLoopTree =>
+        val initializers = tree2.getInitializer.asScala
+        val updates = tree2.getUpdate.asScala
+        assert(initializers.size <= 1)
+        assert(updates.size <= 1)
+        s"${indentString}for (${treeToString(initializers.head, 0)}; ${tree2.getCondition}; ${treeToString(updates.head, 0)})\n${treeToString(tree2.getStatement, indent + INDENT)}"
+      case tree2: IfTree =>
+        s"${indentString}if ${tree2.getCondition}\n${treeToString(tree2.getThenStatement, indent + INDENT)}\n${indentString}else\n${treeToString(tree2.getElseStatement, indent + INDENT)}"
+      case tree2: LabeledStatementTree => s"$indentString${tree2.getLabel}: ${treeToString(tree2.getStatement, indent)}"
+      case tree2: WhileLoopTree =>
+        s"${indentString}while ${tree2.getCondition} {\n${treeToString(tree2.getStatement, indent + INDENT)}\n}"
+      case _ => throw new Exception(s"Not yet support tree $tree (type: ${tree.getClass})")
+    }
+  }
+
+  @deprecated
+  def treeToString(trees: Iterable[StatementTree], indent: Int): String = {
+    trees.map(tree => treeToString(tree, indent)).mkString(";\n")
+  }
+
+  private val loopKinds = new java.util.HashSet[Tree.Kind]()
+  loopKinds.add(Tree.Kind.FOR_LOOP)
+  loopKinds.add(Tree.Kind.WHILE_LOOP)
+
+  def getMinimalEnclosingLoop(path: TreePath): Option[Tree] = {
+    org.checkerframework.javacutil.TreeUtils.enclosingOfKind(path, loopKinds) match {
+      case null => None
+      case loop => Some(loop)
+    }
+  }
+
+  def getMaximalEnclosingLoop(path: TreePath): Option[Tree] = {
+    var enclosingTrees: List[Tree] = Nil
+    var p = path
+    while (p != null) {
+      val leaf = p.getLeaf
+      assert(leaf != null) /*nninvariant*/
+      enclosingTrees = leaf :: enclosingTrees
+      p = p.getParentPath
+    }
+    enclosingTrees.find({
+      enclosingTree => loopKinds.contains(enclosingTree.getKind)
     })
   }
 }

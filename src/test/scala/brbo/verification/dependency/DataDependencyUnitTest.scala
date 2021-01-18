@@ -12,7 +12,7 @@ class DataDependencyUnitTest extends AnyFlatSpec {
     DataDependencyUnitTest.dataDependencyUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        assert(StringCompare.ignoreWhitespaces(DataDependency.computeDependencySet(targetMethod).toString(), testCase.expectedOutput))
+        assert(StringCompare.ignoreWhitespaces(DataDependency.computeDependencySet(targetMethod).toString(), testCase.expectedOutput, testCase.className))
     })
   }
 }

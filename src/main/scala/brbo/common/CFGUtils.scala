@@ -180,10 +180,10 @@ object CFGUtils {
         }) match {
           case Some(brboNode2) => Some(brboNode2.block.getNodes.asScala.head)
           case None =>
-            logger.debug(s"No back edge to any dominator of block ${brboNode.block}")
+            logger.debug(s"No back edge to any dominator of block `${brboNode.block}`")
             None
         }
-      case None => throw new Exception(s"Node $node should exist in the CFG of method ${targetMethod.methodTree.getName}")
+      case None => throw new Exception(s"Node `$node` should exist in the CFG of method `${targetMethod.methodTree.getName}`")
     }
   }
 }

@@ -20,7 +20,7 @@ class CounterAxiomGeneratorUnitTest extends AnyFlatSpec {
             case (pair1, pair2) => pair1._2 < pair2._2
           })
         }
-        assert(StringCompare.ignoreWhitespaces(result.toString(), testCase.expectedOutput))
+        assert(StringCompare.ignoreWhitespaces(result.toString(), testCase.expectedOutput, testCase.className))
     })
   }
 
@@ -31,7 +31,7 @@ class CounterAxiomGeneratorUnitTest extends AnyFlatSpec {
         val methodTree: MethodTree = targetMethod.methodTree
         val solver = new Z3Solver
         val result = CounterAxiomGenerator.generateCounterAxioms(solver, methodTree.getBody)
-        assert(StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput))
+        assert(StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput, testCase.className))
     })
   }
 }

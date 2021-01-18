@@ -26,7 +26,7 @@ class ControlDependencyUnitTest extends AnyFlatSpec {
         // 2. Run `dot -Tpdf X.dot -o X.pdf`
         // import brbo.common.CFGUtils
         // CFGUtils.printPDF(targetMethod.cfg)
-        assert(StringCompare.ignoreWhitespaces(resultString, testCase.expectedOutput))
+        assert(StringCompare.ignoreWhitespaces(resultString, testCase.expectedOutput, testCase.className))
     })
   }
 }

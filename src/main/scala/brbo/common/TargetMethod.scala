@@ -1,7 +1,5 @@
 package brbo.common
 
-import java.util
-
 import brbo.common.CFGUtils.deepCopyGraph
 import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT, VOID}
 import brbo.verification.dependency.BrboNode
@@ -28,12 +26,12 @@ case class TargetMethod(className: String,
   private val logger = LogManager.getLogger(classOf[TargetMethod])
 
   val inputVariables: Map[String, BrboType] = TreeUtils.getAllInputVariables(methodTree)
-  logger.debug(s"[Method ${methodTree.getName}] Input variables: $inputVariables")
+  logger.debug(s"[Method `${methodTree.getName}`] Input variables: `$inputVariables`")
 
   val localVariables: Map[String, BrboType] =
     if (methodTree.getBody == null) new HashMap[String, BrboType]
     else TreeUtils.getAllDeclaredVariables(methodTree.getBody)
-  logger.debug(s"[Method ${methodTree.getName}] Local variables: $localVariables")
+  logger.debug(s"[Method `${methodTree.getName}`] Local variables: `$localVariables`")
 
   val returnType: BrboType = methodTree.getReturnType.toString match {
     case "int" => INT
@@ -43,14 +41,4 @@ case class TargetMethod(className: String,
   }
 
   val (numberedGraph: NumberedGraph[BrboNode], rootOfNumberedGraph: BrboNode) = deepCopyGraph(cfg, transpose = false)
-
-  def getMinimalEnclosingLoop(tree: Tree): Option[Tree] = {
-    val kinds = new util.HashSet[Tree.Kind]()
-    kinds.add(Tree.Kind.FOR_LOOP)
-    kinds.add(Tree.Kind.WHILE_LOOP)
-    org.checkerframework.javacutil.TreeUtils.enclosingOfKind(getPath(tree), kinds) match {
-      case null => None
-      case loop => Some(loop)
-    }
-  }
 }

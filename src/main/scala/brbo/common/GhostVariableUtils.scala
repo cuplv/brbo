@@ -69,7 +69,7 @@ object GhostVariableUtils {
             case rhs: NumericalAdditionNode =>
               if (rhs.getLeftOperand.toString == variableName) Some(GhostVariableUpdateNode(variableName, rhs.getRightOperand))
               else {
-                logger.warn(s"Assignment to ghost variable `$variableName` is not in the form of `$variableName = $variableName + e`!")
+                logger.warn(s"Assignment node `$cfgNode` not in the form of `$variableName = $variableName + e`!")
                 None
               }
             case _ => None
@@ -100,7 +100,7 @@ object GhostVariableUtils {
             case rhs: BinaryTree =>
               if (rhs.getLeftOperand.toString == ghostVariable) Some(GhostVariableUpdateTree(ghostVariable, rhs.getRightOperand))
               else {
-                logger.fatal(s"Assignment to ghost variable `$ghostVariable` is not in the form of `$ghostVariable = $ghostVariable + e`!")
+                logger.fatal(s"Assignment tree `$tree` not in the form of `$ghostVariable = $ghostVariable + e`!")
                 None
               }
             case _ => None
