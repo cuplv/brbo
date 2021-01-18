@@ -74,7 +74,7 @@ object CFGUtils {
       case n: BinaryOperationNode =>
         getUsedVariables(n.getLeftOperand) ++ getUsedVariables(n.getRightOperand)
       case _: ValueLiteralNode => new HashSet[String]
-      case _ => throw new Exception(s"Get used variables - Node $n (type: ${n.getClass}) is not yet supported")
+      case _ => throw new Exception(s"Get used variables - Node `$n` (type: `${n.getClass}`) is not yet supported")
     }
   }
 

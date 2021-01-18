@@ -67,8 +67,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val result = Decomposition.computeTaintSet(targetMethod)
-        println(result)
-      // assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput))
+        assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput))
     })
   }
 }
@@ -86,7 +85,7 @@ object DecompositionUnitTest {
         |  }
         |}""".stripMargin
     val test01ExpectedOutput =
-      """List(R, a)""".stripMargin
+      """""".stripMargin
 
     val test02: String =
       """class Test02 {
@@ -99,7 +98,7 @@ object DecompositionUnitTest {
         |  }
         |}""".stripMargin
     val test02ExpectedOutput =
-      """List(R, a, n)""".stripMargin
+      """""".stripMargin
 
     val test03: String =
       """class Test03 {
@@ -123,7 +122,7 @@ object DecompositionUnitTest {
         |  }
         |}""".stripMargin
     val test03ExpectedOutput =
-      """List(R, n, p, q, x)""".stripMargin
+      """""".stripMargin
 
     val test04: String =
       """class Test04 {
@@ -144,7 +143,7 @@ object DecompositionUnitTest {
         |  }
         |}""".stripMargin
     val test04ExpectedOutput =
-      """List(R, i, j, n)""".stripMargin
+      """n""".stripMargin
 
     val test05: String =
       """class Test05 {
@@ -172,7 +171,7 @@ object DecompositionUnitTest {
         |  }
         |}""".stripMargin
     val test05ExpectedOutput =
-      """List(R, a, b, i, n)""".stripMargin
+      """n""".stripMargin
 
     List[TestCaseJavaProgram](
       TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),

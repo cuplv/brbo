@@ -92,42 +92,6 @@ object TreeUtils {
     }
   }
 
-  /**
-   *
-   * @param statementTree
-   * @return The first tree in the tree that may serve as a key in CFG's map `treeLookup` and `unaryAssignNodeLookup`
-   *
-   */
-  /*def getFirstCommandTree(statementTree: StatementTree): Option[Tree] = {
-    if (statementTree == null) return None
-
-    statementTree match {
-      case _@(_: AssertTree | _: BreakTree |
-              _: ContinueTree | _: EmptyStatementTree) => None // These trees don't serve as keys
-      case tree@(_: VariableTree | _: ReturnTree) => Some(tree)
-      case tree: ExpressionStatementTree => Some(tree.getExpression)
-      case tree: BlockTree =>
-        val statements = tree.getStatements.asScala
-        if (statements.isEmpty) None
-        else {
-          statements.find(statement => getFirstCommandTree(statement) != null) match {
-            case Some(statement) => getFirstCommandTree(statement)
-            case None => None
-          }
-        }
-      case tree: ForLoopTree =>
-        val statements = tree.getInitializer.asScala.toList ::: tree.getStatement :: tree.getUpdate.asScala.toList
-        statements.find(statement => getFirstCommandTree(statement) != null) match {
-          case Some(statement) => getFirstCommandTree(statement)
-          case None => None
-        }
-      case tree: IfTree =>
-      case tree: LabeledStatementTree =>
-      case tree: WhileLoopTree =>
-      case _ => throw new Exception(s"Not yet support tree $statementTree (type: ${statementTree.getClass})")
-    }
-  }*/
-
   def collectCommands(statement: StatementTree): List[StatementTree] = {
     def throwException(message: String): Nothing = {
       throw new Exception(s"$message in AST: $statement")
@@ -189,26 +153,29 @@ object TreeUtils {
     trees.foldLeft(new HashSet[StatementTree])({ (acc, tree) => acc ++ collectStatementTrees(tree) })
   }
 
-  def collectConditionTrees(tree: StatementTree): Set[ExpressionTree] = {
+  def collectConditionTreesWithoutBrackets(tree: StatementTree): Set[ExpressionTree] = {
     if (tree == null) return new HashSet[ExpressionTree]
 
-    tree match {
+    val conditions = tree match {
       case _@(_: AssertTree | _: BreakTree | _: ContinueTree | _: EmptyStatementTree |
               _: ExpressionStatementTree | _: ReturnTree | _: VariableTree) => new HashSet[ExpressionTree]
-      case tree2: BlockTree => collectConditionTrees(tree2.getStatements.asScala)
+      case tree2: BlockTree => collectConditionTreesWithoutBrackets(tree2.getStatements.asScala)
       case tree2: ForLoopTree =>
-        collectConditionTrees(tree2.getInitializer.asScala) ++ collectConditionTrees(tree2.getStatement) ++
-          collectConditionTrees(tree2.getUpdate.asScala) + tree2.getCondition
+        collectConditionTreesWithoutBrackets(tree2.getInitializer.asScala) ++ collectConditionTreesWithoutBrackets(tree2.getStatement) ++
+          collectConditionTreesWithoutBrackets(tree2.getUpdate.asScala) + tree2.getCondition
       case tree2: IfTree =>
-        collectConditionTrees(tree2.getThenStatement) ++ collectConditionTrees(tree2.getElseStatement) + tree2.getCondition
-      case tree2: LabeledStatementTree => collectConditionTrees(tree2.getStatement)
-      case tree2: WhileLoopTree => collectConditionTrees(tree2.getStatement) + tree2.getCondition
+        collectConditionTreesWithoutBrackets(tree2.getThenStatement) ++ collectConditionTreesWithoutBrackets(tree2.getElseStatement) + tree2.getCondition
+      case tree2: LabeledStatementTree => collectConditionTreesWithoutBrackets(tree2.getStatement)
+      case tree2: WhileLoopTree => collectConditionTreesWithoutBrackets(tree2.getStatement) + tree2.getCondition
       case _ => throw new Exception(s"Not yet support tree $tree (type: ${tree.getClass})")
     }
+    conditions.map({
+      condition => org.checkerframework.javacutil.TreeUtils.withoutParens(condition)
+    })
   }
 
-  private def collectConditionTrees(trees: Iterable[StatementTree]): Set[ExpressionTree] = {
-    trees.foldLeft(new HashSet[ExpressionTree])({ (acc, tree) => acc ++ collectConditionTrees(tree) })
+  private def collectConditionTreesWithoutBrackets(trees: Iterable[StatementTree]): Set[ExpressionTree] = {
+    trees.foldLeft(new HashSet[ExpressionTree])({ (acc, tree) => acc ++ collectConditionTreesWithoutBrackets(tree) })
   }
 
   def modifiedVariables(tree: StatementTree): Set[String] = {

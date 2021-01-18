@@ -10,7 +10,7 @@ import com.sun.source.tree.Tree.Kind
 import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.block.{Block, ConditionalBlock}
-import org.checkerframework.dataflow.cfg.node.{AssignmentNode, Node}
+import org.checkerframework.dataflow.cfg.node.{AssignmentNode, IntegerLiteralNode, Node, ValueLiteralNode}
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable.HashSet
@@ -385,45 +385,54 @@ object Decomposition {
       statement =>
         initializeSubprogramFromStatement(statement, targetMethod) match {
           case Some((initialSubprogram, entryNode)) =>
-            logger.error(s"Compute taint set for $initialSubprogram")
-            val conditionTrees = TreeUtils.collectConditionTrees(initialSubprogram)
+            logger.debug(s"Compute taint set for `$initialSubprogram`")
+            val conditionTrees = TreeUtils.collectConditionTreesWithoutBrackets(initialSubprogram)
 
             val correspondingNode = CFGUtils.getNodesCorrespondingToExpressionStatementTree(statement, targetMethod.cfg)
-            logger.error(s"Expression Tree $statement corresponds to node $correspondingNode")
+            logger.debug(s"Expression Tree `$statement` corresponds to node `$correspondingNode`")
 
             // Treat `r+=e` when `e` is constant differently from `r+=e` when `e` is constant
-            val dataDependentVariables: Set[String] = GhostVariableUtils.extractGhostVariableUpdate(statement.asInstanceOf[ExpressionStatementTree].getExpression, Resource) match {
-              case Some(updateTree) =>
-                updateTree match {
-                  case _: LiteralTree =>
-                    logger.error(s"The update in `$statement` is constant")
-                    controlDependency.get(correspondingNode.getBlock) match {
-                      case Some(blocks) =>
-                        blocks.flatMap({
-                          block =>
-                            assert(block.isInstanceOf[ConditionalBlock], s"Block ${correspondingNode.getBlock.getUid} control depends on block ${block.getUid}")
-                            val predecessors = block.getPredecessors.asScala
-                            assert(predecessors.size == 1)
+            val dataDependentVariables: Set[String] = GhostVariableUtils.extractGhostVariableUpdate(correspondingNode, Resource) match {
+              case Some(update) =>
+                update.increment match {
+                  case updateNode: ValueLiteralNode =>
+                    logger.debug(s"The update in `$statement` is constant")
+                    updateNode match {
+                      case _: IntegerLiteralNode =>
+                        controlDependency.get(correspondingNode.getBlock) match {
+                          case Some(blocks) =>
+                            logger.debug(s"Node `$correspondingNode` control depends on blocks: $blocks")
+                            blocks.flatMap({
+                              block =>
+                                assert(block.isInstanceOf[ConditionalBlock], s"Block ${correspondingNode.getBlock.getUid} control depends on block ${block.getUid}")
+                                val predecessors = block.getPredecessors.asScala
+                                assert(predecessors.size == 1)
 
-                            // Check if the predecessor block is in the subprogram
-                            val conditionNode = predecessors.head.getLastNode
-                            val conditionTree = conditionNode.getTree.asInstanceOf[ExpressionTree]
+                                // Check if the predecessor block is in the subprogram
+                                val conditionNode = predecessors.head.getLastNode
+                                val conditionTree = conditionNode.getTree.asInstanceOf[ExpressionTree]
 
-                            logger.error(s"The condition node is `$conditionNode`")
-                            if (conditionTrees.contains(conditionTree)) {
-                              CFGUtils.getUsedVariables(conditionNode)
-                            }
-                            else new HashSet[String]
-                        })
-                      case None => new HashSet[String]
+                                logger.debug(s"The condition node is `$conditionNode`")
+                                logger.trace(s"The condition tree is `$conditionTree` (hash code: ${conditionTree.hashCode()})")
+                                conditionTrees.foreach(t => logger.trace(s"Condition tree `$t` (hash code: ${t.hashCode()})"))
+                                if (conditionTrees.contains(conditionTree)) {
+                                  CFGUtils.getUsedVariables(conditionNode)
+                                }
+                                else new HashSet[String]
+                            })
+                          case None =>
+                            logger.debug(s"Node `$correspondingNode` control depends on no blocks")
+                            new HashSet[String]
+                        }
+                      case _ => throw new Exception(s"Unsupported literal node `$updateNode`")
                     }
                   case _ =>
-                    logger.error(s"The update in statement `$statement` is not constant")
+                    logger.debug(s"The update in statement `$statement` is not constant")
                     CFGUtils.getUsedVariables(correspondingNode.asInstanceOf[AssignmentNode].getExpression)
                 }
               case None => throw new Exception("Unexpected")
             }
-            logger.error(s"Data dependent variables are $dataDependentVariables")
+            logger.debug(s"Data dependent variables are $dataDependentVariables")
 
             // Compute transitive data dependency for the above variables, starting from the entry node of initial subprogram
             computeTaintData(dataDependentVariables, entryNode, dataDependency)
@@ -452,7 +461,7 @@ object Decomposition {
 
   private def computeTaintSetDataHelper(node: Node, dataDependency: Map[Node, Set[ReachingValue]], visited: Set[Node]): Set[String] = {
     if (visited.contains(node)) return new HashSet[String]
-    logger.error(s"Visiting $node")
+    logger.debug(s"Compute data dependency for node `$node`")
 
     val assignmentExpression = node match {
       case assignmentNode: AssignmentNode => assignmentNode.getExpression
@@ -462,7 +471,9 @@ object Decomposition {
     dataDependency.get(node) match {
       case Some(definitions) =>
         val usedVariables = CFGUtils.getUsedVariables(assignmentExpression)
+        logger.debug(s"Used variables: $usedVariables")
         val newDefinitions = definitions.filter(definition => usedVariables.contains(definition.variable))
+        logger.debug(s"Reaching definitions: $newDefinitions")
         newDefinitions.flatMap({
           definition =>
             definition.node match {
