@@ -1,4 +1,4 @@
-package brbo.benchmarks.basic;
+package brbo.archive.basic;
 
 class Test03 {
   void f(int n, int m) {

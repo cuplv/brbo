@@ -1,4 +1,4 @@
-package brbo.benchmarks.archive.containers.litesql;
+package brbo.archive.containers.litesql;
 
 import brbo.benchmarks.Common;
 

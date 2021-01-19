@@ -16,8 +16,8 @@ public abstract class OutputHandler extends Common {
         list++; // Initial: The loop
         R = R + 1;
       } else {
-        int list = 0;
-        list++; // Initial: The loop
+        int list2 = 0;
+        list2++; // Initial: The loop
         R = R + 1;
       }
     }

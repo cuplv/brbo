@@ -1,4 +1,4 @@
-package brbo.benchmarks.archive.containers.stac;
+package brbo.archive.containers.stac;
 
 import brbo.benchmarks.Common;
 

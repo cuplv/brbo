@@ -31,11 +31,6 @@ classpath=".:$brbo_jar:$tools_jar:$target_project_lib"
 javafiles="java_src_files.txt"
 find "$src_dir" -name "*.java" > $javafiles
 
-echo "Step 1: Numerically abstract"
-
-printf  "\n\n\n"
-
-echo "Step 2: Infer bounds"
 time java -cp $classpath brbo.BrboMain $javafiles
 # time java -jar target/scala-2.12/brbo-impl-assembly-0.1.jar $javafiles
 

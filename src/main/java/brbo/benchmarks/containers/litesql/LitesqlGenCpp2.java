@@ -1,4 +1,4 @@
-package brbo.benchmarks.archive.containers.litesql;
+package brbo.benchmarks.containers.litesql;
 
 import brbo.benchmarks.Common;
 
@@ -220,25 +220,25 @@ public abstract class LitesqlGenCpp2 extends Common {
           r = r + 1;
         }
 
-        List<Integer> get = new ArrayList<>();
-        get.add(1);
+        List<Integer> get2 = new ArrayList<>();
+        get2.add(1);
         r = r + 1;
-        get.add(1);
+        get2.add(1);
         r = r + 1;
-        get.add(1);
+        get2.add(1);
         r = r + 1;
-        get.add(1);
+        get2.add(1);
         r = r + 1;
-        get.add(1);
+        get2.add(1);
         r = r + 1;
-        get.add(1);
+        get2.add(1);
         r = r + 1;
-        get.add(1);
+        get2.add(1);
         r = r + 1;
-        get.add(1);
+        get2.add(1);
         r = r + 1;
 
-        cl.add(get);
+        cl.add(get2);
         r = r + 1;
       }
     }
