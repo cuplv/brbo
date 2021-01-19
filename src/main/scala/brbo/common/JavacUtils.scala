@@ -1,6 +1,5 @@
 package brbo.common
 
-import java.io.{IOException, OutputStream, PrintStream}
 import java.net.URI
 
 import brbo.verification.EarlyStopException
@@ -10,8 +9,7 @@ import javax.annotation.processing.Processor
 import javax.tools.JavaFileObject.Kind
 import javax.tools.SimpleJavaFileObject
 import org.apache.logging.log4j.LogManager
-import org.checkerframework.dataflow.cfg.ControlFlowGraph
-import org.checkerframework.dataflow.cfg.CFGProcessor
+import org.checkerframework.dataflow.cfg.{CFGProcessor, ControlFlowGraph}
 
 object JavacUtils {
   private val logger = LogManager.getLogger("brbo.common.JavacUtils")
@@ -73,5 +71,6 @@ object JavacUtils {
     extends SimpleJavaFileObject(URI.create("string:///" + name.replace('.', '/') + Kind.SOURCE.`extension`), Kind.SOURCE) {
     override def getCharContent(ignoreEncodingErrors: Boolean): CharSequence = code
   }
+
   // https://docs.oracle.com/javase/8/docs/api/javax/tools/JavaCompiler.html
 }

@@ -9,7 +9,6 @@ import brbo.verification.Decomposition.DecompositionResult
 import com.microsoft.z3.{AST, Expr}
 import com.sun.source.tree.{AssertTree, ExpressionStatementTree, MethodTree}
 import org.apache.logging.log4j.LogManager
-import org.checkerframework.dataflow.cfg.node.Node
 
 object BoundChecking {
   private val logger = LogManager.getLogger("brbo.boundinference.BoundChecking")
@@ -21,7 +20,7 @@ object BoundChecking {
     val targetMethod = decompositionResult.targetMethod
     val deltaCounterPairs = decompositionResult.deltaCounterPairs
 
-    logger.info(s"Verifying bound $boundExpression in method ${targetMethod.methodTree.getName} of class $targetMethod.className")
+    logger.info(s"Verifying bound `$boundExpression` in method `${targetMethod.methodTree.getName}` of class `${targetMethod.className}`")
 
     val methodBody = targetMethod.methodTree.getBody
     assert(methodBody != null)

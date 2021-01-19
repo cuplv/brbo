@@ -228,7 +228,7 @@ object TreeUtils {
             }
           case variableTree: VariableTree =>
             if (variableTree.getInitializer != null) {
-              logger.warn(s"Considering variable declarations as modifying variables: `$tree`")
+              logger.warn(s"Consider variable declarations as modifying variables: `$tree`")
               acc + variableTree.getName.toString
             }
             else acc

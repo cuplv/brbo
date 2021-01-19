@@ -28,6 +28,24 @@ class Decomposition(inputMethod: TargetMethod) {
 
   private val counterMap = CounterAxiomGenerator.generateCounterMap(inputMethod.methodTree.getBody)
 
+  private val newClassName: String = {
+    // We expect input method's class name to be a fully qualified class name (e.g., `brbo.benchmarks.containers.stac.OutputHandler`)
+    val index = inputMethod.className.lastIndexOf(".")
+    val newClassName = inputMethod.className.substring(index + 1)
+    logger.info(s"New class name: `$newClassName`")
+    newClassName
+  }
+
+  private val packageName: Option[String] = {
+    inputMethod.className.lastIndexOf(".") match {
+      case -1 => None
+      case index =>
+        val packageName = inputMethod.className.substring(0, index)
+        logger.info(s"Package name: `$packageName`")
+        Some(packageName)
+    }
+  }
+
   private def debugOrError(message: String): Unit = {
     if (debug) logger.error(message)
     else logger.debug(message)
@@ -70,7 +88,7 @@ class Decomposition(inputMethod: TargetMethod) {
     })
   }
 
-  private def shouldInstrument(subprograms: Subprograms) (tree: StatementTree): Boolean = {
+  private def shouldInstrument(subprograms: Subprograms)(tree: StatementTree): Boolean = {
     if (tree == null) return false
 
     val insertResetsAndCounterUpdates = subprograms.programs.exists({
@@ -92,7 +110,7 @@ class Decomposition(inputMethod: TargetMethod) {
   }
 
   private def whatToInsert(deltaCounterPairs: Map[Subprogram, DeltaCounterPair])(tree: StatementTree): String = {
-    if (tree == null) return  ""
+    if (tree == null) return ""
 
     val subprograms = deltaCounterPairs.keySet
     val prepend1: String = subprograms.find({
@@ -136,7 +154,10 @@ class Decomposition(inputMethod: TargetMethod) {
   def insertGhostVariables(subprograms: Subprograms): DecompositionResult = {
     val deltaCounterPairs: Map[Subprogram, DeltaCounterPair] = {
       val deltaVariables: Map[Subprogram, String] = {
-        val indexedSubprograms: Set[(Subprogram, Int)] = subprograms.programs.zipWithIndex
+        // Eliminate non-deterministic behavior
+        val indexedSubprograms: List[(Subprogram, Int)] = subprograms.programs.toList.sortWith({
+          case (subprogram1, subprogram2) => subprogram1.toString < subprogram2.toString
+        }).zipWithIndex
         indexedSubprograms.foldLeft(new HashMap[Subprogram, String])({
           case (acc, (subprogram, index)) =>
             acc + (subprogram -> GhostVariableUtils.generateGhostVariable(index.toString, Delta))
@@ -163,7 +184,18 @@ class Decomposition(inputMethod: TargetMethod) {
       })
       (inputMethod.inputVariables ++ ghostVariables).map(pair => BrboType.variableDeclaration(pair._1, pair._2)).mkString(", ")
     }
-    val newSourceFile = InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(inputMethod, Some(newParameters), newMethodBody, JAVA_FORMAT, 2)
+    val newSourceFile = InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(
+      inputMethod,
+      Some(newParameters),
+      Some(newClassName),
+      packageName,
+      List("import brbo.benchmarks.Common;"),
+      Some("Common"),
+      isAbstractClass = true,
+      newMethodBody,
+      JAVA_FORMAT,
+      indent = 2
+    )
     DecompositionResult(inputMethod.className, newSourceFile, deltaCounterPairs.values.toSet)
   }
 
@@ -494,9 +526,14 @@ class Decomposition(inputMethod: TargetMethod) {
       InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(
         inputMethod,
         Some(parameters),
-        s"{\n$methodBody\n}",
+        Some(newClassName),
+        packageName,
+        List("import brbo.benchmarks.Common;"),
+        Some("Common"),
+        isAbstractClass = true,
+        newMethodBody = s"{\n$methodBody\n}",
         JAVA_FORMAT,
-        2
+        indent = 2
       )
     }
 
@@ -661,7 +698,7 @@ object Decomposition {
                                                               dataDependency: Map[Node, Set[ReachingValue]],
                                                               visited: Set[Node],
                                                               debug: Boolean): Set[String] = {
-    if (visited.contains(node)) return new HashSet[String]
+    if (visited.contains(node) || node == null) return new HashSet[String]
     debugOrError(s"Compute data dependency for node `$node`", debug)
 
     val usedVariables: Set[String] = node match {
@@ -692,6 +729,7 @@ object Decomposition {
                                                  controlDependency: Map[Block, Set[Block]],
                                                  visited: Set[Node],
                                                  debug: Boolean): Set[Node] = {
+    assert(node != null)
     if (visited.contains(node)) return new HashSet[Node]
     debugOrError(s"Visiting node `$node`", debug)
 
@@ -704,7 +742,11 @@ object Decomposition {
             assert(predecessors.size == 1)
 
             val condition = predecessors.head.getLastNode
-            computeTransitiveControlDependency(condition, controlDependency, visited + node, debug) + condition
+            if (condition == null) {
+              debugOrError(s"${node.getBlock}'s predecessor block does not have a condition: `${predecessors.head}`", debug)
+              new HashSet[Node]
+            }
+            else computeTransitiveControlDependency(condition, controlDependency, visited + node, debug) + condition
         })
       case None => new HashSet[Node]
     }

@@ -86,6 +86,11 @@ class InvariantInference(targetMethod: TargetMethod) {
     InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(
       targetMethod,
       None,
+      None,
+      None,
+      Nil,
+      None,
+      isAbstractClass = false,
       newMethodBody,
       C_FORMAT,
       indent

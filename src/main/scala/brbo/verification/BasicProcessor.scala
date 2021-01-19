@@ -115,7 +115,7 @@ class BasicProcessor extends BasicTypeProcessor {
 
   def assumeOneClassOneMethod(): Unit = {
     assert(getClasses.size == 1, s"We should analyze exactly one class. Instead, we have `$getClasses`")
-    assert(getMethods.size == 1, s"We should analyze exactly one class. Instead, we have `$getMethods`")
+    assert(getMethods.size == 1, s"We should analyze exactly one method. Instead, we have `$getMethods`")
   }
 
   def getPath(tree: Tree): TreePath = trees.get.getPath(rootTree.get, tree)

@@ -367,11 +367,12 @@ object IcraParser extends Parsers {
   }
 
   private def primary: Parser[IcraAST] = {
-    (ITE ~ LEFT_BRACKET ~ boolExpression ~ COMMA ~ expression ~ COMMA ~ expression ~ RIGHT_BRACKET |
+    (identifier ~ LEFT_BRACKET ~ boolExpression ~ COMMA ~ expression ~ COMMA ~ expression ~ RIGHT_BRACKET |
       number |
       identifier |
       LEFT_BRACKET ~ expression ~ RIGHT_BRACKET) ^^ {
-      case _ ~ _ ~ (condition: IcraAST) ~ _ ~ (left: IcraAST) ~ _ ~ (right: IcraAST) ~ _ =>
+      case (identifier: Identifier) ~ _ ~ (condition: IcraAST) ~ _ ~ (left: IcraAST) ~ _ ~ (right: IcraAST) ~ _ =>
+        assert (identifier.identifier == "ite", s"Expecting `ite` but got `${identifier}`")
         IfThenElse(condition, left, right)
       case LEFT_BRACKET ~ (expression: IcraAST) ~ RIGHT_BRACKET => expression
       case number: Number => number

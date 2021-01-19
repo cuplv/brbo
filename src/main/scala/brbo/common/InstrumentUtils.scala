@@ -251,6 +251,11 @@ object InstrumentUtils {
    */
   def replaceMethodBodyAndGenerateSourceCode(targetMethod: TargetMethod,
                                              newParameters: Option[String],
+                                             newClassName: Option[String],
+                                             packageName: Option[String],
+                                             imports: List[String],
+                                             extendsClass: Option[String],
+                                             isAbstractClass: Boolean,
                                              newMethodBody: String,
                                              fileFormat: FileFormat,
                                              indent: Int): String = {
@@ -300,7 +305,22 @@ object InstrumentUtils {
     fileFormat match {
       case JAVA_FORMAT =>
         val spaces = " " * indent
-        s"class ${targetMethod.className} {\n$spaces$methodSignature\n$newMethodBody\n}"
+        val className = newClassName match {
+          case Some(value) => value
+          case None => targetMethod.className
+        }
+        val importsString = imports.mkString("\n")
+        val packageNameString = packageName match {
+          case Some(value) => s"package $value;\n"
+          case None => ""
+        }
+        val extendsClassString = extendsClass match {
+          case Some(value) => s"extends $value"
+          case None => ""
+        }
+        val abstractString = if (isAbstractClass) "abstract " else ""
+        s"$packageNameString$importsString\n${abstractString}class $className $extendsClassString {\n" +
+          s"$spaces$methodSignature\n$newMethodBody\n}"
       case C_FORMAT =>
         val replaceMethodSignature = {
           // ICRA requires there exists a method named as `main`

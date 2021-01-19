@@ -3,12 +3,15 @@ package brbo.verification.dependency
 import brbo.common.{CFGUtils, TargetMethod}
 import com.ibm.wala.util.graph.NumberedGraph
 import com.ibm.wala.util.graph.dominators.DominanceFrontiers
+import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.block.Block
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable.{HashMap, HashSet}
 
 object ControlDependency {
+  private val logger = LogManager.getLogger("brbo.verification.dependency.ControlDependency")
+
   /**
    *
    * @param targetMethod Compute control dependency, according to
@@ -27,7 +30,16 @@ object ControlDependency {
 
     graph.asScala.foreach({
       y =>
-        val xs: Iterator[BrboNode] = dominanceFrontiers.getDominanceFrontier(y).asScala
+        val xs: Iterator[BrboNode] = {
+          try {
+            dominanceFrontiers.getDominanceFrontier(y).asScala
+          }
+          catch {
+            case e: IllegalArgumentException =>
+              logger.debug(s"Retrieving dominace frontiers - Exception: ${e.getMessage}")
+              List[BrboNode]().iterator
+          }
+        }
         xs.foreach({
           x => map = map + (x.block -> (map(x.block) + y.block))
         })

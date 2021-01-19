@@ -75,6 +75,7 @@ object IcraLexer extends RegexParsers {
     override def toString: String = ":="
   }
 
+  @deprecated
   object ITE extends IcraToken {
     override def toString: String = "ite"
   }
@@ -88,7 +89,7 @@ object IcraLexer extends RegexParsers {
   override val whiteSpace: Regex = "[ \t\r\f\n]+".r
 
   private def identifier: Parser[IDENTIFIER] = {
-    val javaIdentifier = "[a-zA-Z_][a-zA-Z0-9_]*"
+    val javaIdentifier = "[a-zA-Z_][a-zA-Z0-9_\\@]*"
     s"$javaIdentifier'?:?[0-9]*".r ^^ { string => IDENTIFIER(string) }
   }
 
@@ -126,6 +127,7 @@ object IcraLexer extends RegexParsers {
 
   private def assignment: Parser[IcraToken] = """:=""" ^^ (_ => ASSIGNMENT)
 
+  @deprecated
   private def ite: Parser[IcraToken] = """ite""" ^^ (_ => ITE)
 
   private def comma: Parser[IcraToken] = """,""" ^^ (_ => COMMA)
@@ -136,7 +138,7 @@ object IcraLexer extends RegexParsers {
         and | or | negation | plus | minus | multiplication | division | leftBracket | rightBracket | comma
           | lessThanOrEqualTo | greaterThanOrEqualTo | lessThan | greaterThan
           | assignment | equal
-          | number | ite | identifier
+          | number | identifier
       )
     )
   }
