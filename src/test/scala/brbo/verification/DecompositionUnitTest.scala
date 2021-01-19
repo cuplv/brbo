@@ -107,6 +107,10 @@ class DecompositionUnitTest extends AnyFlatSpec {
         assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
     })
   }
+
+  "Inserting resets and counters" should "be correct" in {
+
+  }
 }
 
 object DecompositionUnitTest {
@@ -287,6 +291,8 @@ object DecompositionUnitTest {
         |    R = R + (start - index);
         |    index = end;
         |}
+        |sb += text - index;
+        |R = R + (text - index);
         |)""".stripMargin
 
     List[TestCaseJavaProgram](

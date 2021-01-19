@@ -1,10 +1,10 @@
 package brbo.verification
 
-import brbo.common.GhostVariableUtils.GhostVariable.Resource
+import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, Resource}
 import brbo.common.InstrumentUtils.FileFormat.JAVA_FORMAT
 import brbo.common.TypeUtils.BrboType
 import brbo.common._
-import brbo.verification.Decomposition.logger
+import brbo.verification.Decomposition.DecompositionResult
 import brbo.verification.dependency.reachdef.ReachingValue
 import brbo.verification.dependency.{ControlDependency, DataDependency}
 import com.sun.source.tree.Tree.Kind
@@ -21,7 +21,7 @@ class Decomposition(inputMethod: TargetMethod) {
 
   private val commands = TreeUtils.collectCommands(inputMethod.methodTree.getBody)
 
-  private val debug = false
+  private val debug = true
 
   def debugOrError(message: String): Unit = {
     if (debug) logger.error(message)
@@ -48,7 +48,7 @@ class Decomposition(inputMethod: TargetMethod) {
             merge(pair._1, pair._2)
           }
         }
-        debugOrError(s"New subprogram: $newSubprogram")
+        debugOrError(s"Decomposition - New subprogram: $newSubprogram")
         subprograms = mergeIfOverlap(subprograms.programs - pair._1 - pair._2 + newSubprogram)
       }
     }
@@ -65,7 +65,10 @@ class Decomposition(inputMethod: TargetMethod) {
     })
   }
 
-  def insertResets(subprograms: Subprograms): String = {
+  def insertGhostVariables(subprograms: Subprograms): DecompositionResult = {
+    val deltaVariables = {
+      subprograms.programs.zipWithIndex
+    }
     ???
   }
 
@@ -127,7 +130,7 @@ class Decomposition(inputMethod: TargetMethod) {
         case Some(interferedSubprogram) =>
           debugOrError(s"Subprogram is interfered by the environment: $interferedSubprogram")
           val newSubprogram: Subprogram = enlarge(interferedSubprogram)
-          debugOrError(s"New subprogram: $newSubprogram")
+          debugOrError(s"Eliminate environment interference - New subprogram: $newSubprogram")
           newSubprograms = mergeIfOverlap(newSubprograms.programs - interferedSubprogram + newSubprogram)
         case None => continue = false
       }
@@ -144,7 +147,6 @@ class Decomposition(inputMethod: TargetMethod) {
    */
   def enlarge(subprogram: Subprogram): Subprogram = {
     def avoidDanglingBreakContinue(newStatement: StatementTree, minimalEnclosingBlock: Tree): Option[Tree] = {
-      debugOrError(s"Enlarging - New statement $newStatement")
       val trees = TreeUtils.collectStatementTrees(newStatement)
       val containsBreakContinue = {
         TreeUtils.collectCommands(newStatement).exists({
@@ -182,6 +184,7 @@ class Decomposition(inputMethod: TargetMethod) {
                   }
                   else {
                     val newStatement = statements.get(index + 1)
+                    debugOrError(s"Enlarging - (Next) New statement $newStatement")
                     avoidDanglingBreakContinue(newStatement, minimalEnclosingBlock) match {
                       case Some(minimalLoop) => List(minimalLoop)
                       case None => subprogram.astNodes :+ newStatement
@@ -191,6 +194,7 @@ class Decomposition(inputMethod: TargetMethod) {
             }
             else {
               val newStatement = statements.get(index - 1)
+              debugOrError(s"Enlarging - (Previous) New statement $newStatement")
               avoidDanglingBreakContinue(newStatement, minimalEnclosingBlock) match {
                 case Some(minimalLoop) => List(minimalLoop)
                 case None => newStatement :: subprogram.astNodes
@@ -566,7 +570,8 @@ object Decomposition {
       case assignmentNode: AssignmentNode => CFGUtils.getUsedVariables(assignmentNode.getExpression)
       case methodInvocationNode: MethodInvocationNode =>
         methodInvocationNode.getArguments.asScala.flatMap(node => CFGUtils.getUsedVariables(node)).toSet
-      case _ => throw new Exception(s"Expecting assignment or method invocation node $node (Type: ${node.getClass})")
+      case _: VariableDeclarationNode => new HashSet[String]
+      case _ => throw new Exception(s"Expecting assignment or method invocation node `$node` (Type: `${node.getClass}`)")
     }
     debugOrError(s"Used variables: $usedVariables", debug)
 
@@ -709,4 +714,14 @@ object Decomposition {
         }
     }).toSet
   }
+
+  case class DeltaCounterPair(delta: String, counter: String) {
+    GhostVariableUtils.isGhostVariable(delta, Delta)
+    GhostVariableUtils.isGhostVariable(counter, Counter)
+  }
+
+  case class DecompositionResult(className: String, sourceFileContents: String, deltaCounterPairs: Set[DeltaCounterPair]) {
+    val targetMethod: TargetMethod = BasicProcessor.getTargetMethod(className, sourceFileContents)
+  }
+
 }

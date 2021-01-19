@@ -6,20 +6,22 @@ import brbo.common.InvariantInference.Locations
 import brbo.common.TreeUtils.collectCommands
 import brbo.common.TypeUtils.BrboType.{BrboType, INT}
 import brbo.common._
+import brbo.verification.Decomposition.DecompositionResult
 import com.microsoft.z3.{AST, Expr}
-import com.sun.source.tree.{AssertTree, MethodTree, Tree}
+import com.sun.source.tree.{AssertTree, MethodTree}
 import org.apache.logging.log4j.LogManager
-import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.node.Node
 
 object BoundChecking {
   private val logger = LogManager.getLogger("brbo.boundinference.BoundChecking")
 
   def checkBound(solver: Z3Solver,
-                 targetMethod: TargetMethod,
-                 deltaCounterPairs: Set[DeltaCounterPair],
+                 decompositionResult: DecompositionResult,
                  boundExpression: AST,
                  printModelIfFail: Boolean): Boolean = {
+    val targetMethod = decompositionResult.targetMethod
+    val deltaCounterPairs = decompositionResult.deltaCounterPairs
+
     logger.info(s"Verifying bound $boundExpression in method ${targetMethod.methodTree.getName} of class $targetMethod.className")
 
     val methodBody = targetMethod.methodTree.getBody
@@ -213,11 +215,6 @@ object BoundChecking {
     val assertions = commands.filter(tree => tree.isInstanceOf[AssertTree])
     assert(assertions.size == 1, "Please use exact 1 assertion as the bound expression to be verified")
     TreeUtils.translatePureExpressionToZ3AST(solver, assertions.head.asInstanceOf[AssertTree].getCondition, typeContext)
-  }
-
-  case class DeltaCounterPair(delta: String, counter: String) {
-    GhostVariableUtils.isGhostVariable(delta, Delta)
-    GhostVariableUtils.isGhostVariable(counter, Counter)
   }
 
   private def generateDeltaVariableDoublePrime(identifier: String): String = {

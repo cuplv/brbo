@@ -235,6 +235,7 @@ object InstrumentUtils {
   }
 
   // Insert d = 0 in the AST that maps to targetBlock
+  @deprecated
   def substituteAllAtomicStatementsWith(tree: Tree, deltaVariable: String, targetBlock: Block, indent: Int, cfg: ControlFlowGraph): String = {
     val INDENT = 2
     val spaces = " " * indent

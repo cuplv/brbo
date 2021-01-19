@@ -1,10 +1,9 @@
 package brbo.verification
 
 import brbo.TestCaseJavaProgram
-import brbo.verification.BoundChecking.DeltaCounterPair
 import brbo.common.Z3Solver
+import brbo.verification.Decomposition.{DecompositionResult, DeltaCounterPair}
 import com.microsoft.z3.AST
-import com.sun.source.tree.MethodTree
 import org.apache.logging.log4j.LogManager
 import org.scalatest.flatspec.AnyFlatSpec
 
@@ -20,13 +19,11 @@ class BoundCheckingUnitTest extends AnyFlatSpec {
   "Bound checking" should "succeed" in {
     BoundCheckingUnitTest.boundCheckingTests.foreach({
       case (testCase, solver, boundExpression) =>
-        val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-
         val deltaCounterPairs = Set[DeltaCounterPair](DeltaCounterPair("D100", "C1"))
+        val decompositionResult = DecompositionResult(testCase.className, testCase.inputProgram, deltaCounterPairs)
         val result = BoundChecking.checkBound(
           solver,
-          targetMethod,
-          deltaCounterPairs,
+          decompositionResult,
           boundExpression,
           printModelIfFail = false
         )
