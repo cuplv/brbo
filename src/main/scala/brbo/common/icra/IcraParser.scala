@@ -10,6 +10,11 @@ class IcraParser(input: String) {
   private val logger = LogManager.getLogger(classOf[IcraParser])
   private val prefix = "intraproceduralWeight = Base relation: {"
   private val suffix = "*******************************************"
+  private val assertionChecking = "Assertion Checking at Error Points"
+
+  if (!input.contains(assertionChecking)) {
+    logger.fatal(s"No assertion is checked by ICRA! ICRA's output is: $input")
+  }
 
   def parseRawInvariant(rawInvariant: RawInvariant): ParsedInvariant = {
     ParsedInvariant(

@@ -5,6 +5,7 @@ import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta}
 import brbo.common.TypeUtils.BrboType.{BrboType, INT}
 import brbo.verification.{BasicProcessor, BoundCheckingUnitTest}
 import brbo.{StringCompare, TestCaseJavaProgram}
+import com.sun.source.tree.ExpressionStatementTree
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.node.Node
 import org.scalatest.flatspec.AnyFlatSpec
@@ -24,11 +25,12 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
           solver,
           Locations(
             {
-              node: Node =>
-                GhostVariableUtils.extractGhostVariableUpdate(node, Delta) match {
+              case expressionStatementTree: ExpressionStatementTree =>
+                GhostVariableUtils.extractGhostVariableUpdate(expressionStatementTree.getExpression, Delta) match {
                   case Some(_) => true
                   case None => false
                 }
+              case _ => false
             },
             AFTER
           ),
@@ -62,11 +64,12 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
           solver,
           Locations(
             {
-              node: Node =>
-                GhostVariableUtils.extractDeltaVariableReset(node) match {
+              case expressionStatementTree: ExpressionStatementTree =>
+                GhostVariableUtils.extractGhostVariableReset(expressionStatementTree.getExpression, Delta) match {
                   case Some(_) => true
                   case None => false
                 }
+              case _ => false
             },
             BEFORE
           ),
@@ -100,11 +103,12 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
           solver,
           Locations(
             {
-              node: Node =>
-                GhostVariableUtils.extractGhostVariableUpdate(node, Counter) match {
+              case expressionStatementTree: ExpressionStatementTree =>
+                GhostVariableUtils.extractGhostVariableUpdate(expressionStatementTree.getExpression, Counter) match {
                   case Some(_) => true
                   case None => false
                 }
+              case _ => false
             },
             AFTER
           ),

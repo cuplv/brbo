@@ -1,7 +1,7 @@
 package brbo.common
 
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, GhostVariable, Resource}
-import com.sun.source.tree.{AssignmentTree, BinaryTree, ExpressionTree, Tree}
+import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.node.{AssignmentNode, Node, NumericalAdditionNode}
 
@@ -43,20 +43,6 @@ object GhostVariableUtils {
 
   case class GhostVariableUpdateTree(identifier: String, increment: Tree) {
     override def toString: String = s"$identifier = $identifier + $increment"
-  }
-
-  def extractDeltaVariableReset(cfgNode: Node): Option[String] = {
-    cfgNode match {
-      case node: AssignmentNode =>
-        val variableName = node.getTarget.toString
-        if (isGhostVariable(variableName, Delta)) {
-          // Must be in the form of `D = 0`
-          if (node.getExpression.toString == "0") Some(variableName)
-          else None
-        }
-        else None
-      case _ => None
-    }
   }
 
   def extractGhostVariableUpdate(cfgNode: Node, typ: GhostVariable): Option[GhostVariableUpdateNode] = {
@@ -107,6 +93,43 @@ object GhostVariableUtils {
           }
         }
         else None
+      case unaryTree: UnaryTree =>
+        unaryTree.getKind match {
+          case Tree.Kind.POSTFIX_INCREMENT | Tree.Kind.PREFIX_INCREMENT |
+               Tree.Kind.POSTFIX_DECREMENT | Tree.Kind.PREFIX_DECREMENT =>
+            val variable = unaryTree.getExpression.toString
+            if (isGhostVariable(variable, typ))
+              logger.fatal(s"Tree `$tree` not in the form of `$variable = $variable + e`!")
+            None
+          case _ => None
+        }
+      case _ => None
+    }
+  }
+
+  def extractDeltaVariableReset(cfgNode: Node): Option[String] = {
+    cfgNode match {
+      case node: AssignmentNode =>
+        val variableName = node.getTarget.toString
+        if (isGhostVariable(variableName, Delta)) {
+          // Must be in the form of `D = 0`
+          if (node.getExpression.toString == "0") Some(variableName)
+          else None
+        }
+        else None
+      case _ => None
+    }
+  }
+
+  def extractGhostVariableReset(tree: ExpressionTree, typ: GhostVariable): Option[String] = {
+    tree match {
+      case tree: AssignmentTree =>
+        if (isGhostVariable(tree.getVariable.toString, typ)) {
+          val ghostVariable = tree.getVariable.toString
+          if (tree.getExpression.toString == "0") Some(ghostVariable)
+          else None
+        }
+        else None
       case _ => None
     }
   }
@@ -114,6 +137,11 @@ object GhostVariableUtils {
   object GhostVariable extends Enumeration {
     type GhostVariable = Value
     val Resource, Delta, Counter = Value
+  }
+
+  object UpdateOrReset extends Enumeration {
+    type UpdateOrReset = Value
+    val Update, Reset = Value
   }
 
 }

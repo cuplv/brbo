@@ -2,13 +2,12 @@ package brbo.verification
 
 import brbo.common.BeforeOrAfter.{AFTER, BEFORE}
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, Resource}
-import brbo.common.Locations
 import brbo.common.TreeUtils.collectCommands
 import brbo.common.TypeUtils.BrboType.{BrboType, INT}
-import brbo.common._
+import brbo.common.{Locations, _}
 import brbo.verification.Decomposition.DecompositionResult
 import com.microsoft.z3.{AST, Expr}
-import com.sun.source.tree.{AssertTree, MethodTree}
+import com.sun.source.tree.{AssertTree, ExpressionStatementTree, MethodTree}
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.node.Node
 
@@ -64,11 +63,12 @@ object BoundChecking {
           solver,
           Locations(
             {
-              node: Node =>
-                GhostVariableUtils.extractGhostVariableUpdate(node, Delta) match {
+              case expressionStatementTree: ExpressionStatementTree =>
+                GhostVariableUtils.extractGhostVariableUpdate(expressionStatementTree.getExpression, Delta) match {
                   case Some(update) => update.identifier == deltaVariable
                   case None => false
                 }
+              case _ => false
             },
             AFTER
           ),
@@ -82,11 +82,12 @@ object BoundChecking {
             solver,
             Locations(
               {
-                node: Node =>
-                  GhostVariableUtils.extractDeltaVariableReset(node) match {
+                case expressionStatementTree: ExpressionStatementTree =>
+                  GhostVariableUtils.extractGhostVariableReset(expressionStatementTree.getExpression, Delta) match {
                     case Some(identifier) => identifier == deltaVariable
                     case None => false
                   }
+                case _ => false
               },
               BEFORE
             ),
@@ -107,11 +108,12 @@ object BoundChecking {
           solver,
           Locations(
             {
-              node: Node =>
-                GhostVariableUtils.extractGhostVariableUpdate(node, Counter) match {
+              case expressionStatementTree: ExpressionStatementTree =>
+                GhostVariableUtils.extractGhostVariableUpdate(expressionStatementTree.getExpression, Counter) match {
                   case Some(update) => update.identifier == deltaCounterPair.counter
                   case None => false
                 }
+              case _ => false
             },
             AFTER
           ),

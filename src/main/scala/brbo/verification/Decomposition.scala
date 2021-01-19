@@ -21,7 +21,7 @@ class Decomposition(inputMethod: TargetMethod) {
 
   private val commands = TreeUtils.collectCommands(inputMethod.methodTree.getBody)
 
-  private val debug = true
+  private val debug = false
 
   private def debugOrError(message: String): Unit = {
     if (debug) logger.error(message)
@@ -86,9 +86,9 @@ class Decomposition(inputMethod: TargetMethod) {
   }
 
   def merge(subprogram1: Subprogram, subprogram2: Subprogram): Subprogram = {
+    debugOrError(s"Merge - Subprogram 1: $subprogram1\nSubprogram 2: $subprogram2")
     (subprogram1.minimalEnclosingBlock, subprogram2.minimalEnclosingBlock) match {
-      case (Some(minimalEnclosingBlock1), Some(minimalEnclosingBlock2))
-        if minimalEnclosingBlock1 == minimalEnclosingBlock2 =>
+      case (Some(minimalEnclosingBlock1), Some(minimalEnclosingBlock2)) if minimalEnclosingBlock1 == minimalEnclosingBlock2 =>
         val head = {
           val head1 = minimalEnclosingBlock1.getStatements.indexOf(subprogram1.astNodes.head)
           val head2 = minimalEnclosingBlock1.getStatements.indexOf(subprogram2.astNodes.head)
@@ -101,6 +101,7 @@ class Decomposition(inputMethod: TargetMethod) {
           assert(last1 != -1 && last2 != -1)
           if (last1 >= last2) last1 else last2
         }
+        debugOrError(s"Merge - Choose a subsequence from index `$head` to `$last` in minimal enclosing block `$minimalEnclosingBlock1`")
         return Subprogram(minimalEnclosingBlock1.getStatements.asScala.slice(head, last + 1).toList)
       case _ =>
         getAllCommonEnclosingTrees(subprogram1, subprogram2).last match {
@@ -114,6 +115,7 @@ class Decomposition(inputMethod: TargetMethod) {
             val startIndex = statements.indexOf(statements2.head)
             val endIndex = statements.indexOf(statements2.last)
             assert(startIndex != -1 && endIndex != -1)
+            debugOrError(s"Merge - Choose a subsequence from index `$startIndex` to `$endIndex` in common enclosing block `$blockTree`")
             return Subprogram(statements.slice(startIndex, endIndex + 1))
           case tree@_ => return Subprogram(List(tree.asInstanceOf[StatementTree]))
         }
@@ -227,6 +229,7 @@ class Decomposition(inputMethod: TargetMethod) {
       match {
         case Some(pair) =>
           val newSubprogram = merge(pair._1, pair._2)
+          debugOrError(s"Merge if overlap - Subprogram 1: ${pair._1}\nSubprogram 2: ${pair._2}\nNew subprogram: $newSubprogram")
           newSubprograms = newSubprograms - pair._1 - pair._2 + newSubprogram
         case None => continue = false
       }
@@ -290,7 +293,7 @@ class Decomposition(inputMethod: TargetMethod) {
       leaf match {
         case statementTree: StatementTree =>
           val allTrees = TreeUtils.collectStatementTrees(statementTree)
-          if (subprogram2.innerTrees.subsetOf(allTrees)) {
+          if (subprogram1.innerTrees.subsetOf(allTrees) && subprogram2.innerTrees.subsetOf(allTrees)) {
             allCommonEnclosingTrees = statementTree :: allCommonEnclosingTrees
           }
         case _ => continue = false

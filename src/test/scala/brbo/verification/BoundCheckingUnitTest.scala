@@ -62,12 +62,12 @@ object BoundCheckingUnitTest {
       |    int i = 0;
       |    while (i < n) {
       |      int j = 0;
-      |      C1++;
+      |      C1 = C1 + 1;
       |      D100 = 0;
       |      while (j < m) {
       |        j++;
       |        R++;
-      |        D100++;
+      |        D100 = D100 + 1;
       |      }
       |      i++;
       |    }
@@ -82,13 +82,13 @@ object BoundCheckingUnitTest {
       |    int C1 = 0;
       |    int D100 = 0;
       |    int i = 0;
-      |    C1++;
+      |    C1 = C1 + 1;
       |    D100 = 0;
       |    D100++;
       |    R++;
       |    while (i < n) {
       |      R++;
-      |      D100++;
+      |      D100 = D100 + 1;
       |      i++;
       |    }
       |  }
@@ -102,7 +102,7 @@ object BoundCheckingUnitTest {
       |    int C1 = 0;
       |    int D100 = 0;
       |    int i = 0;
-      |    C1++;
+      |    C1 = C1 + 1;
       |    D100 = 0;
       |    R = R + n;
       |    D100 = D100 + n;

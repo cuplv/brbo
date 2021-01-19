@@ -7,7 +7,6 @@ import brbo.common.TypeUtils.BrboType
 import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
-import org.checkerframework.dataflow.cfg.block.Block
 import org.checkerframework.dataflow.cfg.node.Node
 
 import scala.collection.JavaConverters._
@@ -234,109 +233,6 @@ object InstrumentUtils {
     }
   }
 
-  // Insert d = 0 in the AST that maps to targetBlock
-  @deprecated
-  def substituteAllAtomicStatementsWith(tree: Tree, deltaVariable: String, targetBlock: Block, indent: Int, cfg: ControlFlowGraph): String = {
-    val INDENT = 2
-    val spaces = " " * indent
-
-    def generateResetStatementGivenAtomicStatement(tree: Tree): String = {
-      tree match {
-        case atomicStatement@(_: ExpressionStatementTree | _: VariableTree) =>
-          val cfgNodes: Set[Node] = {
-            atomicStatement match {
-              case expressionStatementTree: ExpressionStatementTree =>
-                expressionStatementTree.getExpression match {
-                  case unaryTree: UnaryTree =>
-                    cfg.getUnaryAssignNodeLookup.asScala.get(unaryTree) match {
-                      case Some(assignmentNode) => Set(assignmentNode)
-                      case None => Set.empty
-                    }
-                  case expressionTree@_ => cfg.getNodesCorrespondingToTree(expressionTree).asScala.toSet
-                }
-              case variableTree: VariableTree => cfg.getNodesCorrespondingToTree(variableTree).asScala.toSet
-            }
-          }
-          if (cfgNodes.subsetOf(targetBlock.getNodes.asScala.toSet)) {
-            logger.debug(s"AST `$tree` is mapped to nodes `$cfgNodes` in target block `$targetBlock`")
-            s"\n$spaces$deltaVariable = 0;"
-          }
-          else ""
-        case _ => assert(assertion = false, s"Tree `$tree` is not an atomic statement!"); ""
-      }
-    }
-
-    tree match {
-      case tree: AssertTree => spaces + tree.toString + ";"
-      case tree: BlockTree =>
-        tree.getStatements.asScala.foldLeft(s"$spaces{")(
-          (acc, statementTree) => acc + "\n" + substituteAllAtomicStatementsWith(statementTree, deltaVariable, targetBlock, indent + INDENT, cfg)
-        ) + s"\n$spaces}"
-      case tree: BreakTree => spaces + tree.toString + ";"
-      case _: ClassTree => assert(assertion = false, "Unreachable"); ""
-      case tree: ContinueTree => spaces + tree.toString + ";"
-      case tree: DoWhileLoopTree =>
-        /*s"${spaces}do\n" +
-          substituteAllAtomicStatementsWith(tree.getStatement, deltaVariable, targetBlock, indent, cfg) +
-          s"\n${spaces}while (${tree.getCondition.toString});"*/
-        assert(assertion = false, "Unreachable"); ""
-      case _: EmptyStatementTree => spaces
-      case _: EnhancedForLoopTree => assert(assertion = false, "Unreachable"); ""
-      /*s"${spaces}for (${tree.getVariable} : ${tree.getExpression}) {\n" +
-        printTreeInstrumentedAtBlock(tree.getStatement, deltaVariable, block, indent + INDENT) +
-        s"\n$spaces}"*/
-      case tree: ExpressionStatementTree =>
-        // Insert d = 0 at potentially multiple places in the target basic block.
-        // This neither affects the correctness nor the way to construct bounds.
-        val resetStatement = generateResetStatementGivenAtomicStatement(tree)
-        tree.getExpression match {
-          case _@(_: UnaryTree | _: AssignmentTree) =>
-            spaces + tree.toString + resetStatement // Avoid an extra semicolon
-          case _ =>
-            spaces + tree.toString + ";" + resetStatement
-        }
-      case tree: ForLoopTree =>
-        val part1 = tree.getInitializer.asScala.foldLeft(s"$spaces{// For loop")(
-          (acc, statementTree) => acc + "\n" + substituteAllAtomicStatementsWith(statementTree, deltaVariable, targetBlock, indent + INDENT, cfg)
-        ) + "\n"
-        val part2 = {
-          val updates = tree.getUpdate.asScala.foldLeft("")(
-            (acc, statementTree) => acc + "\n" + substituteAllAtomicStatementsWith(statementTree, deltaVariable, targetBlock, indent + INDENT + INDENT, cfg)
-          )
-          val extraIndent = " " * INDENT
-          tree.getStatement match {
-            case blockTree: BlockTree =>
-              val body = blockTree.getStatements.asScala.foldLeft("")(
-                (acc, statementTree) => acc + "\n" + substituteAllAtomicStatementsWith(statementTree, deltaVariable, targetBlock, indent + INDENT + INDENT, cfg)
-              )
-              s"$spaces${extraIndent}while (${tree.getCondition}) {" +
-                body + updates +
-                s"\n$spaces$extraIndent}"
-            case _ => assert(assertion = false, "Unreachable"); ""
-          }
-        }
-        val part3 = s"\n$spaces}"
-        part1 + part2 + part3
-      case tree: IfTree =>
-        s"${spaces}if (${tree.getCondition}) {\n" +
-          substituteAllAtomicStatementsWith(tree.getThenStatement, deltaVariable, targetBlock, indent + INDENT, cfg) +
-          s"$spaces} else {\n" +
-          substituteAllAtomicStatementsWith(tree.getElseStatement, deltaVariable, targetBlock, indent + INDENT, cfg) +
-          s"\n$spaces}"
-      case tree: LabeledStatementTree => spaces + "\n" + substituteAllAtomicStatementsWith(tree.getStatement, deltaVariable, targetBlock, indent, cfg)
-      case tree: ReturnTree => spaces + tree.toString + ";"
-      case _: SwitchTree => assert(assertion = false, "TODO"); ""
-      // s"${spaces}switch (${tree.getExpression}) {" + s"\n$spaces}"
-      case _: SynchronizedTree => assert(assertion = false, "Unreachable"); ""
-      case _: ThrowTree => assert(assertion = false, "Unreachable"); ""
-      case _: TryTree => assert(assertion = false, "Unreachable"); ""
-      case tree: VariableTree => spaces + tree.toString + ";" + generateResetStatementGivenAtomicStatement(tree)
-      case tree: WhileLoopTree =>
-        s"${spaces}while (${tree.getCondition})\n" +
-          substituteAllAtomicStatementsWith(tree.getStatement, deltaVariable, targetBlock, indent, cfg)
-    }
-  }
-
   /**
    *
    * @param targetMethod  The method whose body will be replaced
@@ -420,4 +316,82 @@ object InstrumentUtils {
     val JAVA_FORMAT, C_FORMAT = Value
   }
 
+  case class StatementTreeInstrumentation(locations: Locations, whatToInsert: String) {
+    def run(tree: StatementTree, indent: Int): String = {
+      val spaces = " " * indent
+      val original = s"$spaces${tree.toString};"
+      if (locations.predicate(tree)) {
+        val part1 = {
+          val isCommand = TreeUtils.isCommand(tree)
+          if (isCommand) s"$spaces$tree;"
+          else s"$spaces$tree"
+        }
+        val part2 = s"$spaces$whatToInsert"
+        val newTree = locations.beforeOrAfter match {
+          case brbo.common.BeforeOrAfter.BEFORE => s"$part2\n$part1"
+          case brbo.common.BeforeOrAfter.AFTER => s"$part1\n$part2"
+        }
+        logger.debug(s"AST `$tree` is instrumented into `$newTree`")
+        newTree
+      }
+      else original
+    }
+  }
+
+  def instrumentStatementTrees(targetMethod: TargetMethod, instrumentation: StatementTreeInstrumentation, indent: Int): String = {
+    instrumentStatementTreesHelper(targetMethod.methodTree.getBody, instrumentation, 0)
+  }
+
+  private def instrumentStatementTreesHelper(tree: StatementTree, instrumentation: StatementTreeInstrumentation, indent: Int): String = {
+    if (tree == null) return ""
+
+    val spaces = " " * indent
+    val part1: String = tree match {
+      case _ if TreeUtils.isCommand(tree) => s"$spaces${tree.toString};"
+      case blockTree: BlockTree =>
+        val body = instrumentStatementTreesHelper2(blockTree.getStatements.asScala, instrumentation, indent + INDENT)
+        s"$spaces{\n$body\n$spaces}"
+      case forLoopTree: ForLoopTree =>
+        assert(forLoopTree.getInitializer.size() <= 1)
+        assert(forLoopTree.getUpdate.size() <= 1)
+        val result1 = instrumentStatementTreesHelper2(forLoopTree.getInitializer.asScala, instrumentation, indent + INDENT)
+        val result2 = {
+          val body = forLoopTree.getStatement match {
+            case blockTree: BlockTree =>
+              instrumentStatementTreesHelper2(blockTree.getStatements.asScala, instrumentation, indent + INDENT + INDENT)
+            case _ => throw new Exception("Unreachable")
+          }
+          val updates = instrumentStatementTreesHelper2(forLoopTree.getUpdate.asScala, instrumentation, indent + INDENT + INDENT)
+          val extraIndent = " " * INDENT
+          s"$spaces${extraIndent}while (${forLoopTree.getCondition}) {" +
+            s"$body$updates\n$spaces$extraIndent}"
+        }
+        s"$spaces{// For loop$result1\n$result2\n$spaces}"
+      case ifTree: IfTree =>
+        val result1 = instrumentStatementTreesHelper(ifTree.getThenStatement, instrumentation, indent)
+        val result2 = instrumentStatementTreesHelper(ifTree.getElseStatement, instrumentation, indent)
+        s"${spaces}if ${ifTree.getCondition}\n$result1\n$spaces" +
+          s"else\n$result2"
+      case labeledStatementTree: LabeledStatementTree =>
+        val result = instrumentStatementTreesHelper(labeledStatementTree.getStatement, instrumentation, indent)
+        s"$spaces${labeledStatementTree.getLabel.toString}:\n$result"
+      case whileLoopTree: WhileLoopTree =>
+        val result = instrumentStatementTreesHelper(whileLoopTree.getStatement, instrumentation, indent)
+        s"${spaces}while ${whileLoopTree.getCondition}\n$result"
+      case _ => throw new Exception(s"Unsupported tree: `$tree`")
+    }
+
+    if (instrumentation.locations.predicate(tree)) {
+      val part2 = s"$spaces${instrumentation.whatToInsert}"
+      instrumentation.locations.beforeOrAfter match {
+        case brbo.common.BeforeOrAfter.BEFORE => s"$part2\n$part1"
+        case brbo.common.BeforeOrAfter.AFTER => s"$part1\n$part2"
+      }
+    }
+    else part1
+  }
+
+  private def instrumentStatementTreesHelper2(trees: Iterable[StatementTree], instrumentation: StatementTreeInstrumentation, indent: Int): String = {
+    trees.map(tree => instrumentStatementTreesHelper(tree, instrumentation, indent)).mkString("\n")
+  }
 }

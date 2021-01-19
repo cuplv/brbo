@@ -1,10 +1,11 @@
 package brbo.common
 
-import brbo.{StringCompare, TestCaseJavaProgram}
-import brbo.verification.BasicProcessor
-import brbo.common.InstrumentUtils.AtomicStatementInstrumentation
 import brbo.common.InstrumentUtils.InstrumentMode.{ALL, AT_MOST_ONCE}
+import brbo.common.InstrumentUtils.StatementTreeInstrumentation
+import brbo.verification.BasicProcessor
+import brbo.{StringCompare, TestCaseJavaProgram}
 import org.scalatest.flatspec.AnyFlatSpec
+import brbo.common.BeforeOrAfter.BEFORE
 
 import scala.collection.immutable.HashSet
 
@@ -13,8 +14,15 @@ class InstrumentUtilsUnitTest extends AnyFlatSpec {
     InstrumentUtilsUnitTest.noInstrumentUnitTests.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val result = InstrumentUtils.substituteAtomicStatements(targetMethod, AtomicStatementInstrumentation(_ => false, tree => tree.toString), 0, AT_MOST_ONCE)
-        assert(StringCompare.ignoreWhitespaces(result.result, testCase.expectedOutput, s"Test ${testCase.className} failed!"))
+        val result = InstrumentUtils.instrumentStatementTrees(
+          targetMethod,
+          StatementTreeInstrumentation(
+            Locations(_ => false, BEFORE),
+            ""
+          ),
+          0
+        )
+        assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, s"Test ${testCase.className} failed!"))
     })
   }
 

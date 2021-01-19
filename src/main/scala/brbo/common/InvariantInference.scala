@@ -1,15 +1,11 @@
 package brbo.common
 
-import brbo.common.BeforeOrAfter.{AFTER, BEFORE}
-import brbo.common.InstrumentUtils.AtomicStatementInstrumentation
 import brbo.common.InstrumentUtils.FileFormat.C_FORMAT
-import brbo.common.InstrumentUtils.InstrumentMode.ALL
+import brbo.common.InstrumentUtils.StatementTreeInstrumentation
 import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT}
 import brbo.common.icra.{Assignment, Icra}
 import com.microsoft.z3.{AST, Expr}
-import com.sun.source.tree.Tree
 import org.apache.logging.log4j.LogManager
-import org.checkerframework.dataflow.cfg.node.Node
 
 class InvariantInference(targetMethod: TargetMethod) {
   private val logger = LogManager.getLogger(classOf[InvariantInference])
@@ -82,24 +78,11 @@ class InvariantInference(targetMethod: TargetMethod) {
     val indent = 2
     val ASSERT_TRUE = "assert(true)"
 
-    val result = InstrumentUtils.substituteAtomicStatements(
+    val newMethodBody = InstrumentUtils.instrumentStatementTrees(
       targetMethod,
-      AtomicStatementInstrumentation(
-        {
-          node: Node => locations.whichASTs.apply(node)
-        },
-        {
-          tree: Tree =>
-            locations.beforeOrAfter match {
-              case BEFORE => s"$ASSERT_TRUE; ${tree.toString};"
-              case AFTER => s"${tree.toString}; $ASSERT_TRUE;"
-            }
-        }
-      ),
-      indent,
-      ALL
+      StatementTreeInstrumentation(locations, s"$ASSERT_TRUE;"),
+      indent
     )
-    val newMethodBody = result.result
     InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(
       targetMethod,
       None,
