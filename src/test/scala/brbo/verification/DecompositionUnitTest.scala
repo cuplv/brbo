@@ -103,8 +103,8 @@ class DecompositionUnitTest extends AnyFlatSpec {
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val decomposition = new Decomposition(targetMethod)
-        // val result = decomposition.decompose()
-        // println(result)
+        val result = decomposition.decompose().programs
+        assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
     })
   }
 }
@@ -236,7 +236,14 @@ object DecompositionUnitTest {
         |    }
         |  }
         |}""".stripMargin
-    val test01ExpectedOutput = ""
+    val test01ExpectedOutput =
+      """Subprogram(
+        |j = 0;
+        |while (j < m) {
+        |    j++;
+        |    R = R + 1;
+        |}
+        |)""".stripMargin
 
     val test02 =
       """class Test02 {
@@ -264,7 +271,23 @@ object DecompositionUnitTest {
         |    }
         |  }
         |}""".stripMargin
-    val test02ExpectedOutput = ""
+    val test02ExpectedOutput =
+      """Subprogram(
+        |R = R + separator;
+        |)
+        |Subprogram(
+        |int index = 0
+        |int start = 0
+        |int end = 0
+        |while (true) {
+        |    start = end + text;
+        |    if (start == text) break;
+        |    end = start + text;
+        |    sb += start - index;
+        |    R = R + (start - index);
+        |    index = end;
+        |}
+        |)""".stripMargin
 
     List[TestCaseJavaProgram](
       TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),

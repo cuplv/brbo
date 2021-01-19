@@ -4,6 +4,7 @@ import brbo.common.GhostVariableUtils.GhostVariable.Resource
 import brbo.common.InstrumentUtils.FileFormat.JAVA_FORMAT
 import brbo.common.TypeUtils.BrboType
 import brbo.common._
+import brbo.verification.Decomposition.logger
 import brbo.verification.dependency.reachdef.ReachingValue
 import brbo.verification.dependency.{ControlDependency, DataDependency}
 import com.sun.source.tree.Tree.Kind
@@ -20,6 +21,13 @@ class Decomposition(inputMethod: TargetMethod) {
 
   private val commands = TreeUtils.collectCommands(inputMethod.methodTree.getBody)
 
+  private val debug = false
+
+  def debugOrError(message: String): Unit = {
+    if (debug) logger.error(message)
+    else logger.debug(message)
+  }
+
   def decompose(): Subprograms = {
     var subprograms = eliminateEnvironmentInterference(mergeIfOverlap(initializeSubprograms()))
     var continue = true
@@ -31,9 +39,16 @@ class Decomposition(inputMethod: TargetMethod) {
       else {
         val pair = interferedSubprograms.head
         val newSubprogram = {
-          if (pair._1 == pair._2) enlarge(pair._1)
-          else merge(pair._1, pair._2)
+          if (pair._1 == pair._2) {
+            debugOrError(s"Enlarging subprogram: ${pair._1}")
+            enlarge(pair._1)
+          }
+          else {
+            debugOrError(s"Merging subprograms: $pair")
+            merge(pair._1, pair._2)
+          }
         }
+        debugOrError(s"New subprogram: $newSubprogram")
         subprograms = mergeIfOverlap(subprograms.programs - pair._1 - pair._2 + newSubprogram)
       }
     }
@@ -110,7 +125,9 @@ class Decomposition(inputMethod: TargetMethod) {
     while (continue) {
       newSubprograms.programs.find(subprogram => interferedByEnvironment(subprogram, newSubprograms)) match {
         case Some(interferedSubprogram) =>
+          debugOrError(s"Subprogram is interfered by the environment: $interferedSubprogram")
           val newSubprogram: Subprogram = enlarge(interferedSubprogram)
+          debugOrError(s"New subprogram: $newSubprogram")
           newSubprograms = mergeIfOverlap(newSubprograms.programs - interferedSubprogram + newSubprogram)
         case None => continue = false
       }
@@ -126,6 +143,29 @@ class Decomposition(inputMethod: TargetMethod) {
    *         - It does not overlap with other subprograms
    */
   def enlarge(subprogram: Subprogram): Subprogram = {
+    def avoidDanglingBreakContinue(newStatement: StatementTree, minimalEnclosingBlock: Tree): Option[Tree] = {
+      debugOrError(s"Enlarging - New statement $newStatement")
+      val trees = TreeUtils.collectStatementTrees(newStatement)
+      val containsBreakContinue = {
+        TreeUtils.collectCommands(newStatement).exists({
+          case tree@(_: BreakTree | _: ContinueTree) =>
+            TreeUtils.getMinimalEnclosingLoop(inputMethod.getPath(tree)) match {
+              case Some(enclosingLoop) =>
+                !TreeUtils.collectStatementTrees(enclosingLoop.asInstanceOf[StatementTree]).subsetOf(trees)
+              case None => true
+            }
+          case _ => false
+        })
+      }
+      debugOrError(s"Enlarging - Containing dangling `break` or `continue`? $containsBreakContinue")
+      if (containsBreakContinue) {
+        val minimalLoop = TreeUtils.getMinimalEnclosingLoop(inputMethod.getPath(minimalEnclosingBlock))
+        assert(minimalLoop.isDefined)
+        minimalLoop
+      }
+      else None
+    }
+
     val headAstNode = subprogram.astNodes.head
     val newAstNodes: List[Tree] = subprogram.minimalEnclosingBlock match {
       case Some(minimalEnclosingBlock) =>
@@ -141,11 +181,21 @@ class Decomposition(inputMethod: TargetMethod) {
                     List(inputMethod.getPath(headAstNode).getParentPath.getLeaf)
                   }
                   else {
-                    subprogram.astNodes :+ statements.get(index + 1)
+                    val newStatement = statements.get(index + 1)
+                    avoidDanglingBreakContinue(newStatement, minimalEnclosingBlock) match {
+                      case Some(minimalLoop) => List(minimalLoop)
+                      case None => subprogram.astNodes :+ newStatement
+                    }
                   }
               }
             }
-            else statements.get(index - 1) :: subprogram.astNodes
+            else {
+              val newStatement = statements.get(index - 1)
+              avoidDanglingBreakContinue(newStatement, minimalEnclosingBlock) match {
+                case Some(minimalLoop) => List(minimalLoop)
+                case None => newStatement :: subprogram.astNodes
+              }
+            }
         }
       case None =>
         inputMethod.getPath(subprogram.minimalEnclosingTree).getParentPath.getLeaf match {
@@ -275,18 +325,18 @@ class Decomposition(inputMethod: TargetMethod) {
   def interfere(subprogram1: Subprogram, subprogram2: Subprogram): Boolean = {
     // First check if there exists a path from subprogram1's exit to subprogram2's entry
     if (!subsequentExecution(subprogram1, subprogram2)) {
-      logger.debug(s"Subprogram 2 cannot be subsequently executed after subprogram 1")
-      logger.debug(s"Subprogram 1:\n$subprogram1")
-      logger.debug(s"Subprogram 2:\n$subprogram2")
+      debugOrError(s"Subprogram 2 cannot be subsequently executed after subprogram 1")
+      debugOrError(s"Subprogram 1:\n$subprogram1")
+      debugOrError(s"Subprogram 2:\n$subprogram2")
       return false
     }
 
     val modifiedSet1 = Decomposition.computeModifiedSet(subprogram1.targetMethod)
     val taintSet2 = Decomposition.computeTaintSet(subprogram2.targetMethod, debug = false)
-    logger.debug(s"Subprogram 1:\n$subprogram1")
-    logger.debug(s"Subprogram 1 modified set: $modifiedSet1")
-    logger.debug(s"Subprogram 2:\n$subprogram2")
-    logger.debug(s"Subprogram 2 taint set: $taintSet2")
+    debugOrError(s"Subprogram 1 modified set: $modifiedSet1")
+    debugOrError(s"Subprogram 1:\n$subprogram1")
+    debugOrError(s"Subprogram 2 taint set: $taintSet2")
+    debugOrError(s"Subprogram 2:\n$subprogram2")
     modifiedSet1.intersect(taintSet2).nonEmpty
   }
 
