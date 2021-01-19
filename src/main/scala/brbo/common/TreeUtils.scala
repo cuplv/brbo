@@ -103,9 +103,7 @@ object TreeUtils {
 
     if (statement == null) return Nil
     statement match {
-      case tree@(_: AssertTree | _: BreakTree | _: ContinueTree | _: EmptyStatementTree |
-                 _: ExpressionStatementTree | _: ReturnTree | _: VariableTree) =>
-        tree :: Nil
+      case _ if isCommand(statement) => statement :: Nil
       case tree: BlockTree => collectCommands(tree.getStatements.asScala)
       case _: ClassTree => throwException("Unexpected class tree")
       case _: DoWhileLoopTree => throwException("Not yet support do while loop tree") // collectCommands(tree.getStatement)
@@ -139,8 +137,7 @@ object TreeUtils {
 
     val set: Set[StatementTree] =
       tree match {
-        case _@(_: AssertTree | _: BreakTree | _: ContinueTree | _: EmptyStatementTree |
-                _: ExpressionStatementTree | _: ReturnTree | _: VariableTree) => new HashSet[StatementTree]()
+        case _ if isCommand(tree) => new HashSet[StatementTree]()
         case tree2: BlockTree => collectStatementTrees(tree2.getStatements.asScala)
         case tree2: ForLoopTree =>
           collectStatementTrees(tree2.getInitializer.asScala) ++ collectStatementTrees(tree2.getStatement) ++ collectStatementTrees(tree2.getUpdate.asScala)
@@ -161,8 +158,7 @@ object TreeUtils {
     if (tree == null) return new HashSet[ExpressionTree]
 
     val conditions = tree match {
-      case _@(_: AssertTree | _: BreakTree | _: ContinueTree | _: EmptyStatementTree |
-              _: ExpressionStatementTree | _: ReturnTree | _: VariableTree) => new HashSet[ExpressionTree]
+      case _ if isCommand(tree) => new HashSet[ExpressionTree]
       case tree2: BlockTree => collectConditionTreesWithoutBrackets(tree2.getStatements.asScala)
       case tree2: ForLoopTree =>
         collectConditionTreesWithoutBrackets(tree2.getInitializer.asScala) ++ collectConditionTreesWithoutBrackets(tree2.getStatement) ++
@@ -182,12 +178,25 @@ object TreeUtils {
     trees.foldLeft(new HashSet[ExpressionTree])({ (acc, tree) => acc ++ collectConditionTreesWithoutBrackets(tree) })
   }
 
+  def isCommand(tree: StatementTree): Boolean = {
+    if (tree == null) return false
+
+    tree match {
+      case _@(_: AssertTree | _: BreakTree | _: ContinueTree | _: EmptyStatementTree |
+              _: ExpressionStatementTree | _: ReturnTree | _: VariableTree) => true
+      case _ => false
+    }
+  }
+
   def satisfyRestriction(tree: StatementTree): Unit = {
     if (tree == null) return
 
     tree match {
-      case _@(_: AssertTree | _: BreakTree | _: ContinueTree | _: EmptyStatementTree |
-              _: ExpressionStatementTree | _: ReturnTree) =>
+      case _ if isCommand(tree) =>
+        tree match {
+          case variableTree: VariableTree => assert(variableTree.getInitializer != null, s"Variable declaration should have initializers: `$tree`")
+          case _ =>
+        }
       case blockTree: BlockTree => blockTree.getStatements.asScala.foreach(t => satisfyRestriction(t))
       case forLoopTree: ForLoopTree =>
         forLoopTree.getInitializer.asScala.foreach(t => satisfyRestriction(t))
@@ -198,7 +207,6 @@ object TreeUtils {
         satisfyRestriction(ifTree.getElseStatement)
       case labeledStatementTree: LabeledStatementTree => satisfyRestriction(labeledStatementTree.getStatement)
       case whileLoopTree: WhileLoopTree => satisfyRestriction(whileLoopTree.getStatement)
-      case variableTree: VariableTree => assert(variableTree.getInitializer != null, s"Variable declaration should have initializers: `$tree`")
       case _ => throw new Exception(s"Unsupported tree: `$tree`")
     }
   }
