@@ -23,7 +23,7 @@ object CounterAxiomGenerator {
    * @return A mapping from all ASTs of the AST to their unique counters
    */
   def generateCounterMap(tree: StatementTree): Map[Tree, String] = {
-    logger.info(s"Attaching unique counters to AST nodes")
+    logger.info(s"Attach unique counters to AST nodes")
     generateCounterMapHelper(tree, FIRST_COUNTER_ID)._1
   }
 

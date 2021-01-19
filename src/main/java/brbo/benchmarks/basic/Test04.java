@@ -9,13 +9,13 @@ class Test04 {
       int j = 0;
       while (j < m) {
         j++;
-        R++;
+        R = R + 1;
       }
       i++;
     }
 
     for (int k = 0; k < l; k++) {
-      R++;
+      R = R + 1;
     }
   }
 }

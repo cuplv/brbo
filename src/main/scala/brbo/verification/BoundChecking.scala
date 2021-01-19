@@ -44,7 +44,7 @@ object BoundChecking {
         (acc, variable) => acc + (variable -> INT)
       })
     }
-    logger.info(s"For Z3, we declare these variables in the global scope: $globalScopeVariables")
+    logger.trace(s"For Z3, we declare these variables in the global scope: $globalScopeVariables")
 
     val invariantInference = new InvariantInference(targetMethod)
     val invariants: Set[(AST, AST, AST)] = deltaCounterPairs.map({
@@ -190,7 +190,7 @@ object BoundChecking {
     val result = !solver.checkSAT(printUnsatCore = false)
     if (!result && printModelIfFail) {
       logger.fatal(s"Bound expression could not be verified: $boundExpression")
-      solver.printAssertions()
+      // solver.printAssertions()
       solver.printModel()
     }
     else {

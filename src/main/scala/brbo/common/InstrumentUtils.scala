@@ -370,10 +370,10 @@ object InstrumentUtils {
           }
           val updates = instrumentStatementTreesHelper2(forLoopTree.getUpdate.asScala, instrumentation, indent + INDENT + INDENT)
           val extraIndent = " " * INDENT
-          s"$spaces${extraIndent}while (${forLoopTree.getCondition}) {" +
-            s"$body$updates\n$spaces$extraIndent}"
+          s"$spaces${extraIndent}while (${forLoopTree.getCondition}) {\n" +
+            s"$body\n$updates\n$spaces$extraIndent}"
         }
-        s"$spaces{// For loop$result1\n$result2\n$spaces}"
+        s"$spaces{// For loop\n$result1\n$result2\n$spaces}"
       case ifTree: IfTree =>
         val result1 = instrumentStatementTreesHelper(ifTree.getThenStatement, instrumentation, indent)
         val result2 = {
