@@ -58,6 +58,7 @@ object InstrumentUtils {
         case tree@_ => throw new RuntimeException(s"Instrumenting non expression statement `$tree` (Kind: ${tree.getKind})")
       })
 
+  @deprecated
   def substituteAtomicStatements(targetMethod: TargetMethod,
                                  instrumentation: AtomicStatementInstrumentation,
                                  indent: Int,
@@ -77,6 +78,7 @@ object InstrumentUtils {
    * @param shouldInstrument determine if a node's corresponding AST should be instrumented
    * @param howToInstrument  determine how to instrument a tree (without indents and semicolon), when its corresponding nodes ALL satisfy the predicate
    */
+  @deprecated
   case class AtomicStatementInstrumentation(shouldInstrument: Node => Boolean, howToInstrument: Tree => String) {
     def instrument(tree: Tree, state: InstrumentState, indent: Int, cfg: ControlFlowGraph): InstrumentResult = {
       val spaces = " " * indent
@@ -136,10 +138,12 @@ object InstrumentUtils {
    * @param result the instrumented string
    * @param state  true only if instrumentation happened during constructing result
    */
+  @deprecated
   case class InstrumentResult(result: String, state: InstrumentState) {
     assert(!result.contains("InstrumentResult"))
   }
 
+  @deprecated
   case class InstrumentState(needInstrument: Boolean,
                              hasInstrumented: Boolean, // The only mutable thing in a state
                              instrumentMode: InstrumentMode,
@@ -153,8 +157,10 @@ object InstrumentUtils {
     }
   }
 
+  @deprecated
   private def errorInstrumentResult(errorMessage: String): InstrumentResult = throw new RuntimeException(errorMessage)
 
+  @deprecated
   private def substituteAtomicStatementInSequences(statementTrees: Iterable[Tree], state: InstrumentState, indent: Int): InstrumentResult = {
     statementTrees.foldLeft(InstrumentResult("", state))({
       (acc, statementTree) =>
@@ -163,6 +169,7 @@ object InstrumentUtils {
     })
   }
 
+  @deprecated
   private def substituteAtomicStatementHelper(tree: Tree, state: InstrumentState, indent: Int): InstrumentResult = {
     val instrumentation = state.instrumentation
     val cfg = state.cfg
@@ -316,30 +323,10 @@ object InstrumentUtils {
     val JAVA_FORMAT, C_FORMAT = Value
   }
 
-  case class StatementTreeInstrumentation(locations: Locations, whatToInsert: String) {
-    def run(tree: StatementTree, indent: Int): String = {
-      val spaces = " " * indent
-      val original = s"$spaces${tree.toString};"
-      if (locations.predicate(tree)) {
-        val part1 = {
-          val isCommand = TreeUtils.isCommand(tree)
-          if (isCommand) s"$spaces$tree;"
-          else s"$spaces$tree"
-        }
-        val part2 = s"$spaces$whatToInsert"
-        val newTree = locations.beforeOrAfter match {
-          case brbo.common.BeforeOrAfter.BEFORE => s"$part2\n$part1"
-          case brbo.common.BeforeOrAfter.AFTER => s"$part1\n$part2"
-        }
-        logger.debug(s"AST `$tree` is instrumented into `$newTree`")
-        newTree
-      }
-      else original
-    }
-  }
+  case class StatementTreeInstrumentation(locations: Locations, whatToInsert: StatementTree => String)
 
   def instrumentStatementTrees(targetMethod: TargetMethod, instrumentation: StatementTreeInstrumentation, indent: Int): String = {
-    instrumentStatementTreesHelper(targetMethod.methodTree.getBody, instrumentation, 0)
+    instrumentStatementTreesHelper(targetMethod.methodTree.getBody, instrumentation, indent)
   }
 
   private def instrumentStatementTreesHelper(tree: StatementTree, instrumentation: StatementTreeInstrumentation, indent: Int): String = {
@@ -382,7 +369,7 @@ object InstrumentUtils {
     }
 
     if (instrumentation.locations.predicate(tree)) {
-      val part2 = s"$spaces${instrumentation.whatToInsert}"
+      val part2 = s"$spaces${instrumentation.whatToInsert(tree)}"
       instrumentation.locations.beforeOrAfter match {
         case brbo.common.BeforeOrAfter.BEFORE => s"$part2\n$part1"
         case brbo.common.BeforeOrAfter.AFTER => s"$part1\n$part2"

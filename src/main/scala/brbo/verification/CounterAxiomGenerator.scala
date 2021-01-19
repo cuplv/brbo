@@ -22,17 +22,19 @@ object CounterAxiomGenerator {
    * @param tree The AST that we wish to generate a counter mapping
    * @return A mapping from all ASTs of the AST to their unique counters
    */
-  def generateCounterMap(tree: Tree): Map[Tree, String] = {
+  def generateCounterMap(tree: StatementTree): Map[Tree, String] = {
     logger.info(s"Attaching unique counters to AST nodes")
     generateCounterMapHelper(tree, FIRST_COUNTER_ID)._1
   }
 
-  def generateCounterMapHelper(tree: Tree, id: Int): (Map[Tree, String], Int) = {
+  def generateCounterMapHelper(tree: StatementTree, id: Int): (Map[Tree, String], Int) = {
     def throwException(message: String): Nothing = {
       throw new Exception(s"Generate counter map - $message in AST: $tree")
     }
 
     var map = new HashMap[Tree, String]
+    if (tree == null) return (map, id)
+
     var newId = id
 
     tree match {
@@ -50,8 +52,7 @@ object CounterAxiomGenerator {
             map = map ++ newMap
             newId = newNewId
         })
-      case _: ClassTree => throwException("Unexpected class tree")
-      case tree: DoWhileLoopTree =>
+      case _: DoWhileLoopTree =>
         /*map = map + (tree -> generateCounterId(id))
         newId = newId + 1
 
@@ -59,7 +60,6 @@ object CounterAxiomGenerator {
         map = map ++ newMap
         newId = newNewId*/
         throwException("Not yet support do while loop")
-      case _: EnhancedForLoopTree => throwException("Not yet support enhanced for loop")
       case tree: ForLoopTree =>
         map = map + (tree -> generateCounterId(id))
         newId = newId + 1
@@ -94,10 +94,6 @@ object CounterAxiomGenerator {
         val (newMap, newNewId) = generateCounterMapHelper(tree.getStatement, newId)
         map = map ++ newMap
         newId = newNewId
-      case _: SwitchTree => throwException("Not yet support switch tree")
-      case _: SynchronizedTree => throwException("Not yet support synchronized tree")
-      case _: ThrowTree => throwException("Not yet support throw tree")
-      case _: TryTree => throwException("Not yet support try tree")
       case tree: WhileLoopTree =>
         map = map + (tree -> generateCounterId(id))
         newId = newId + 1
@@ -105,6 +101,7 @@ object CounterAxiomGenerator {
         val (newMap, newNewId) = generateCounterMapHelper(tree.getStatement, newId)
         map = map ++ newMap
         newId = newNewId
+      case _ => throw new Exception(s"Unsupported tree `$tree`")
     }
     (map, newId)
   }
@@ -115,7 +112,7 @@ object CounterAxiomGenerator {
    * @param methodBody The program that we wish to generate counter axioms for
    * @return Counter axioms
    */
-  def generateCounterAxioms(solver: Z3Solver, methodBody: Tree): AST = {
+  def generateCounterAxioms(solver: Z3Solver, methodBody: StatementTree): AST = {
     logger.info(s"Generating counter axioms")
     generateCounterAxiomsHelper(solver, methodBody, generateCounterMap(methodBody))
   }

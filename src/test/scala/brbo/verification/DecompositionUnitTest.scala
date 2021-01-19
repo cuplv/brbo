@@ -109,7 +109,14 @@ class DecompositionUnitTest extends AnyFlatSpec {
   }
 
   "Inserting resets and counters" should "be correct" in {
-
+    DecompositionUnitTest.insertingResetsAndUpdatesUnitTest.foreach({
+      testCase =>
+        val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
+        val decomposition = new Decomposition(targetMethod)
+        val subprograms = decomposition.mergeIfOverlap(decomposition.initializeSubprograms())
+        val result = decomposition.insertGhostVariables(subprograms)
+        assert(StringCompare.ignoreWhitespaces(result.sourceFileContents, testCase.expectedOutput, testCase.className))
+    })
   }
 }
 
@@ -700,6 +707,74 @@ object DecompositionUnitTest {
         |  }
         |}""".stripMargin
     val test02ExpectedOutput = "true\ntrue\ntrue\ntrue"
+
+    List[TestCaseJavaProgram](
+      TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),
+      TestCaseJavaProgram("Test02", test02, test02ExpectedOutput),
+    )
+  }
+
+  val insertingResetsAndUpdatesUnitTest: List[TestCaseJavaProgram] = {
+    val test01 =
+      """class Test01 {
+        |  void f(int n, int m) {
+        |    int it = n;
+        |    int R = 0;
+        |    while (it > 0) {
+        |      it--;
+        |      R = R + m;
+        |    }
+        |    R = R + n;
+        |  }
+        |}""".stripMargin
+    val test01ExpectedOutput =
+      """class Test01 {
+        |  void f(int C6, int n, int C7, int D1, int m, int D0)
+        |  {
+        |    int it = n;
+        |    int R = 0;
+        |    while (it > 0)
+        |    {
+        |      it--;;
+        |      D1 = 0; C6 = C6 + 1;;D1 = D1 + m;
+        |      R = R + m;;
+        |    }
+        |    D0 = 0; C7 = C7 + 1;;D0 = D0 + n;
+        |    R = R + n;;
+        |  }
+        |}""".stripMargin
+
+    val test02 =
+      """class Test02 {
+        |  void f(int n, int m) {
+        |    int it = n;
+        |    int R = 0;
+        |    it++;
+        |    while (it > 0) {
+        |      it--;
+        |      R = R + 1;
+        |      R = R + n;
+        |    }
+        |  }
+        |}""".stripMargin
+    val test02ExpectedOutput =
+      """class Test02 {
+        |  void f(int n, int m, int C4, int D0)
+        |  {
+        |    int it = n;
+        |    int R = 0;
+        |    it++;;
+        |    D0 = 0; C4 = C4 + 1;;
+        |    while (it > 0)
+        |    {
+        |      it--;;
+        |      D0 = D0 + 1;
+        |      R = R + 1;;
+        |      D0 = D0 + n;
+        |      R = R + n;;
+        |    }
+        |  }
+        |}""".stripMargin
 
     List[TestCaseJavaProgram](
       TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),

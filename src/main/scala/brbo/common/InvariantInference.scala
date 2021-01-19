@@ -80,7 +80,7 @@ class InvariantInference(targetMethod: TargetMethod) {
 
     val newMethodBody = InstrumentUtils.instrumentStatementTrees(
       targetMethod,
-      StatementTreeInstrumentation(locations, s"$ASSERT_TRUE;"),
+      StatementTreeInstrumentation(locations, _ => s"$ASSERT_TRUE;"),
       indent
     )
     InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(

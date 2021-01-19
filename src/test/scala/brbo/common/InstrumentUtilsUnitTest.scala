@@ -18,9 +18,9 @@ class InstrumentUtilsUnitTest extends AnyFlatSpec {
           targetMethod,
           StatementTreeInstrumentation(
             Locations(_ => false, BEFORE),
-            ""
+            _ => ""
           ),
-          0
+          indent = 0
         )
         assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, s"Test ${testCase.className} failed!"))
     })

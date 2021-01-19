@@ -1,10 +1,13 @@
 package brbo.verification
 
+import brbo.common.BeforeOrAfter.BEFORE
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, Resource}
 import brbo.common.InstrumentUtils.FileFormat.JAVA_FORMAT
+import brbo.common.InstrumentUtils.StatementTreeInstrumentation
 import brbo.common.TypeUtils.BrboType
+import brbo.common.TypeUtils.BrboType.{BrboType, INT}
 import brbo.common._
-import brbo.verification.Decomposition.DecompositionResult
+import brbo.verification.Decomposition.{DecompositionResult, DeltaCounterPair}
 import brbo.verification.dependency.reachdef.ReachingValue
 import brbo.verification.dependency.{ControlDependency, DataDependency}
 import com.sun.source.tree.Tree.Kind
@@ -14,7 +17,7 @@ import org.checkerframework.dataflow.cfg.block.{Block, ConditionalBlock}
 import org.checkerframework.dataflow.cfg.node._
 
 import scala.collection.JavaConverters._
-import scala.collection.immutable.HashSet
+import scala.collection.immutable.{HashMap, HashSet}
 
 class Decomposition(inputMethod: TargetMethod) {
   private val logger = LogManager.getLogger(classOf[Decomposition])
@@ -22,6 +25,8 @@ class Decomposition(inputMethod: TargetMethod) {
   private val commands = TreeUtils.collectCommands(inputMethod.methodTree.getBody)
 
   private val debug = false
+
+  private val counterMap = CounterAxiomGenerator.generateCounterMap(inputMethod.methodTree.getBody)
 
   private def debugOrError(message: String): Unit = {
     if (debug) logger.error(message)
@@ -65,11 +70,101 @@ class Decomposition(inputMethod: TargetMethod) {
     })
   }
 
-  def insertGhostVariables(subprograms: Subprograms): DecompositionResult = {
-    val deltaVariables = {
-      subprograms.programs.zipWithIndex
+  private def shouldInstrument(subprograms: Subprograms) (tree: StatementTree): Boolean = {
+    if (tree == null) return false
+
+    val insertResetsAndCounterUpdates = subprograms.programs.exists({
+      subprogram => subprogram.astNodes.head == tree
+    })
+
+    val insertUpdates = {
+      if (TreeUtils.isCommand(tree)) {
+        tree match {
+          case expressionStatementTree: ExpressionStatementTree =>
+            GhostVariableUtils.extractGhostVariableUpdate(expressionStatementTree.getExpression, Resource).isDefined
+          case _ => false
+        }
+      }
+      else false
     }
-    ???
+
+    insertResetsAndCounterUpdates || insertUpdates
+  }
+
+  private def whatToInsert(deltaCounterPairs: Map[Subprogram, DeltaCounterPair])(tree: StatementTree): String = {
+    if (tree == null) return  ""
+
+    val subprograms = deltaCounterPairs.keySet
+    val prepend1: String = subprograms.find({
+      subprogram => subprogram.astNodes.head == tree
+    }) match {
+      case Some(subprogram) =>
+        val pair = deltaCounterPairs(subprogram)
+        s"${pair.delta} = 0; ${pair.counter} = ${pair.counter} + 1;"
+      case None => ""
+    }
+
+    val prepend2: String = {
+      if (TreeUtils.isCommand(tree)) {
+        tree match {
+          case expressionStatementTree: ExpressionStatementTree =>
+            GhostVariableUtils.extractGhostVariableUpdate(expressionStatementTree.getExpression, Resource) match {
+              case Some(updateTree) =>
+                // Assume there is only 1 subprogram that contains command `R=R+e`
+                subprograms.find(subprogram => subprogram.commands.contains(tree)) match {
+                  case Some(subprogram) =>
+                    val pair = deltaCounterPairs(subprogram)
+                    s"${pair.delta} = ${pair.delta} + ${updateTree.increment}"
+                  case None => ""
+                }
+              case None => ""
+            }
+          case _ => ""
+        }
+      }
+      else ""
+    }
+
+    def appendSemiColonWhenNecessary(string: String): String = {
+      if (string == "") ""
+      else s"$string;"
+    }
+
+    s"${appendSemiColonWhenNecessary(prepend1)}${appendSemiColonWhenNecessary(prepend2)}"
+  }
+
+  def insertGhostVariables(subprograms: Subprograms): DecompositionResult = {
+    val deltaCounterPairs: Map[Subprogram, DeltaCounterPair] = {
+      val deltaVariables: Map[Subprogram, String] = {
+        val indexedSubprograms: Set[(Subprogram, Int)] = subprograms.programs.zipWithIndex
+        indexedSubprograms.foldLeft(new HashMap[Subprogram, String])({
+          case (acc, (subprogram, index)) =>
+            acc + (subprogram -> GhostVariableUtils.generateGhostVariable(index.toString, Delta))
+        })
+      }
+      subprograms.programs.foldLeft(new HashMap[Subprogram, DeltaCounterPair])({
+        (acc, subprogram) =>
+          val pair = DeltaCounterPair(deltaVariables(subprogram), counterMap(subprogram.astNodes.head))
+          acc + (subprogram -> pair)
+      })
+    }
+
+    val newMethodBody = InstrumentUtils.instrumentStatementTrees(
+      inputMethod,
+      StatementTreeInstrumentation(
+        Locations(shouldInstrument(subprograms), BEFORE),
+        whatToInsert(deltaCounterPairs)
+      ),
+      indent = 2
+    )
+    val newParameters = {
+      val ghostVariables = deltaCounterPairs.values.foldLeft(new HashMap[String, BrboType])({
+        (acc, pair) => acc + (pair.delta -> INT) + (pair.counter -> INT)
+      })
+      (inputMethod.inputVariables ++ ghostVariables).map(pair => BrboType.variableDeclaration(pair._1, pair._2)).mkString(", ")
+    }
+    val newSourceFile = InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(inputMethod, Some(newParameters), newMethodBody, JAVA_FORMAT, 2)
+    DecompositionResult(inputMethod.className, newSourceFile, deltaCounterPairs.values.toSet)
   }
 
   /**

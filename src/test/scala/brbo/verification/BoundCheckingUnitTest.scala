@@ -84,7 +84,7 @@ object BoundCheckingUnitTest {
       |    int i = 0;
       |    C1 = C1 + 1;
       |    D100 = 0;
-      |    D100++;
+      |    D100 = D100 + 1;
       |    R++;
       |    while (i < n) {
       |      R++;
