@@ -55,7 +55,10 @@ class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
   def mkAnd(left: AST, right: AST): AST = context.mkAnd(left.asInstanceOf[BoolExpr], right.asInstanceOf[BoolExpr])
 
   def mkAnd(astSequence: AST*): AST = {
-    if (astSequence.isEmpty) throw new Exception("Attempting to conjoin empty AST")
+    if (astSequence.isEmpty) {
+      logger.fatal("Attempting to conjoin empty AST")
+      mkTrue()
+    }
     else context.mkAnd(astSequence.map(ast => ast.asInstanceOf[BoolExpr]): _*)
   }
 
@@ -143,9 +146,9 @@ object Z3Solver {
 
   // Run this before creating an instance of Z3Solver
   def loadNativeLibraries(): Unit = {
-    logger.debug(System.getProperty("java.library.path"))
-    logger.debug(System.mapLibraryName("z3"))
-    logger.debug(System.mapLibraryName("z3java"))
+    logger.trace(System.getProperty("java.library.path"))
+    logger.trace(System.mapLibraryName("z3"))
+    logger.trace(System.mapLibraryName("z3java"))
     System.loadLibrary("z3")
     System.loadLibrary("z3java")
   }

@@ -1,15 +1,15 @@
-package brbo.archive.basic;
+package brbo.benchmarks.basic;
 
 class Test03 {
   void f(int n, int m) {
-    int r = 0;
+    int R = 0;
     int i = 0;
+    assert (!(n >= 0 && m >= 0) || (R <= m * n));
     while (i < n) {
-      int j;
-      j = 0;
+      int j = 0;
       while (j < m) {
         j++;
-        r++;
+        R++;
       }
       i++;
     }

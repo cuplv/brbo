@@ -118,6 +118,7 @@ object CounterAxiomGenerator {
   }
 
   private def generateCounterAxiomsHelper(solver: Z3Solver, tree: Tree, counterMap: Map[Tree, String]): AST = {
+    if (tree == null) return solver.mkTrue()
     def throwException(message: String): Nothing = {
       throw new Exception(s"Generate counter axioms - $message in AST: $tree")
     }
@@ -193,7 +194,10 @@ object CounterAxiomGenerator {
       case tree: IfTree =>
         val counter0 = solver.mkIntVar(counterMap(tree))
         val counter1 = solver.mkIntVar(counterMap(tree.getThenStatement))
-        val counter2 = solver.mkIntVar(counterMap(tree.getElseStatement))
+        val counter2 = {
+          if (tree.getElseStatement != null) solver.mkIntVar(counterMap(tree.getElseStatement))
+          else solver.mkIntVal(0)
+        }
         solver.mkAnd(
           solver.mkGe(solver.mkAdd(counter1, counter2, solver.mkIntVal(1)), counter0),
           solver.mkGe(counter0, solver.mkAdd(counter1, counter2)),

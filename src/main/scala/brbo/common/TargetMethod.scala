@@ -28,12 +28,12 @@ case class TargetMethod(className: String,
   TreeUtils.satisfyRestriction(methodTree.getBody)
 
   val inputVariables: Map[String, BrboType] = TreeUtils.getAllInputVariables(methodTree)
-  logger.debug(s"[Method `${methodTree.getName}`] Input variables: `$inputVariables`")
+  logger.trace(s"[Method `${methodTree.getName}`] Input variables: `$inputVariables`")
 
   val localVariables: Map[String, BrboType] =
     if (methodTree.getBody == null) new HashMap[String, BrboType]
     else TreeUtils.getAllDeclaredVariables(methodTree.getBody)
-  logger.debug(s"[Method `${methodTree.getName}`] Local variables: `$localVariables`")
+  logger.trace(s"[Method `${methodTree.getName}`] Local variables: `$localVariables`")
 
   val returnType: BrboType = methodTree.getReturnType.toString match {
     case "int" => INT

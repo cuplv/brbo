@@ -91,6 +91,7 @@ object TreeUtils {
         tree.getKind match {
           case Kind.UNARY_MINUS => solver.mkSub(solver.mkIntVal(0), translatePureExpressionToZ3AST(solver, tree.getExpression, typeContext))
           case Kind.UNARY_PLUS => translatePureExpressionToZ3AST(solver, tree.getExpression, typeContext)
+          case Kind.LOGICAL_COMPLEMENT => solver.mkNot(translatePureExpressionToZ3AST(solver, tree.getExpression, typeContext))
           case _ => throwException("Unsupported expression type")
         }
     }

@@ -730,8 +730,12 @@ object DecompositionUnitTest {
     val test01ExpectedOutput =
       """import brbo.benchmarks.Common;
         |abstract class Test01 extends Common {
-        |  void f(int C6, int n, int C7, int D1, int m, int D0)
+        |  void f(int n, int m)
         |  {
+        |    int C6 = 0;
+        |    int C7 = 0;
+        |    int D0 = 0;
+        |    int D1 = 0;
         |    int it = n;
         |    int R = 0;
         |    while (it > 0)
@@ -761,8 +765,10 @@ object DecompositionUnitTest {
     val test02ExpectedOutput =
       """import brbo.benchmarks.Common;
         |abstract class Test02 extends Common {
-        |  void f(int n, int m, int C4, int D0)
+        |  void f(int n, int m)
         |  {
+        |    int C4 = 0;
+        |    int D0 = 0;
         |    int it = n;
         |    int R = 0;
         |    it++;;

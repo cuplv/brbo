@@ -46,9 +46,9 @@ class Decomposition(inputMethod: TargetMethod) {
     }
   }
 
-  private def debugOrError(message: String): Unit = {
+  private def traceOrError(message: String): Unit = {
     if (debug) logger.error(message)
-    else logger.debug(message)
+    else logger.trace(message)
   }
 
   def decompose(): Subprograms = {
@@ -63,15 +63,15 @@ class Decomposition(inputMethod: TargetMethod) {
         val pair = interferedSubprograms.head
         val newSubprogram = {
           if (pair._1 == pair._2) {
-            debugOrError(s"Enlarging subprogram: ${pair._1}")
+            traceOrError(s"Enlarging subprogram: ${pair._1}")
             enlarge(pair._1)
           }
           else {
-            debugOrError(s"Merging subprograms: $pair")
+            traceOrError(s"Merging subprograms: $pair")
             merge(pair._1, pair._2)
           }
         }
-        debugOrError(s"Decomposition - New subprogram: $newSubprogram")
+        traceOrError(s"Decomposition - New subprogram: $newSubprogram")
         subprograms = mergeIfOverlap(subprograms.programs - pair._1 - pair._2 + newSubprogram)
       }
     }
@@ -170,23 +170,31 @@ class Decomposition(inputMethod: TargetMethod) {
       })
     }
 
-    val newMethodBody = InstrumentUtils.instrumentStatementTrees(
-      inputMethod,
-      StatementTreeInstrumentation(
-        Locations(shouldInstrument(subprograms), BEFORE),
-        whatToInsert(deltaCounterPairs)
-      ),
-      indent = 2
-    )
-    val newParameters = {
-      val ghostVariables = deltaCounterPairs.values.foldLeft(new HashMap[String, BrboType])({
-        (acc, pair) => acc + (pair.delta -> INT) + (pair.counter -> INT)
-      })
-      (inputMethod.inputVariables ++ ghostVariables).map(pair => BrboType.variableDeclaration(pair._1, pair._2)).mkString(", ")
+    val newMethodBody = {
+      val ghostVariableDeclaration = {
+        val ghostVariables = deltaCounterPairs.values.foldLeft(new HashMap[String, BrboType])({
+          (acc, pair) => acc + (pair.delta -> INT) + (pair.counter -> INT)
+        })
+        val spaces = " " * 4
+        val declarations = ghostVariables
+          .map(pair => BrboType.variableDeclarationAndInitialization(pair._1, pair._2, JAVA_FORMAT))
+          .toList.sortWith(_ < _).mkString(s"\n$spaces")
+        s"$spaces$declarations"
+      }
+      val newMethodBody = InstrumentUtils.instrumentStatementTrees(
+        inputMethod,
+        StatementTreeInstrumentation(
+          Locations(shouldInstrument(subprograms), BEFORE),
+          whatToInsert(deltaCounterPairs)
+        ),
+        indent = 2
+      )
+      // TODO: A very hacky way to insert variable declarations
+      newMethodBody.replaceFirst("""\{""", s"{\n$ghostVariableDeclaration")
     }
     val newSourceFile = InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(
       inputMethod,
-      Some(newParameters),
+      None,
       Some(newClassName),
       packageName,
       List("import brbo.benchmarks.Common;"),
@@ -213,7 +221,7 @@ class Decomposition(inputMethod: TargetMethod) {
   }
 
   def merge(subprogram1: Subprogram, subprogram2: Subprogram): Subprogram = {
-    debugOrError(s"Merge - Subprogram 1: $subprogram1\nSubprogram 2: $subprogram2")
+    traceOrError(s"Merge - Subprogram 1: $subprogram1\nSubprogram 2: $subprogram2")
     (subprogram1.minimalEnclosingBlock, subprogram2.minimalEnclosingBlock) match {
       case (Some(minimalEnclosingBlock1), Some(minimalEnclosingBlock2)) if minimalEnclosingBlock1 == minimalEnclosingBlock2 =>
         val head = {
@@ -228,7 +236,7 @@ class Decomposition(inputMethod: TargetMethod) {
           assert(last1 != -1 && last2 != -1)
           if (last1 >= last2) last1 else last2
         }
-        debugOrError(s"Merge - Choose a subsequence from index `$head` to `$last` in minimal enclosing block `$minimalEnclosingBlock1`")
+        traceOrError(s"Merge - Choose a subsequence from index `$head` to `$last` in minimal enclosing block `$minimalEnclosingBlock1`")
         return Subprogram(minimalEnclosingBlock1.getStatements.asScala.slice(head, last + 1).toList)
       case _ =>
         getAllCommonEnclosingTrees(subprogram1, subprogram2).last match {
@@ -242,7 +250,7 @@ class Decomposition(inputMethod: TargetMethod) {
             val startIndex = statements.indexOf(statements2.head)
             val endIndex = statements.indexOf(statements2.last)
             assert(startIndex != -1 && endIndex != -1)
-            debugOrError(s"Merge - Choose a subsequence from index `$startIndex` to `$endIndex` in common enclosing block `$blockTree`")
+            traceOrError(s"Merge - Choose a subsequence from index `$startIndex` to `$endIndex` in common enclosing block `$blockTree`")
             return Subprogram(statements.slice(startIndex, endIndex + 1))
           case tree@_ => return Subprogram(List(tree.asInstanceOf[StatementTree]))
         }
@@ -257,9 +265,9 @@ class Decomposition(inputMethod: TargetMethod) {
     while (continue) {
       newSubprograms.programs.find(subprogram => interferedByEnvironment(subprogram, newSubprograms)) match {
         case Some(interferedSubprogram) =>
-          debugOrError(s"Subprogram is interfered by the environment: $interferedSubprogram")
+          traceOrError(s"Subprogram is interfered by the environment: $interferedSubprogram")
           val newSubprogram: Subprogram = enlarge(interferedSubprogram)
-          debugOrError(s"Eliminate environment interference - New subprogram: $newSubprogram")
+          traceOrError(s"Eliminate environment interference - New subprogram: $newSubprogram")
           newSubprograms = mergeIfOverlap(newSubprograms.programs - interferedSubprogram + newSubprogram)
         case None => continue = false
       }
@@ -288,7 +296,7 @@ class Decomposition(inputMethod: TargetMethod) {
           case _ => false
         })
       }
-      debugOrError(s"Enlarging - Containing dangling `break` or `continue`? $containsBreakContinue")
+      traceOrError(s"Enlarging - Containing dangling `break` or `continue`? $containsBreakContinue")
       if (containsBreakContinue) {
         val minimalLoop = TreeUtils.getMinimalEnclosingLoop(inputMethod.getPath(minimalEnclosingBlock))
         assert(minimalLoop.isDefined)
@@ -313,7 +321,7 @@ class Decomposition(inputMethod: TargetMethod) {
                   }
                   else {
                     val newStatement = statements.get(index + 1)
-                    debugOrError(s"Enlarging - (Next) New statement $newStatement")
+                    traceOrError(s"Enlarging - (Next) New statement $newStatement")
                     avoidDanglingBreakContinue(newStatement, minimalEnclosingBlock) match {
                       case Some(minimalLoop) => List(minimalLoop)
                       case None => subprogram.astNodes :+ newStatement
@@ -323,7 +331,7 @@ class Decomposition(inputMethod: TargetMethod) {
             }
             else {
               val newStatement = statements.get(index - 1)
-              debugOrError(s"Enlarging - (Previous) New statement $newStatement")
+              traceOrError(s"Enlarging - (Previous) New statement $newStatement")
               avoidDanglingBreakContinue(newStatement, minimalEnclosingBlock) match {
                 case Some(minimalLoop) => List(minimalLoop)
                 case None => newStatement :: subprogram.astNodes
@@ -356,7 +364,7 @@ class Decomposition(inputMethod: TargetMethod) {
       match {
         case Some(pair) =>
           val newSubprogram = merge(pair._1, pair._2)
-          debugOrError(s"Merge if overlap - Subprogram 1: ${pair._1}\nSubprogram 2: ${pair._2}\nNew subprogram: $newSubprogram")
+          traceOrError(s"Merge if overlap - Subprogram 1: ${pair._1}\nSubprogram 2: ${pair._2}\nNew subprogram: $newSubprogram")
           newSubprograms = newSubprograms - pair._1 - pair._2 + newSubprogram
         case None => continue = false
       }
@@ -372,12 +380,12 @@ class Decomposition(inputMethod: TargetMethod) {
     // Environment interferes only if there exists a path from the subprgram to the environment
     TreeUtils.getMaximalEnclosingLoop(inputMethod.getPath(subprogram.astNodes.head)) match {
       case Some(maximalLoop) =>
-        logger.debug(s"Maximal enclosing loop: $maximalLoop")
+        traceOrError(s"Maximal enclosing loop: $maximalLoop")
         val environmentCommands = TreeUtils.collectCommands(maximalLoop.asInstanceOf[StatementTree]).filter({
           command =>
             !subprograms.programs.exists({ subprogram => subprogram.commands.contains(command) })
         })
-        logger.debug(s"Environment commands: $environmentCommands")
+        traceOrError(s"Environment commands: $environmentCommands")
         environmentCommands
           .flatMap(statement => TreeUtils.modifiedVariables(statement))
           .toSet
@@ -390,10 +398,10 @@ class Decomposition(inputMethod: TargetMethod) {
     assert(subprograms.programs.contains(subprogram))
 
     val modifiedSet = environmentModifiedSet(subprogram, subprograms)
-    logger.debug(s"Environment modified set: `$modifiedSet`")
+    traceOrError(s"Environment modified set: `$modifiedSet`")
 
     val taintSet = Decomposition.computeTaintSet(subprogram.targetMethod, debug = false)
-    logger.debug(s"Taint set `$taintSet` of subprogram\n$subprogram")
+    traceOrError(s"Taint set `$taintSet` of subprogram\n$subprogram")
 
     modifiedSet.intersect(taintSet).nonEmpty
   }
@@ -432,18 +440,30 @@ class Decomposition(inputMethod: TargetMethod) {
 
   def subsequentExecution(subprogram1: Subprogram, subprogram2: Subprogram): Boolean = {
     val commonTrees = getAllCommonEnclosingTrees(subprogram1, subprogram2)
-    if (commonTrees.exists(tree => TreeUtils.loopKinds.contains(tree.getKind))) {
+    if (commonTrees.exists(tree => TreeUtils.loopKinds.contains(tree.getKind)))
       true
-    }
     else {
+      // Find the maximal block tree that encloses both
       commonTrees.find(tree => tree.isInstanceOf[BlockTree]) match {
         case Some(blockTree) =>
           val statements = blockTree.asInstanceOf[BlockTree].getStatements.asScala
-          val trees = statements.map(statement => TreeUtils.collectStatementTrees(statement))
-          val index1 = trees.indexWhere(tree => subprogram1.innerTrees.subsetOf(tree))
-          val index2 = trees.indexWhere(tree => subprogram2.innerTrees.subsetOf(tree))
-          assert(index1 != -1)
-          assert(index2 != -1)
+          val trees = statements.map(statement => TreeUtils.collectStatementTrees(statement)).toList.zipWithIndex
+          val index1 = {
+            var list = List[Int]()
+            trees.foreach({
+              case (tree, index) => if (subprogram1.innerTrees.intersect(tree).nonEmpty) list = index :: list
+            })
+            list.head
+          }
+          val index2 = {
+            var list = List[Int]()
+            trees.foreach({
+              case (tree, index) => if (subprogram2.innerTrees.intersect(tree).nonEmpty) list = index :: list
+            })
+            list.last
+          }
+          assert(index1 != -1, s"Block tree: $blockTree\nSubprogram 1: $subprogram1")
+          assert(index2 != -1, s"Block tree: $blockTree\nSubprogram 2: $subprogram2")
           index1 < index2
         case None => throw new Exception("Unexpected")
       }
@@ -459,18 +479,18 @@ class Decomposition(inputMethod: TargetMethod) {
   def interfere(subprogram1: Subprogram, subprogram2: Subprogram): Boolean = {
     // First check if there exists a path from subprogram1's exit to subprogram2's entry
     if (!subsequentExecution(subprogram1, subprogram2)) {
-      debugOrError(s"Subprogram 2 cannot be subsequently executed after subprogram 1")
-      debugOrError(s"Subprogram 1:\n$subprogram1")
-      debugOrError(s"Subprogram 2:\n$subprogram2")
+      traceOrError(s"Subprogram 2 cannot be subsequently executed after subprogram 1")
+      traceOrError(s"Subprogram 1:\n$subprogram1")
+      traceOrError(s"Subprogram 2:\n$subprogram2")
       return false
     }
 
     val modifiedSet1 = Decomposition.computeModifiedSet(subprogram1.targetMethod)
     val taintSet2 = Decomposition.computeTaintSet(subprogram2.targetMethod, debug = false)
-    debugOrError(s"Subprogram 1 modified set: $modifiedSet1")
-    debugOrError(s"Subprogram 1:\n$subprogram1")
-    debugOrError(s"Subprogram 2 taint set: $taintSet2")
-    debugOrError(s"Subprogram 2:\n$subprogram2")
+    traceOrError(s"Subprogram 1 modified set: $modifiedSet1")
+    traceOrError(s"Subprogram 1:\n$subprogram1")
+    traceOrError(s"Subprogram 2 taint set: $taintSet2")
+    traceOrError(s"Subprogram 2:\n$subprogram2")
     modifiedSet1.intersect(taintSet2).nonEmpty
   }
 
@@ -507,13 +527,15 @@ class Decomposition(inputMethod: TargetMethod) {
     assert(minimalEnclosingBlock.isEmpty || astNodes.size == 1 || minimalEnclosingTree == minimalEnclosingBlock.get)
     assert(minimalEnclosingBlock.nonEmpty || minimalEnclosingTree == astNodes.head)
 
-    private val declaredLocalVariables = TreeUtils.collectCommands(astNodes).foldLeft(new HashSet[String])({
-      (acc, tree) =>
-        tree match {
-          case variableTree: VariableTree => acc + variableTree.getName.toString
-          case _ => acc
-        }
-    }).toList.sortWith(_ < _)
+    private val declaredLocalVariables = {
+      innerTrees.foldLeft(new HashSet[String])({
+        (acc, tree) =>
+          tree match {
+            case variableTree: VariableTree => acc + variableTree.getName.toString
+            case _ => acc
+          }
+      }).toList.sortWith(_ < _)
+    }
 
     val javaProgramRepresentation: String = {
       // Assume all variables have distinct names
@@ -560,9 +582,9 @@ class Decomposition(inputMethod: TargetMethod) {
 object Decomposition {
   private val logger = LogManager.getLogger("brbo.verification.Decomposition")
 
-  def debugOrError(message: String, debug: Boolean): Unit = {
+  def traceOrError(message: String, debug: Boolean): Unit = {
     if (debug) logger.error(message)
-    else logger.debug(message)
+    else logger.trace(message)
   }
 
   /**
@@ -632,24 +654,24 @@ object Decomposition {
       statement =>
         initializeSubprogramFromStatement(statement, targetMethod) match {
           case Some((initialSubprogram, entryNode)) =>
-            debugOrError(s"Compute taint set for `$initialSubprogram`", debug)
+            traceOrError(s"Compute taint set for `$initialSubprogram`", debug)
             val conditionTrees = TreeUtils.collectConditionTreesWithoutBrackets(initialSubprogram)
 
             val correspondingNode = CFGUtils.getNodesCorrespondingToExpressionStatementTree(statement, targetMethod.cfg)
-            debugOrError(s"Expression Tree `$statement` corresponds to node `$correspondingNode`", debug)
+            traceOrError(s"Expression Tree `$statement` corresponds to node `$correspondingNode`", debug)
 
             // Treat `r+=e` when `e` is constant differently from `r+=e` when `e` is constant
             val dataDependentVariables: Set[String] = GhostVariableUtils.extractGhostVariableUpdate(correspondingNode, Resource) match {
               case Some(update) =>
                 update.increment match {
                   case updateNode: ValueLiteralNode =>
-                    debugOrError(s"The update in `$statement` is constant", debug)
+                    traceOrError(s"The update in `$statement` is constant", debug)
                     updateNode match {
                       case _: IntegerLiteralNode =>
                         computeTransitiveControlDependency(correspondingNode, controlDependency, new HashSet[Node], debug).flatMap({
                           conditionNode =>
                             val conditionTree = conditionNode.getTree.asInstanceOf[ExpressionTree]
-                            debugOrError(s"The condition node is `$conditionNode`", debug)
+                            traceOrError(s"The condition node is `$conditionNode`", debug)
                             logger.trace(s"The condition tree is `$conditionTree` (hash code: ${conditionTree.hashCode()})")
                             conditionTrees.foreach(t => logger.trace(s"Condition tree `$t` (hash code: ${t.hashCode()})"))
                             if (conditionTrees.contains(conditionTree)) {
@@ -660,12 +682,12 @@ object Decomposition {
                       case _ => throw new Exception(s"Unsupported literal node `$updateNode`")
                     }
                   case _ =>
-                    debugOrError(s"The update in statement `$statement` is not constant", debug)
+                    traceOrError(s"The update in statement `$statement` is not constant", debug)
                     CFGUtils.getUsedVariables(correspondingNode.asInstanceOf[AssignmentNode].getExpression)
                 }
               case None => throw new Exception("Unexpected")
             }
-            debugOrError(s"Data dependent variables are $dataDependentVariables", debug)
+            traceOrError(s"Data dependent variables are $dataDependentVariables", debug)
 
             // Compute transitive data dependency for the above variables, starting from the entry node of initial subprogram
             computeTransitiveDataDependencyInputsOnly(dataDependentVariables, entryNode, dataDependency, debug)
@@ -699,7 +721,7 @@ object Decomposition {
                                                               visited: Set[Node],
                                                               debug: Boolean): Set[String] = {
     if (visited.contains(node) || node == null) return new HashSet[String]
-    debugOrError(s"Compute data dependency for node `$node`", debug)
+    traceOrError(s"Compute data dependency for node `$node`", debug)
 
     val usedVariables: Set[String] = node match {
       case assignmentNode: AssignmentNode => CFGUtils.getUsedVariables(assignmentNode.getExpression)
@@ -708,12 +730,12 @@ object Decomposition {
       case _: VariableDeclarationNode => new HashSet[String]
       case _ => throw new Exception(s"Expecting assignment or method invocation node `$node` (Type: `${node.getClass}`)")
     }
-    debugOrError(s"Used variables: $usedVariables", debug)
+    traceOrError(s"Used variables: $usedVariables", debug)
 
     dataDependency.get(node) match {
       case Some(definitions) =>
         val newDefinitions = definitions.filter(definition => usedVariables.contains(definition.variable))
-        debugOrError(s"Reaching definitions: $newDefinitions", debug)
+        traceOrError(s"Reaching definitions: $newDefinitions", debug)
         newDefinitions.flatMap({
           definition =>
             definition.node match {
@@ -731,7 +753,7 @@ object Decomposition {
                                                  debug: Boolean): Set[Node] = {
     assert(node != null)
     if (visited.contains(node)) return new HashSet[Node]
-    debugOrError(s"Visiting node `$node`", debug)
+    traceOrError(s"Visit node `$node`", debug)
 
     controlDependency.get(node.getBlock) match {
       case Some(blocks) =>
@@ -743,7 +765,7 @@ object Decomposition {
 
             val condition = predecessors.head.getLastNode
             if (condition == null) {
-              debugOrError(s"${node.getBlock}'s predecessor block does not have a condition: `${predecessors.head}`", debug)
+              traceOrError(s"${node.getBlock}'s predecessor block does not have a condition: `${predecessors.head}`", debug)
               new HashSet[Node]
             }
             else computeTransitiveControlDependency(condition, controlDependency, visited + node, debug) + condition
@@ -861,6 +883,7 @@ object Decomposition {
   }
 
   case class DecompositionResult(className: String, sourceFileContents: String, deltaCounterPairs: Set[DeltaCounterPair]) {
+    logger.debug(s"Decomposition result:\n$sourceFileContents")
     val targetMethod: TargetMethod = BasicProcessor.getTargetMethod(className, sourceFileContents)
   }
 

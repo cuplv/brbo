@@ -376,9 +376,12 @@ object InstrumentUtils {
         s"$spaces{// For loop$result1\n$result2\n$spaces}"
       case ifTree: IfTree =>
         val result1 = instrumentStatementTreesHelper(ifTree.getThenStatement, instrumentation, indent)
-        val result2 = instrumentStatementTreesHelper(ifTree.getElseStatement, instrumentation, indent)
-        s"${spaces}if ${ifTree.getCondition}\n$result1\n$spaces" +
-          s"else\n$result2"
+        val result2 = {
+          val result2 = instrumentStatementTreesHelper(ifTree.getElseStatement, instrumentation, indent)
+          if (result2 == "") ""
+          else s"else\n$result2"
+        }
+        s"${spaces}if ${ifTree.getCondition}\n$result1\n$spaces$result2"
       case labeledStatementTree: LabeledStatementTree =>
         val result = instrumentStatementTreesHelper(labeledStatementTree.getStatement, instrumentation, indent)
         s"$spaces${labeledStatementTree.getLabel.toString}:\n$result"

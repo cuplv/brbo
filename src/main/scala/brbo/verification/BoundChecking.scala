@@ -35,13 +35,6 @@ object BoundChecking {
     }
     logger.debug(s"Resource variable: $resourceVariable")
 
-    /*val typeContext = {
-      assert(inputVariables.keySet.intersect(localVariables.keySet).isEmpty)
-      inputVariables ++ localVariables
-    }
-
-    val boundExpression = BoundChecking.extractBoundExpression(solver, methodTree, typeContext)*/
-
     val globalScopeVariables: Map[String, BrboType] = {
       val variables: Set[String] =
         deltaCounterPairs.map({ deltaCounterPair => deltaCounterPair.delta }) ++ // Delta variables
@@ -124,6 +117,8 @@ object BoundChecking {
         (peakInvariant, accumulationInvariant, counterInvariant)
     })
 
+    if (invariants.isEmpty) logger.fatal(s"No invariant was inferred by ICRA!")
+
     val resourceInvariants: AST = {
       val resourceVariableUpperBound = {
         val items: Seq[AST] = deltaCounterPairs.map({
@@ -157,7 +152,7 @@ object BoundChecking {
 
     val counterInvariants = {
       val counterAxioms: AST = CounterAxiomGenerator.generateCounterAxioms(solver, methodBody)
-      logger.debug(s"Counter axioms:\n$counterAxioms")
+      logger.trace(s"Counter axioms:\n$counterAxioms")
 
       val counterConstraints: AST = {
         val nonNegativeCounters =
@@ -197,6 +192,9 @@ object BoundChecking {
       logger.fatal(s"Bound expression could not be verified: $boundExpression")
       solver.printAssertions()
       solver.printModel()
+    }
+    else {
+      logger.info(s"Bound `$boundExpression` is verified!")
     }
     result
   }

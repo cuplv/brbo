@@ -53,7 +53,7 @@ class BasicProcessor extends BasicTypeProcessor {
       override def visitMethod(node: MethodTree, p: Void): Void = {
         if (node.getBody == null || node.getName.toString == "<init>")
           return null
-        logger.debug(s"Visiting method `${node.getName}` in file `$getFileName`")
+        logger.debug(s"Visit method `${node.getName}` in file `$getFileName`")
 
         val underlyingAST = new CFGMethod(node, getEnclosingClass(node).get)
         val cfg: ControlFlowGraph = CFGBuilder.build(root, underlyingAST, false, true, processingEnv)
@@ -131,7 +131,7 @@ object BasicProcessor {
     }
     catch {
       case e: Exception =>
-        logger.fatal(s"Compilation error for program:\n$sourceFileContents")
+        logger.fatal(s"Compilation error `${e.getMessage}` for program:\n$sourceFileContents")
         throw e
     }
     basicProcessor

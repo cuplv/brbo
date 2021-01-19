@@ -1,5 +1,6 @@
 package brbo.common
 
+import java.io.ByteArrayOutputStream
 import java.net.URI
 
 import brbo.verification.EarlyStopException
@@ -30,25 +31,35 @@ object JavacUtils {
     res.getCFG
   }
 
-  def runProcessor(compilationUnitName: String, sourceCode: String, processor: Processor): Unit = {
+  def runProcessor(compilationUnitName: String, sourceCode: String, processor: Processor): String = {
     val context = new Context
     Options.instance(context).put("compilePolicy", "ATTR_ONLY")
     val javac = new JavaCompiler(context)
+    val bytesErr = new ByteArrayOutputStream()
+    val bytesOut = new ByteArrayOutputStream()
+    // val oldOutStream = System.out
+    // val oldErrStream = System.err
+    // val newErrSteam = new PrintStream(bytesErr, true, "UTF-8")
+    // val newOutSteam = new PrintStream(bytesOut, true, "UTF-8")
     try {
-      // redirect syserr to nothing (and prevent the compiler from issuing warnings about our exception.
-      /*System.setErr(new PrintStream(new OutputStream() {
-        @throws[IOException]
-        def write(b: Int): Unit = {}
-      }))*/
+      // Redirect syserr
+      // System.setErr(newErrSteam)
+      // System.setOut(newOutSteam)
       val fileObject = new JavaSourceFromString(compilationUnitName, sourceCode)
       javac.compile(List.of(fileObject), List.of(compilationUnitName), List.of(processor))
+      s"${bytesErr.toString}\n${bytesOut.toString}"
     }
     catch {
-      case _: EarlyStopException => logger.trace(s"Early stop when running processor ${processor.toString}")
-      case e: Throwable => logger.error(s"Exception in running processor ${processor.toString}", e)
+      case _: EarlyStopException =>
+        logger.trace(s"Early stop when running processor ${processor.toString}")
+        s"${bytesErr.toString}\n${bytesOut.toString}"
+      case e: Throwable =>
+        logger.error(s"Exception in running processor ${processor.toString}", e)
+        s"${bytesErr.toString}\n${bytesOut.toString}"
     }
     finally {
-      // System.setErr(System.err)
+      // System.setErr(oldErrStream)
+      // System.setOut(oldOutStream)
     }
   }
 
