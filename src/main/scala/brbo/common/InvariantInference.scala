@@ -1,10 +1,9 @@
 package brbo.common
 
+import brbo.common.BeforeOrAfter.{AFTER, BEFORE}
 import brbo.common.InstrumentUtils.AtomicStatementInstrumentation
 import brbo.common.InstrumentUtils.FileFormat.C_FORMAT
 import brbo.common.InstrumentUtils.InstrumentMode.ALL
-import brbo.common.InvariantInference.BeforeOrAfter.{AFTER, BEFORE, BeforeOrAfter}
-import brbo.common.InvariantInference.Locations
 import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT}
 import brbo.common.icra.{Assignment, Icra}
 import com.microsoft.z3.{AST, Expr}
@@ -109,23 +108,4 @@ class InvariantInference(targetMethod: TargetMethod) {
       indent
     )
   }
-}
-
-object InvariantInference {
-  private val logger = LogManager.getLogger("brbo.common.InvariantInference")
-
-  /**
-   *
-   * @param whichASTs     Insert `assert(1)` before / after Which ASTs. We use `Node` instead of `Tree`
-   *                      because we are using `Node` as intermediate representations that are less
-   *                      "syntactic" than ASTs
-   * @param beforeOrAfter Insert `assert(1)` either before or after the ASTs that satisfy the condition
-   */
-  case class Locations(whichASTs: Node => Boolean, beforeOrAfter: BeforeOrAfter)
-
-  object BeforeOrAfter extends Enumeration {
-    type BeforeOrAfter = Value
-    val BEFORE, AFTER = Value
-  }
-
 }

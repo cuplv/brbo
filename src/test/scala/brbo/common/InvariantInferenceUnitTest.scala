@@ -1,8 +1,7 @@
 package brbo.common
 
+import brbo.common.BeforeOrAfter.{AFTER, BEFORE}
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta}
-import brbo.common.InvariantInference.BeforeOrAfter.{AFTER, BEFORE}
-import brbo.common.InvariantInference.Locations
 import brbo.common.TypeUtils.BrboType.{BrboType, INT}
 import brbo.verification.{BasicProcessor, BoundCheckingUnitTest}
 import brbo.{StringCompare, TestCaseJavaProgram}

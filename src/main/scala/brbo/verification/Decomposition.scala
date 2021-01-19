@@ -23,7 +23,7 @@ class Decomposition(inputMethod: TargetMethod) {
 
   private val debug = true
 
-  def debugOrError(message: String): Unit = {
+  private def debugOrError(message: String): Unit = {
     if (debug) logger.error(message)
     else logger.debug(message)
   }

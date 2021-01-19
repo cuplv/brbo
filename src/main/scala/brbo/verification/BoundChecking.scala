@@ -1,8 +1,8 @@
 package brbo.verification
 
+import brbo.common.BeforeOrAfter.{AFTER, BEFORE}
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, Resource}
-import brbo.common.InvariantInference.BeforeOrAfter.{AFTER, BEFORE}
-import brbo.common.InvariantInference.Locations
+import brbo.common.Locations
 import brbo.common.TreeUtils.collectCommands
 import brbo.common.TypeUtils.BrboType.{BrboType, INT}
 import brbo.common._

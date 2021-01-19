@@ -182,6 +182,27 @@ object TreeUtils {
     trees.foldLeft(new HashSet[ExpressionTree])({ (acc, tree) => acc ++ collectConditionTreesWithoutBrackets(tree) })
   }
 
+  def satisfyRestriction(tree: StatementTree): Unit = {
+    if (tree == null) return
+
+    tree match {
+      case _@(_: AssertTree | _: BreakTree | _: ContinueTree | _: EmptyStatementTree |
+              _: ExpressionStatementTree | _: ReturnTree) =>
+      case blockTree: BlockTree => blockTree.getStatements.asScala.foreach(t => satisfyRestriction(t))
+      case forLoopTree: ForLoopTree =>
+        forLoopTree.getInitializer.asScala.foreach(t => satisfyRestriction(t))
+        satisfyRestriction(forLoopTree.getStatement)
+        forLoopTree.getUpdate.asScala.foreach(t => satisfyRestriction(t))
+      case ifTree: IfTree =>
+        satisfyRestriction(ifTree.getThenStatement)
+        satisfyRestriction(ifTree.getElseStatement)
+      case labeledStatementTree: LabeledStatementTree => satisfyRestriction(labeledStatementTree.getStatement)
+      case whileLoopTree: WhileLoopTree => satisfyRestriction(whileLoopTree.getStatement)
+      case variableTree: VariableTree => assert(variableTree.getInitializer != null, s"Variable declaration should have initializers: `$tree`")
+      case _ => throw new Exception(s"Unsupported tree: `$tree`")
+    }
+  }
+
   def modifiedVariables(tree: StatementTree): Set[String] = {
     collectCommands(tree).foldLeft(new HashSet[String])({
       (acc, command) =>

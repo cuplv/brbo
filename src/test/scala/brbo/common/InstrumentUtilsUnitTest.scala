@@ -157,14 +157,14 @@ object InstrumentUtilsUnitTest {
     val labelTest =
       """class LabelTest {
         |    void f(int n) {
-        |        int i;
+        |        int i = 0;
         |        Label:
         |        i = 1;
         |    }
         |}""".stripMargin
     val labelTestExpected =
       """{
-        |  int i;
+        |  int i = 0;
         |  Label:
         |  i = 1;;
         |}""".stripMargin
@@ -184,13 +184,13 @@ object InstrumentUtilsUnitTest {
       """class VariableTest {
         |    void f(int n) {
         |        int i = n + 1;
-        |        int j;
+        |        int j = 0;
         |    }
         |}""".stripMargin
     val variableTestExpected =
       """{
         |  int i = n + 1;
-        |  int j;
+        |  int j = 0;
         |}""".stripMargin
 
     val whileTest =
