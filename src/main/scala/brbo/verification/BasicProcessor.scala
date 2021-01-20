@@ -53,7 +53,7 @@ class BasicProcessor extends BasicTypeProcessor {
       override def visitMethod(node: MethodTree, p: Void): Void = {
         if (node.getBody == null || node.getName.toString == "<init>")
           return null
-        logger.debug(s"Visit method `${node.getName}` in file `$getFileName`")
+        logger.trace(s"Visit method `${node.getName}` in file `$getFileName`")
 
         val underlyingAST = new CFGMethod(node, getEnclosingClass(node).get)
         val cfg: ControlFlowGraph = CFGBuilder.build(root, underlyingAST, false, true, processingEnv)

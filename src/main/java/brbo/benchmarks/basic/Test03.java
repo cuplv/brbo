@@ -9,7 +9,7 @@ class Test03 {
       int j = 0;
       while (j < m) {
         j++;
-        R++;
+        R = R + 1;
       }
       i++;
     }

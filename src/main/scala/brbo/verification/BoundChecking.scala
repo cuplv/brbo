@@ -16,7 +16,8 @@ object BoundChecking {
   def checkBound(solver: Z3Solver,
                  decompositionResult: DecompositionResult,
                  boundExpression: AST,
-                 printModelIfFail: Boolean): Boolean = {
+                 printModelIfFail: Boolean,
+                 debug: Boolean = false): Boolean = {
     val targetMethod = decompositionResult.targetMethod
     val deltaCounterPairs = decompositionResult.deltaCounterPairs
 
@@ -33,7 +34,7 @@ object BoundChecking {
       assert(resourceVariables.size == 1)
       resourceVariables.head
     }
-    logger.debug(s"Resource variable: $resourceVariable")
+    logger.info(s"Resource variable: $resourceVariable")
 
     val globalScopeVariables: Map[String, BrboType] = {
       val variables: Set[String] =
@@ -50,6 +51,7 @@ object BoundChecking {
     val invariants: Set[(AST, AST, AST)] = deltaCounterPairs.map({
       deltaCounterPair =>
         val deltaVariable = deltaCounterPair.delta
+        val counterVariable = deltaCounterPair.counter
 
         val peakInvariant = invariantInference.inferInvariant(
           solver,
@@ -102,17 +104,17 @@ object BoundChecking {
             {
               case expressionStatementTree: ExpressionStatementTree =>
                 GhostVariableUtils.extractGhostVariableUpdate(expressionStatementTree.getExpression, Counter) match {
-                  case Some(update) => update.identifier == deltaCounterPair.counter
+                  case Some(update) => update.identifier == counterVariable
                   case None => false
                 }
               case _ => false
             },
             AFTER
           ),
-          localVariables - deltaCounterPair.counter,
+          localVariables - counterVariable,
           globalScopeVariables
         )
-        logger.trace(s"Invariant for AST counter `${deltaCounterPair.counter}`:\n$counterInvariant")
+        logger.trace(s"Invariant for AST counter `$counterVariable`:\n$counterInvariant")
 
         (peakInvariant, accumulationInvariant, counterInvariant)
     })

@@ -66,7 +66,7 @@ object BrboMain {
           val boundExpression: AST = BoundChecking.extractBoundExpression(solver, targetMethod.methodTree, targetMethod.inputVariables ++ targetMethod.localVariables)
           logger.info(s"Extracted bound expression is `$boundExpression`")
           logger.info(s"Checking bound...")
-          BoundChecking.checkBound(solver, decompositionResult, boundExpression, printModelIfFail = true)
+          BoundChecking.checkBound(solver, decompositionResult, boundExpression, printModelIfFail = true, debug = debugMode)
         }
         else {
           logger.info(s"Skipping bound checking for file `$sourceFilePath`")

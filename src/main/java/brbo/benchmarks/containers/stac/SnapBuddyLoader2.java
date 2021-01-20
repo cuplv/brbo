@@ -12,12 +12,12 @@ public abstract class SnapBuddyLoader2 extends Common {
 
     int iterator = lines;
     while (iterator > 0) {
-      int entry = ndInt2(2, iterator);
+      int entry = ndInt2(1, iterator);
       iterator -= entry;
 
       int photoIds = 0;
       int photoIdentities = ndInt2(1, entry);
-      int iterator1 = entry;
+      int iterator1 = photoIdentities;
       while (iterator1 > 0) {
         iterator1--;
         if (ndBool()) {

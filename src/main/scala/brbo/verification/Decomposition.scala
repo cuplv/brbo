@@ -62,10 +62,12 @@ class Decomposition(inputMethod: TargetMethod, debug: Boolean = false) {
         val pair = interferedSubprograms.head
         val newSubprogram = {
           if (pair._1 == pair._2) {
+            logger.info(s"Enlarge a subprogram due to interference between subprograms")
             traceOrError(s"Enlarge subprogram: ${pair._1}")
             enlarge(pair._1)
           }
           else {
+            logger.info(s"Merge a subprogram due to interference between subprograms")
             traceOrError(s"Merge subprograms: $pair")
             merge(pair._1, pair._2)
           }
@@ -266,6 +268,7 @@ class Decomposition(inputMethod: TargetMethod, debug: Boolean = false) {
     while (continue) {
       newSubprograms.programs.find(subprogram => interferedByEnvironment(subprogram, newSubprograms)) match {
         case Some(interferedSubprogram) =>
+          logger.info(s"Enlarge a subprogram due to interference from the environment")
           traceOrError(s"Subprogram is interfered by the environment: $interferedSubprogram")
           val newSubprogram: Subprogram = enlarge(interferedSubprogram)
           traceOrError(s"Eliminate environment interference - New subprogram: $newSubprogram")
@@ -365,6 +368,7 @@ class Decomposition(inputMethod: TargetMethod, debug: Boolean = false) {
       match {
         case Some(pair) =>
           val newSubprogram = merge(pair._1, pair._2)
+          logger.info(s"Merge two subprograms because they overlap with each other")
           traceOrError(s"Merge if overlap - Subprogram 1: ${pair._1}\nSubprogram 2: ${pair._2}\nNew subprogram: $newSubprogram")
           newSubprograms = newSubprograms - pair._1 - pair._2 + newSubprogram
         case None => continue = false
@@ -902,7 +906,7 @@ object Decomposition {
   }
 
   case class DecompositionResult(className: String, sourceFileContents: String, deltaCounterPairs: Set[DeltaCounterPair]) {
-    logger.debug(s"Decomposition result:\n$sourceFileContents")
+    logger.info(s"Decomposition result:\n$sourceFileContents")
     val targetMethod: TargetMethod = BasicProcessor.getTargetMethod(className, sourceFileContents)
   }
 

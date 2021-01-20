@@ -36,7 +36,9 @@ object ControlDependency {
           }
           catch {
             case e: IllegalArgumentException =>
-              logger.debug(s"Retrieve dominace frontiers - Exception: ${e.getMessage}")
+              if (y.toString != "SpecialBlock(EXCEPTIONAL_EXIT)") {
+                logger.fatal(s"Retrieve dominance frontiers - Exception: ${e.getMessage}")
+              }
               List[BrboNode]().iterator
           }
         }
