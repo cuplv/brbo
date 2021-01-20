@@ -1,6 +1,6 @@
 package brbo.common
 
-import brbo.BrboMain.AmortizationMode.{AmortizationMode, FULL, NO, SELECTIVE}
+import brbo.verification.AmortizationMode.{AmortizationMode, FULL, NO, SELECTIVE, ALL}
 import org.apache.logging.log4j.LogManager
 import org.kohsuke.args4j.{CmdLineException, CmdLineParser, Option}
 
@@ -9,8 +9,8 @@ import scala.collection.JavaConverters._
 class CommandLineArguments {
 
   @Option(name = "--amortize", aliases = Array("-a"), required = false,
-    usage = "The mode of amortization.")
-  private var amortizationMode: String = "SELECTIVE"
+    usage = "The mode of amortization. Choose from: `FULL`, `NO`, `SELECTIVE`, `ALL`")
+  private var amortizationMode: String = "selective"
 
   @Option(name = "--debug", aliases = Array("-g"), required = false,
     usage = "Turn on the debug mode")
@@ -25,6 +25,7 @@ class CommandLineArguments {
       case "no" => NO
       case "full" => FULL
       case "selective" => SELECTIVE
+      case "all" => ALL
     }
   }
 

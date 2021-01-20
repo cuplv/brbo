@@ -46,7 +46,7 @@ object Icra {
           process.exitValue()
       }
       if (result == 0) {
-        logger.trace(s"stdout:\n$stdout")
+        logger.trace(s"ICRA stdout:\n$stdout")
         parsedInvariants = Some(parseInvariants(stdout.toString()))
         val removeFile = s"rm $file"
         removeFile.!!

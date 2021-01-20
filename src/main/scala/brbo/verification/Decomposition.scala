@@ -1,6 +1,5 @@
 package brbo.verification
 
-import brbo.BrboMain.AmortizationMode.AmortizationMode
 import brbo.common.BeforeOrAfter.BEFORE
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, Resource}
 import brbo.common.InstrumentUtils.FileFormat.JAVA_FORMAT
@@ -8,6 +7,7 @@ import brbo.common.InstrumentUtils.StatementTreeInstrumentation
 import brbo.common.TypeUtils.BrboType
 import brbo.common.TypeUtils.BrboType.{BrboType, INT}
 import brbo.common._
+import brbo.verification.AmortizationMode.AmortizationMode
 import brbo.verification.Decomposition.{DecompositionResult, DeltaCounterPair}
 import brbo.verification.dependency.reachdef.ReachingValue
 import brbo.verification.dependency.{ControlDependency, DataDependency}
@@ -21,7 +21,7 @@ import org.checkerframework.dataflow.cfg.node._
 import scala.collection.JavaConverters._
 import scala.collection.immutable.{HashMap, HashSet}
 
-class Decomposition(inputMethod: TargetMethod, amortizationMode: AmortizationMode, debug: Boolean) {
+class Decomposition(inputMethod: TargetMethod, debug: Boolean) {
   private val logger = LogManager.getLogger(classOf[Decomposition])
 
   private val commands = TreeUtils.collectCommands(inputMethod.methodTree.getBody)
@@ -51,7 +51,36 @@ class Decomposition(inputMethod: TargetMethod, amortizationMode: AmortizationMod
     else logger.trace(message)
   }
 
-  def decompose(): Subprograms = {
+  def decompose(amortizationMode: AmortizationMode): Subprograms = {
+    amortizationMode match {
+      case brbo.verification.AmortizationMode.NO => decomposeNoAmortize()
+      case brbo.verification.AmortizationMode.FULL => decomposeFullAmortize()
+      case brbo.verification.AmortizationMode.SELECTIVE => decomposeSelectiveAmortize()
+      case brbo.verification.AmortizationMode.ALL => ???
+    }
+  }
+
+  def decomposeNoAmortize(): Subprograms = {
+    val subprograms = commands.foldLeft(new HashSet[Subprogram])({
+      (acc, command) =>
+        command match {
+          case expressionStatementTree: ExpressionStatementTree =>
+            GhostVariableUtils.extractGhostVariableUpdate(expressionStatementTree.getExpression, Resource) match {
+              case Some(_) => acc + Subprogram(List(command))
+              case None => acc
+            }
+          case _ => acc
+        }
+    })
+    Subprograms(subprograms)
+  }
+
+  def decomposeFullAmortize(): Subprograms = {
+    val subprogram = Subprogram(inputMethod.methodTree.getBody.getStatements.asScala.toList)
+    Subprograms(HashSet[Subprogram](subprogram))
+  }
+
+  def decomposeSelectiveAmortize(): Subprograms = {
     var subprograms = eliminateEnvironmentInterference(mergeIfOverlap(initializeSubprograms()))
     var continue = true
     while (continue) {

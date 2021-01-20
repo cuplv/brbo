@@ -1,6 +1,5 @@
 package brbo.verification
 
-import brbo.BrboMain.AmortizationMode.SELECTIVE
 import brbo.common.MathUtils
 import brbo.{StringCompare, TestCaseJavaProgram}
 import org.apache.logging.log4j.LogManager
@@ -13,7 +12,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.initializeSubprogramsUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod, SELECTIVE, debug = false)
+        val decomposition = new Decomposition(targetMethod, debug = false)
         val result = decomposition.initializeSubprograms()
         assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
     })
@@ -23,7 +22,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.mergeSubprogramsUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod, SELECTIVE, debug = false)
+        val decomposition = new Decomposition(targetMethod, debug = false)
         val initialSubprograms: Set[decomposition.Subprogram] = decomposition.initializeSubprograms()
         val result: Traversable[decomposition.Subprogram] = MathUtils.crossJoin(List(initialSubprograms, initialSubprograms)).map({
           subprograms =>
@@ -41,7 +40,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.mergeIfOverlapSubprogramsUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod, SELECTIVE, debug = false)
+        val decomposition = new Decomposition(targetMethod, debug = false)
         val result = decomposition.mergeIfOverlap(decomposition.initializeSubprograms())
         assert(StringCompare.ignoreWhitespaces(result.programs, testCase.expectedOutput, testCase.className))
     })
@@ -51,7 +50,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.enlargeSubprogramsUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod, SELECTIVE, debug = false)
+        val decomposition = new Decomposition(targetMethod, debug = false)
         val initialSubprograms: Set[decomposition.Subprogram] = decomposition.initializeSubprograms()
         val result: Set[decomposition.Subprogram] = initialSubprograms.map({
           subprogram =>
@@ -76,7 +75,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.environmentModifiedSetUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod, SELECTIVE, debug = false)
+        val decomposition = new Decomposition(targetMethod, debug = false)
         val subprograms = decomposition.mergeIfOverlap(decomposition.initializeSubprograms())
         val result = decomposition.environmentModifiedSet(subprograms.programs.head, subprograms)
         assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
@@ -87,7 +86,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.subsequentExecutionUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod, SELECTIVE, debug = false)
+        val decomposition = new Decomposition(targetMethod, debug = false)
         val initialSubprograms: List[decomposition.Subprogram] = decomposition.initializeSubprograms().toList
         val result = MathUtils.crossJoin2(initialSubprograms, initialSubprograms).map({
           case (subprogram1, subprogram2) =>
@@ -99,12 +98,12 @@ class DecompositionUnitTest extends AnyFlatSpec {
     })
   }
 
-  "Decomposition" should "succeed" in {
-    DecompositionUnitTest.decompositionUnitTest.foreach({
+  "Decomposition (Selective amortization)" should "succeed" in {
+    DecompositionUnitTest.decomposeSelectiveAmortizationUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod, SELECTIVE, debug = false)
-        val result = decomposition.decompose().programs
+        val decomposition = new Decomposition(targetMethod, debug = false)
+        val result = decomposition.decomposeSelectiveAmortize().programs
         assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
     })
   }
@@ -113,10 +112,30 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.insertingResetsAndUpdatesUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod, SELECTIVE, debug = false)
+        val decomposition = new Decomposition(targetMethod, debug = false)
         val subprograms = decomposition.mergeIfOverlap(decomposition.initializeSubprograms())
         val result = decomposition.insertGhostVariables(subprograms)
         assert(StringCompare.ignoreWhitespaces(result.sourceFileContents, testCase.expectedOutput, testCase.className))
+    })
+  }
+
+  "Decomposition (No amortization)" should "succeed" in {
+    DecompositionUnitTest.decomposeNoAmortizationUnitTest.foreach({
+      testCase =>
+        val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
+        val decomposition = new Decomposition(targetMethod, debug = false)
+        val result = decomposition.decomposeNoAmortize().programs
+        assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
+    })
+  }
+
+  "Decomposition (Full amortization)" should "succeed" in {
+    DecompositionUnitTest.decomposeFullAmortizationUnitTest.foreach({
+      testCase =>
+        val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
+        val decomposition = new Decomposition(targetMethod, debug = false)
+        val result = decomposition.decomposeFullAmortize().programs
+        assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
     })
   }
 }
@@ -231,22 +250,50 @@ object DecompositionUnitTest {
     )
   }
 
-  val decompositionUnitTest: List[TestCaseJavaProgram] = {
-    val test01 =
-      """class Test01 {
-        |  void f(int n, int m) {
-        |    int R = 0;
-        |    int i = 0;
-        |    while (i < n) {
-        |      int j = 0;
-        |      while (j < m) {
-        |        j++;
-        |        R = R + 1;
-        |      }
-        |      i++;
-        |    }
-        |  }
-        |}""".stripMargin
+  private val decompositionTest01 =
+    """class Test01 {
+      |  void f(int n, int m) {
+      |    int R = 0;
+      |    int i = 0;
+      |    while (i < n) {
+      |      int j = 0;
+      |      while (j < m) {
+      |        j++;
+      |        R = R + 1;
+      |      }
+      |      i++;
+      |    }
+      |  }
+      |}""".stripMargin
+
+  private val decompositionTest02 =
+    """class Test02 {
+      |  void f(int text, int templateds, int separator) {
+      |    int R = 0;
+      |    int sb = 0;
+      |    int i = 0;
+      |    while (i < templateds) {
+      |      int index = 0;
+      |      int start = 0;
+      |      int end = 0;
+      |      while (true) {
+      |        start = end + text; // ndInt(end + 1, text);
+      |        if (start == text) break;
+      |        end = start + text; // ndInt(start + 1, text);
+      |        sb += start - index;
+      |        R = R + (start - index);
+      |        index = end;
+      |      }
+      |      sb += text - index;
+      |      R = R + (text - index);
+      |      sb += separator;
+      |      R = R + separator;
+      |      i++;
+      |    }
+      |  }
+      |}""".stripMargin
+
+  val decomposeSelectiveAmortizationUnitTest: List[TestCaseJavaProgram] = {
     val test01ExpectedOutput =
       """Subprogram(
         |int j = 0
@@ -256,32 +303,6 @@ object DecompositionUnitTest {
         |}
         |)""".stripMargin
 
-    val test02 =
-      """class Test02 {
-        |  void f(int text, int templateds, int separator) {
-        |    int R = 0;
-        |    int sb = 0;
-        |    int i = 0;
-        |    while (i < templateds) {
-        |      int index = 0;
-        |      int start = 0;
-        |      int end = 0;
-        |      while (true) {
-        |        start = end + text; // ndInt(end + 1, text);
-        |        if (start == text) break;
-        |        end = start + text; // ndInt(start + 1, text);
-        |        sb += start - index;
-        |        R = R + (start - index);
-        |        index = end;
-        |      }
-        |      sb += text - index;
-        |      R = R + (text - index);
-        |      sb += separator;
-        |      R = R + separator;
-        |      i++;
-        |    }
-        |  }
-        |}""".stripMargin
     val test02ExpectedOutput =
       """Subprogram(
         |R = R + separator;
@@ -303,8 +324,77 @@ object DecompositionUnitTest {
         |)""".stripMargin
 
     List[TestCaseJavaProgram](
-      TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),
-      TestCaseJavaProgram("Test02", test02, test02ExpectedOutput),
+      TestCaseJavaProgram("Test01", decompositionTest01, test01ExpectedOutput),
+      TestCaseJavaProgram("Test02", decompositionTest02, test02ExpectedOutput),
+    )
+  }
+
+  val decomposeNoAmortizationUnitTest: List[TestCaseJavaProgram] = {
+    val test01ExpectedOutput =
+      """Subprogram(
+        |R = R + 1;
+        |)""".stripMargin
+
+    val test02ExpectedOutput =
+      """Subprogram(
+        |R = R + (start - index);
+        |)
+        |Subprogram(
+        |R = R + (text - index);
+        |)
+        |Subprogram(
+        |R = R + separator;
+        |)""".stripMargin
+
+    List[TestCaseJavaProgram](
+      TestCaseJavaProgram("Test01", decompositionTest01, test01ExpectedOutput),
+      TestCaseJavaProgram("Test02", decompositionTest02, test02ExpectedOutput),
+    )
+  }
+
+  val decomposeFullAmortizationUnitTest: List[TestCaseJavaProgram] = {
+    val test01ExpectedOutput =
+      """Subprogram(
+        |int R = 0
+        |int i = 0
+        |while (i < n) {
+        |    int j = 0;
+        |    while (j < m) {
+        |        j++;
+        |        R = R + 1;
+        |    }
+        |    i++;
+        |}
+        |)""".stripMargin
+
+    val test02ExpectedOutput =
+      """Subprogram(
+        |int R = 0
+        |int sb = 0
+        |int i = 0
+        |while (i < templateds) {
+        |    int index = 0;
+        |    int start = 0;
+        |    int end = 0;
+        |    while (true) {
+        |        start = end + text;
+        |        if (start == text) break;
+        |        end = start + text;
+        |        sb += start - index;
+        |        R = R + (start - index);
+        |        index = end;
+        |    }
+        |    sb += text - index;
+        |    R = R + (text - index);
+        |    sb += separator;
+        |    R = R + separator;
+        |    i++;
+        |}
+        |)""".stripMargin
+
+    List[TestCaseJavaProgram](
+      TestCaseJavaProgram("Test01", decompositionTest01, test01ExpectedOutput),
+      TestCaseJavaProgram("Test02", decompositionTest02, test02ExpectedOutput),
     )
   }
 

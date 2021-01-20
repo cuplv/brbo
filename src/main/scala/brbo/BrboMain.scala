@@ -2,7 +2,6 @@ package brbo
 
 import java.io.File
 
-import brbo.BrboMain.AmortizationMode.SELECTIVE
 import brbo.common.{CommandLineArguments, TargetMethod, Z3Solver}
 import brbo.verification.Decomposition.DecompositionResult
 import brbo.verification.{BasicProcessor, BoundChecking, Decomposition}
@@ -20,18 +19,13 @@ object BrboMain {
     try source.mkString finally source.close()
   }
 
-  object AmortizationMode extends Enumeration {
-    type AmortizationMode = Value
-    val NO, FULL, SELECTIVE = Value
-  }
-
   def main(args: Array[String]) {
     logger.info("Brbo has started: Infer resource usage upper bounds for each method.")
 
     val commandLineArguments = CommandLineArguments.parseArguments(args)
     logger.info(s"Analyze files under directory `${commandLineArguments.getDirectoryToAnalyze}`")
     logger.info(s"Amortization mode: `${commandLineArguments.getAmortizationMode}`")
-    logger.info(s"Debug mode? ${commandLineArguments.getDebugMode}")
+    logger.info(s"Debug mode? `${commandLineArguments.getDebugMode}`")
 
     val sourceFiles: Map[File, String] = {
       val file = new java.io.File(commandLineArguments.getDirectoryToAnalyze)
@@ -64,10 +58,10 @@ object BrboMain {
           logger.info(s"Parsing...")
           val targetMethod: TargetMethod = BasicProcessor.getTargetMethod(className, sourceFileContents)
 
-          val decomposition: Decomposition = new Decomposition(targetMethod, SELECTIVE, commandLineArguments.getDebugMode)
+          val decomposition: Decomposition = new Decomposition(targetMethod, commandLineArguments.getDebugMode)
           val decompositionResult: DecompositionResult = {
             logger.info(s"Decomposing...")
-            val subprograms = decomposition.decompose()
+            val subprograms = decomposition.decomposeSelectiveAmortize()
             logger.info(s"Inserting resets and updates to ghost variables...")
             decomposition.insertGhostVariables(subprograms)
           }
