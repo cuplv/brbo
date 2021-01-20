@@ -5,6 +5,7 @@ import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, Resource}
 import brbo.common.TreeUtils.collectCommands
 import brbo.common.TypeUtils.BrboType.{BrboType, INT}
 import brbo.common.{Locations, _}
+import brbo.verification.AmortizationMode.SELECTIVE_AMORTIZE
 import brbo.verification.Decomposition.DecompositionResult
 import com.microsoft.z3.{AST, Expr}
 import com.sun.source.tree.{AssertTree, ExpressionStatementTree, MethodTree}
@@ -17,6 +18,8 @@ object BoundChecking {
                  decompositionResult: DecompositionResult,
                  boundExpression: AST,
                  printModelIfFail: Boolean): Boolean = {
+    logger.info()
+    logger.info()
     logger.info(s"Checking bound... Mode: `${decompositionResult.amortizationMode}`")
 
     val targetMethod = decompositionResult.targetMethod
@@ -190,15 +193,26 @@ object BoundChecking {
     solver.mkAssert(deltaInvariants)
     solver.mkAssert(counterInvariants)
     solver.mkAssert(solver.mkNot(boundExpression))
-    val result = !solver.checkSAT(printUnsatCore = false)
-    if (!result && printModelIfFail) {
-      logger.fatal(s"Bound could not be verified: `$boundExpression`")
-      // solver.printAssertions()
-      solver.printModel()
+    val result: Boolean = {
+      try {
+        val result = !solver.checkSAT(printUnsatCore = false)
+        if (!result && printModelIfFail && decompositionResult.amortizationMode == SELECTIVE_AMORTIZE) {
+          // solver.printAssertions()
+          solver.printModel()
+        }
+        result
+      }
+      catch {
+        case e: Z3TimeoutException =>
+          logger.fatal(s"Exception when running Z3: ${e.message}")
+          false
+        case e: Exception =>
+          logger.fatal(s"Unknown exception when running Z3: ${e.getMessage}")
+          false
+      }
     }
-    else {
-      logger.info(s"Bound is verified: `$boundExpression`")
-    }
+    if (!result) logger.fatal(s"Bound could not be verified: `$boundExpression`")
+    else logger.info(s"Bound is verified: `$boundExpression`")
     result
   }
 

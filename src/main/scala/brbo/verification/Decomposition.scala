@@ -952,8 +952,11 @@ object Decomposition {
     GhostVariableUtils.isGhostVariable(counter, Counter)
   }
 
-  case class DecompositionResult(className: String, sourceFileContents: String, deltaCounterPairs: Set[DeltaCounterPair], amortizationMode: AmortizationMode) {
-    logger.info(s"Decomposition result:\n$sourceFileContents")
+  case class DecompositionResult(className: String,
+                                 sourceFileContents: String,
+                                 deltaCounterPairs: Set[DeltaCounterPair],
+                                 amortizationMode: AmortizationMode) {
+    logger.info(s"Decomposition result (Mode: ${amortizationMode}):\n$sourceFileContents")
     val targetMethod: TargetMethod = BasicProcessor.getTargetMethod(className, sourceFileContents)
   }
 
