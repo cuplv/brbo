@@ -113,7 +113,7 @@ object CounterAxiomGenerator {
    * @return Counter axioms
    */
   def generateCounterAxioms(solver: Z3Solver, methodBody: StatementTree): AST = {
-    logger.info(s"Generating counter axioms")
+    logger.info(s"Generate counter axioms")
     generateCounterAxiomsHelper(solver, methodBody, generateCounterMap(methodBody))
   }
 

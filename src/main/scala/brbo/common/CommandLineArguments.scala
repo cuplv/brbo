@@ -1,6 +1,6 @@
 package brbo.common
 
-import brbo.verification.AmortizationMode.{AmortizationMode, FULL, NO, SELECTIVE, ALL}
+import brbo.verification.AmortizationMode.{AmortizationMode, FULL_AMORTIZE, NO_AMORTIZE, SELECTIVE_AMORTIZE, ALL_AMORTIZE}
 import org.apache.logging.log4j.LogManager
 import org.kohsuke.args4j.{CmdLineException, CmdLineParser, Option}
 
@@ -9,7 +9,7 @@ import scala.collection.JavaConverters._
 class CommandLineArguments {
 
   @Option(name = "--amortize", aliases = Array("-a"), required = false,
-    usage = "The mode of amortization. Choose from: `FULL`, `NO`, `SELECTIVE`, `ALL`")
+    usage = "The mode of amortization. Choose from: `FULL`, `NO`, `SELECTIVE`, `ALL` (case-insensitive)")
   private var amortizationMode: String = "selective"
 
   @Option(name = "--debug", aliases = Array("-g"), required = false,
@@ -22,10 +22,10 @@ class CommandLineArguments {
 
   def getAmortizationMode: AmortizationMode = {
     amortizationMode.toLowerCase() match {
-      case "no" => NO
-      case "full" => FULL
-      case "selective" => SELECTIVE
-      case "all" => ALL
+      case "no" => NO_AMORTIZE
+      case "full" => FULL_AMORTIZE
+      case "selective" => SELECTIVE_AMORTIZE
+      case "all" => ALL_AMORTIZE
     }
   }
 

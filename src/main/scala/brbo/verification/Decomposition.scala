@@ -7,7 +7,7 @@ import brbo.common.InstrumentUtils.StatementTreeInstrumentation
 import brbo.common.TypeUtils.BrboType
 import brbo.common.TypeUtils.BrboType.{BrboType, INT}
 import brbo.common._
-import brbo.verification.AmortizationMode.AmortizationMode
+import brbo.verification.AmortizationMode.{AmortizationMode, FULL_AMORTIZE, NO_AMORTIZE, SELECTIVE_AMORTIZE}
 import brbo.verification.Decomposition.{DecompositionResult, DeltaCounterPair}
 import brbo.verification.dependency.reachdef.ReachingValue
 import brbo.verification.dependency.{ControlDependency, DataDependency}
@@ -51,16 +51,26 @@ class Decomposition(inputMethod: TargetMethod, debug: Boolean) {
     else logger.trace(message)
   }
 
-  def decompose(amortizationMode: AmortizationMode): Subprograms = {
+  def decompose(amortizationMode: AmortizationMode): List[IntermediateResult] = {
+    logger.info(s"Decomposing... Mode: `$amortizationMode`")
     amortizationMode match {
-      case brbo.verification.AmortizationMode.NO => decomposeNoAmortize()
-      case brbo.verification.AmortizationMode.FULL => decomposeFullAmortize()
-      case brbo.verification.AmortizationMode.SELECTIVE => decomposeSelectiveAmortize()
-      case brbo.verification.AmortizationMode.ALL => ???
+      case brbo.verification.AmortizationMode.NO_AMORTIZE =>
+        List[IntermediateResult](decomposeNoAmortize())
+      case brbo.verification.AmortizationMode.FULL_AMORTIZE =>
+        List[IntermediateResult](decomposeFullAmortize())
+      case brbo.verification.AmortizationMode.SELECTIVE_AMORTIZE =>
+        List[IntermediateResult](decomposeSelectiveAmortize())
+      case brbo.verification.AmortizationMode.ALL_AMORTIZE =>
+        List[IntermediateResult](
+          decomposeNoAmortize(),
+          decomposeSelectiveAmortize(),
+          decomposeFullAmortize()
+        )
     }
   }
 
-  def decomposeNoAmortize(): Subprograms = {
+  def decomposeNoAmortize(): IntermediateResult = {
+    logger.info(s"Decompose mode: `${brbo.verification.AmortizationMode.NO_AMORTIZE}`")
     val subprograms = commands.foldLeft(new HashSet[Subprogram])({
       (acc, command) =>
         command match {
@@ -72,15 +82,17 @@ class Decomposition(inputMethod: TargetMethod, debug: Boolean) {
           case _ => acc
         }
     })
-    Subprograms(subprograms)
+    IntermediateResult(Subprograms(subprograms), NO_AMORTIZE)
   }
 
-  def decomposeFullAmortize(): Subprograms = {
+  def decomposeFullAmortize(): IntermediateResult = {
+    logger.info(s"Decompose mode: `${brbo.verification.AmortizationMode.FULL_AMORTIZE}`")
     val subprogram = Subprogram(inputMethod.methodTree.getBody.getStatements.asScala.toList)
-    Subprograms(HashSet[Subprogram](subprogram))
+    IntermediateResult(Subprograms(HashSet[Subprogram](subprogram)), FULL_AMORTIZE)
   }
 
-  def decomposeSelectiveAmortize(): Subprograms = {
+  def decomposeSelectiveAmortize(): IntermediateResult = {
+    logger.info(s"Decompose mode: `${brbo.verification.AmortizationMode.SELECTIVE_AMORTIZE}`")
     var subprograms = eliminateEnvironmentInterference(mergeIfOverlap(initializeSubprograms()))
     var continue = true
     while (continue) {
@@ -106,7 +118,7 @@ class Decomposition(inputMethod: TargetMethod, debug: Boolean) {
         subprograms = mergeIfOverlap(subprograms.programs - pair._1 - pair._2 + newSubprogram)
       }
     }
-    subprograms
+    IntermediateResult(subprograms, SELECTIVE_AMORTIZE)
   }
 
   def initializeSubprograms(): Set[Subprogram] = {
@@ -182,7 +194,11 @@ class Decomposition(inputMethod: TargetMethod, debug: Boolean) {
     s"${appendSemiColonWhenNecessary(prepend1)}${appendSemiColonWhenNecessary(prepend2)}"
   }
 
-  def insertGhostVariables(subprograms: Subprograms): DecompositionResult = {
+  def insertGhostVariables(decompositionIntermediateResult: IntermediateResult): DecompositionResult = {
+    val subprograms: Subprograms = decompositionIntermediateResult.subprograms
+    val amortizationMode: AmortizationMode = decompositionIntermediateResult.amortizationMode
+    logger.info(s"Inserting resets and updates to ghost variables... Mode: `$amortizationMode`")
+
     val deltaCounterPairs: Map[Subprogram, DeltaCounterPair] = {
       val deltaVariables: Map[Subprogram, String] = {
         // Eliminate non-deterministic behavior
@@ -235,7 +251,7 @@ class Decomposition(inputMethod: TargetMethod, debug: Boolean) {
       JAVA_FORMAT,
       indent = 2
     )
-    val result = DecompositionResult(inputMethod.className, newSourceFile, deltaCounterPairs.values.toSet)
+    val result = DecompositionResult(inputMethod.className, newSourceFile, deltaCounterPairs.values.toSet, amortizationMode)
     if (debug) CFGUtils.printPDF(result.targetMethod.cfg)
     result
   }
@@ -612,6 +628,7 @@ class Decomposition(inputMethod: TargetMethod, debug: Boolean) {
     }
   }
 
+  case class IntermediateResult(subprograms: Subprograms, amortizationMode: AmortizationMode)
 }
 
 object Decomposition {
@@ -935,7 +952,7 @@ object Decomposition {
     GhostVariableUtils.isGhostVariable(counter, Counter)
   }
 
-  case class DecompositionResult(className: String, sourceFileContents: String, deltaCounterPairs: Set[DeltaCounterPair]) {
+  case class DecompositionResult(className: String, sourceFileContents: String, deltaCounterPairs: Set[DeltaCounterPair], amortizationMode: AmortizationMode) {
     logger.info(s"Decomposition result:\n$sourceFileContents")
     val targetMethod: TargetMethod = BasicProcessor.getTargetMethod(className, sourceFileContents)
   }

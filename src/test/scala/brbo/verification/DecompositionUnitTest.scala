@@ -1,6 +1,7 @@
 package brbo.verification
 
 import brbo.common.MathUtils
+import brbo.verification.AmortizationMode.UNKNOWN
 import brbo.{StringCompare, TestCaseJavaProgram}
 import org.apache.logging.log4j.LogManager
 import org.scalatest.flatspec.AnyFlatSpec
@@ -103,7 +104,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val decomposition = new Decomposition(targetMethod, debug = false)
-        val result = decomposition.decomposeSelectiveAmortize().programs
+        val result = decomposition.decomposeSelectiveAmortize().subprograms.programs
         assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
     })
   }
@@ -114,7 +115,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val decomposition = new Decomposition(targetMethod, debug = false)
         val subprograms = decomposition.mergeIfOverlap(decomposition.initializeSubprograms())
-        val result = decomposition.insertGhostVariables(subprograms)
+        val result = decomposition.insertGhostVariables(decomposition.IntermediateResult(subprograms, UNKNOWN))
         assert(StringCompare.ignoreWhitespaces(result.sourceFileContents, testCase.expectedOutput, testCase.className))
     })
   }
@@ -124,7 +125,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val decomposition = new Decomposition(targetMethod, debug = false)
-        val result = decomposition.decomposeNoAmortize().programs
+        val result = decomposition.decomposeNoAmortize().subprograms.programs
         assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
     })
   }
@@ -134,7 +135,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val decomposition = new Decomposition(targetMethod, debug = false)
-        val result = decomposition.decomposeFullAmortize().programs
+        val result = decomposition.decomposeFullAmortize().subprograms.programs
         assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
     })
   }

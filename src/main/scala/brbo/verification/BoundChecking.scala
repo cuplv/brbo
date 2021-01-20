@@ -17,6 +17,8 @@ object BoundChecking {
                  decompositionResult: DecompositionResult,
                  boundExpression: AST,
                  printModelIfFail: Boolean): Boolean = {
+    logger.info(s"Checking bound... Mode: `${decompositionResult.amortizationMode}`")
+
     val targetMethod = decompositionResult.targetMethod
     val deltaCounterPairs = decompositionResult.deltaCounterPairs
 
@@ -190,12 +192,12 @@ object BoundChecking {
     solver.mkAssert(solver.mkNot(boundExpression))
     val result = !solver.checkSAT(printUnsatCore = false)
     if (!result && printModelIfFail) {
-      logger.fatal(s"Bound `$boundExpression` could not be verified!")
+      logger.fatal(s"Bound could not be verified: `$boundExpression`")
       // solver.printAssertions()
       solver.printModel()
     }
     else {
-      logger.info(s"Bound `$boundExpression` is verified!")
+      logger.info(s"Bound is verified: `$boundExpression`")
     }
     result
   }

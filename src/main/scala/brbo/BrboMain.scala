@@ -3,6 +3,7 @@ package brbo
 import java.io.File
 
 import brbo.common.{CommandLineArguments, TargetMethod, Z3Solver}
+import brbo.verification.AmortizationMode.AmortizationMode
 import brbo.verification.Decomposition.DecompositionResult
 import brbo.verification.{BasicProcessor, BoundChecking, Decomposition}
 import com.microsoft.z3.AST
@@ -13,11 +14,6 @@ import scala.collection.immutable.HashMap
 
 object BrboMain {
   private val logger = LogManager.getLogger("brbo.BrboMain")
-
-  private def readFromFile(location: String): String = {
-    val source = scala.io.Source.fromFile(location)
-    try source.mkString finally source.close()
-  }
 
   def main(args: Array[String]) {
     logger.info("Brbo has started: Infer resource usage upper bounds for each method.")
@@ -57,24 +53,30 @@ object BrboMain {
         if (className != "brbo.benchmarks.Common") {
           logger.info(s"Parsing...")
           val targetMethod: TargetMethod = BasicProcessor.getTargetMethod(className, sourceFileContents)
-
           val decomposition: Decomposition = new Decomposition(targetMethod, commandLineArguments.getDebugMode)
-          val decompositionResult: DecompositionResult = {
-            logger.info(s"Decomposing...")
-            val subprograms = decomposition.decomposeSelectiveAmortize()
-            logger.info(s"Inserting resets and updates to ghost variables...")
-            decomposition.insertGhostVariables(subprograms)
-          }
-
-          val solver: Z3Solver = new Z3Solver
-          val boundExpression: AST = BoundChecking.extractBoundExpression(solver, targetMethod.methodTree, targetMethod.inputVariables ++ targetMethod.localVariables)
-          logger.info(s"Extracted bound expression is `$boundExpression`")
-          logger.info(s"Checking bound...")
-          BoundChecking.checkBound(solver, decompositionResult, boundExpression, printModelIfFail = true)
+          val decompositionResults = decompose(decomposition, commandLineArguments.getAmortizationMode)
+          decompositionResults.foreach({ result => boundChecking(result, targetMethod) })
         }
         else {
           logger.info(s"Skipping bound checking for file `$sourceFilePath`")
         }
     })
+  }
+
+  private def readFromFile(location: String): String = {
+    val source = scala.io.Source.fromFile(location)
+    try source.mkString finally source.close()
+  }
+
+  private def decompose(decomposition: Decomposition, amortizationMode: AmortizationMode): List[DecompositionResult] = {
+    val listOfSubprograms: List[decomposition.IntermediateResult] = decomposition.decompose(amortizationMode)
+    listOfSubprograms.map({ result => decomposition.insertGhostVariables(result) })
+  }
+
+  private def boundChecking(decompositionResult: DecompositionResult, targetMethod: TargetMethod): Unit = {
+    val solver: Z3Solver = new Z3Solver
+    val boundExpression: AST = BoundChecking.extractBoundExpression(solver, targetMethod.methodTree, targetMethod.inputVariables ++ targetMethod.localVariables)
+    logger.info(s"Extracted bound expression is `$boundExpression`")
+    BoundChecking.checkBound(solver, decompositionResult, boundExpression, printModelIfFail = true)
   }
 }
