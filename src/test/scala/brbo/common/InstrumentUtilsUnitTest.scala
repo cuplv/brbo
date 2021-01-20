@@ -1,11 +1,11 @@
 package brbo.common
 
+import brbo.common.BeforeOrAfterOrThis.BEFORE
 import brbo.common.InstrumentUtils.InstrumentMode.{ALL, AT_MOST_ONCE}
 import brbo.common.InstrumentUtils.StatementTreeInstrumentation
-import brbo.verification.BasicProcessor
+import brbo.verification.{BasicProcessor, BoundChecking}
 import brbo.{StringCompare, TestCaseJavaProgram}
 import org.scalatest.flatspec.AnyFlatSpec
-import brbo.common.BeforeOrAfter.BEFORE
 
 import scala.collection.immutable.HashSet
 
@@ -41,6 +41,19 @@ class InstrumentUtilsUnitTest extends AnyFlatSpec {
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val result = InstrumentUtils.substituteAtomicStatements(targetMethod, InstrumentUtils.defaultResourceAssignment, 0, ALL)
         assert(StringCompare.ignoreWhitespaces(result.result, testCase.expectedOutput, s"Test ${testCase.className} failed!"))
+    })
+  }
+
+  "Treating counters as resource variables instrumentation" should "be correct" in {
+    InstrumentUtilsUnitTest.treatCountersAsResourcesUnitTest.foreach({
+      testCase =>
+        val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
+        val result = InstrumentUtils.instrumentStatementTrees(
+          targetMethod,
+          BoundChecking.treatCounterAsResourceInstrumentation("C1", "R3"),
+          indent = 0
+        )
+        assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, s"Test ${testCase.className} failed!"))
     })
   }
 }
@@ -554,6 +567,93 @@ object InstrumentUtilsUnitTest {
       TestCaseJavaProgram("ForLoopTest1", forLoopTest1, forLoopTest1Expected),
       TestCaseJavaProgram("ForLoopTest2", forLoopTest2, forLoopTest2Expected),
       TestCaseJavaProgram("SequenceTest1", sequenceTest1, sequenceTest1Expected),
+    )
+  }
+
+  val treatCountersAsResourcesUnitTest: List[TestCaseJavaProgram] = {
+    val test01: String =
+      """class Test01 {
+        |  void f(int n)
+        |  {
+        |    int D100 = 0;
+        |    int C1 = 0;
+        |    int R = 0;
+        |    int i = 0;
+        |    while (i < n)
+        |    {
+        |      C1 = 0;
+        |      i++;
+        |      C1 = C1 + 1;
+        |      D100 = 0;
+        |      D100 = D100 + 1;
+        |      R = R + 1;
+        |    }
+        |  }
+        |}""".stripMargin
+    val test01ExpectedOutput =
+      """{
+        |  ;
+        |  int R3 = 0;
+        |  ;
+        |  int i = 0;
+        |  while (i < n)
+        |  {
+        |    R3 = 0;
+        |    i++;;
+        |    R3 = R3 + 1;;
+        |    ;
+        |    ;
+        |    ;
+        |  }
+        |}""".stripMargin
+
+    val test02: String =
+      """class Test02 {
+        |  void f(int n, int m, int l)
+        |  {
+        |    int R = 0;
+        |    int C1 = 0;
+        |    int D100 = 0;
+        |    int i = 0;
+        |    C1 = 0;
+        |    while (i < n) {
+        |      int j = 0;
+        |      C1 = C1 + 1;
+        |      D100 = 0;
+        |      while (j < m) {
+        |        j++;
+        |        R = R + 1;
+        |        D100 = D100 + 1;
+        |      }
+        |      i++;
+        |    }
+        |  }
+        |}""".stripMargin
+    val test02ExpectedOutput =
+      """{
+        |  ;
+        |  int R3 = 0;
+        |  ;
+        |  int i = 0;
+        |  R3 = 0;
+        |  while (i < n)
+        |  {
+        |    int j = 0;
+        |    R3 = R3 + 1;;
+        |    ;
+        |    while (j < m)
+        |    {
+        |      j++;;
+        |      ;
+        |      ;
+        |    }
+        |    i++;;
+        |  }
+        |}""".stripMargin
+
+    List[TestCaseJavaProgram](
+      TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),
+      TestCaseJavaProgram("Test02", test02, test02ExpectedOutput),
     )
   }
 }

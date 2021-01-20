@@ -1,6 +1,6 @@
 package brbo.verification
 
-import brbo.common.BeforeOrAfter.BEFORE
+import brbo.common.BeforeOrAfterOrThis.BEFORE
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, Resource}
 import brbo.common.InstrumentUtils.FileFormat.JAVA_FORMAT
 import brbo.common.InstrumentUtils.StatementTreeInstrumentation
@@ -21,7 +21,8 @@ import org.checkerframework.dataflow.cfg.node._
 import scala.collection.JavaConverters._
 import scala.collection.immutable.{HashMap, HashSet}
 
-class Decomposition(inputMethod: TargetMethod, debug: Boolean) {
+class Decomposition(inputMethod: TargetMethod, commandLineArguments: CommandLineArguments) {
+  private val debug = commandLineArguments.debugMode
   private val logger = LogManager.getLogger(classOf[Decomposition])
 
   private val commands = TreeUtils.collectCommands(inputMethod.methodTree.getBody)
@@ -51,22 +52,26 @@ class Decomposition(inputMethod: TargetMethod, debug: Boolean) {
     else logger.trace(message)
   }
 
-  def decompose(amortizationMode: AmortizationMode): List[IntermediateResult] = {
-    logger.info(s"Decomposing... Mode: `$amortizationMode`")
-    amortizationMode match {
-      case brbo.verification.AmortizationMode.NO_AMORTIZE =>
-        List[IntermediateResult](decomposeNoAmortize())
-      case brbo.verification.AmortizationMode.FULL_AMORTIZE =>
-        List[IntermediateResult](decomposeFullAmortize())
-      case brbo.verification.AmortizationMode.SELECTIVE_AMORTIZE =>
-        List[IntermediateResult](decomposeSelectiveAmortize())
-      case brbo.verification.AmortizationMode.ALL_AMORTIZE =>
-        List[IntermediateResult](
-          decomposeNoAmortize(),
-          decomposeSelectiveAmortize(),
-          decomposeFullAmortize()
-        )
+  def decompose(commandLineArguments: CommandLineArguments): List[DecompositionResult] = {
+    val listOfSubprograms: List[IntermediateResult] = {
+      val amortizationMode = commandLineArguments.amortizationMode
+      logger.info(s"Decomposing... Mode: `$amortizationMode`")
+      amortizationMode match {
+        case brbo.verification.AmortizationMode.NO_AMORTIZE =>
+          List[IntermediateResult](decomposeNoAmortize())
+        case brbo.verification.AmortizationMode.FULL_AMORTIZE =>
+          List[IntermediateResult](decomposeFullAmortize())
+        case brbo.verification.AmortizationMode.SELECTIVE_AMORTIZE =>
+          List[IntermediateResult](decomposeSelectiveAmortize())
+        case brbo.verification.AmortizationMode.ALL_AMORTIZE =>
+          List[IntermediateResult](
+            decomposeNoAmortize(),
+            decomposeSelectiveAmortize(),
+            decomposeFullAmortize()
+          )
+      }
     }
+    listOfSubprograms.map({ result => insertGhostVariables(result) })
   }
 
   def decomposeNoAmortize(): IntermediateResult = {
@@ -75,7 +80,7 @@ class Decomposition(inputMethod: TargetMethod, debug: Boolean) {
       (acc, command) =>
         command match {
           case expressionStatementTree: ExpressionStatementTree =>
-            GhostVariableUtils.extractGhostVariableUpdate(expressionStatementTree.getExpression, Resource) match {
+            GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Resource) match {
               case Some(_) => acc + Subprogram(List(command))
               case None => acc
             }
@@ -142,7 +147,7 @@ class Decomposition(inputMethod: TargetMethod, debug: Boolean) {
       if (TreeUtils.isCommand(tree)) {
         tree match {
           case expressionStatementTree: ExpressionStatementTree =>
-            GhostVariableUtils.extractGhostVariableUpdate(expressionStatementTree.getExpression, Resource).isDefined
+            GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Resource).isDefined
           case _ => false
         }
       }
@@ -169,7 +174,7 @@ class Decomposition(inputMethod: TargetMethod, debug: Boolean) {
       if (TreeUtils.isCommand(tree)) {
         tree match {
           case expressionStatementTree: ExpressionStatementTree =>
-            GhostVariableUtils.extractGhostVariableUpdate(expressionStatementTree.getExpression, Resource) match {
+            GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Resource) match {
               case Some(updateTree) =>
                 // Assume there is only 1 subprogram that contains command `R=R+e`
                 subprograms.find(subprogram => subprogram.commands.contains(tree)) match {
@@ -207,7 +212,7 @@ class Decomposition(inputMethod: TargetMethod, debug: Boolean) {
         }).zipWithIndex
         indexedSubprograms.foldLeft(new HashMap[Subprogram, String])({
           case (acc, (subprogram, index)) =>
-            acc + (subprogram -> GhostVariableUtils.generateGhostVariable(index.toString, Delta))
+            acc + (subprogram -> GhostVariableUtils.generateName(index.toString, Delta))
         })
       }
       subprograms.programs.foldLeft(new HashMap[Subprogram, DeltaCounterPair])({
@@ -251,7 +256,7 @@ class Decomposition(inputMethod: TargetMethod, debug: Boolean) {
       JAVA_FORMAT,
       indent = 2
     )
-    val result = DecompositionResult(inputMethod.className, newSourceFile, deltaCounterPairs.values.toSet, amortizationMode)
+    val result = DecompositionResult(newSourceFile, deltaCounterPairs.values.toSet, amortizationMode, inputMethod)
     if (debug) CFGUtils.printPDF(result.targetMethod.cfg)
     result
   }
@@ -629,6 +634,7 @@ class Decomposition(inputMethod: TargetMethod, debug: Boolean) {
   }
 
   case class IntermediateResult(subprograms: Subprograms, amortizationMode: AmortizationMode)
+
 }
 
 object Decomposition {
@@ -648,7 +654,7 @@ object Decomposition {
   def initializeSubprogramFromStatement(statement: StatementTree, targetMethod: TargetMethod): Option[(StatementTree, Node)] = {
     statement match {
       case expressionStatementTree: ExpressionStatementTree =>
-        GhostVariableUtils.extractGhostVariableUpdate(expressionStatementTree.getExpression, Resource) match {
+        GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Resource) match {
           case Some(updateTree) =>
             val updateNode = CFGUtils.getNodesCorrespondingToExpressionStatementTree(statement, targetMethod.cfg)
 
@@ -713,7 +719,7 @@ object Decomposition {
             traceOrError(s"Expression Tree `$statement` corresponds to node `$correspondingNode`", debug)
 
             // Treat `r+=e` when `e` is constant differently from `r+=e` when `e` is constant
-            val dataDependentVariables: Set[String] = GhostVariableUtils.extractGhostVariableUpdate(correspondingNode, Resource) match {
+            val dataDependentVariables: Set[String] = GhostVariableUtils.extractUpdate(correspondingNode, Resource) match {
               case Some(update) =>
                 update.increment match {
                   case updateNode: ValueLiteralNode =>
@@ -852,7 +858,7 @@ object Decomposition {
       ControlDependency.reverseControlDependency(controlDependency)
     }
     targetMethod.cfg.getAllNodes.asScala
-      .filter({ node => GhostVariableUtils.extractGhostVariableUpdate(node, Resource).isDefined })
+      .filter({ node => GhostVariableUtils.extractUpdate(node, Resource).isDefined })
       .flatMap({ node =>
         logger.debug(s"Compute taint set for $node")
         computeTaintSetDataHelper(node, dataDependency, controlDependency, new HashSet[Node])
@@ -952,12 +958,19 @@ object Decomposition {
     GhostVariableUtils.isGhostVariable(counter, Counter)
   }
 
-  case class DecompositionResult(className: String,
-                                 sourceFileContents: String,
+  /**
+   *
+   * @param newSourceFileContents The source code after decomposing the input method
+   * @param deltaCounterPairs     The paris of delta variables and counters in the new source code
+   * @param amortizationMode      The mode that was used to construct this decomposition
+   * @param inputMethod           The input method that was decomposed
+   */
+  case class DecompositionResult(newSourceFileContents: String,
                                  deltaCounterPairs: Set[DeltaCounterPair],
-                                 amortizationMode: AmortizationMode) {
-    logger.info(s"Decomposition result (Mode: ${amortizationMode}):\n$sourceFileContents")
-    val targetMethod: TargetMethod = BasicProcessor.getTargetMethod(className, sourceFileContents)
+                                 amortizationMode: AmortizationMode,
+                                 inputMethod: TargetMethod) {
+    logger.info(s"Decomposition result (Mode: $amortizationMode):\n$newSourceFileContents")
+    val targetMethod: TargetMethod = BasicProcessor.getTargetMethod(inputMethod.className, newSourceFileContents)
   }
 
 }

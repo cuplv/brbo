@@ -1,7 +1,7 @@
 package brbo.verification
 
 import brbo.TestCaseJavaProgram
-import brbo.common.Z3Solver
+import brbo.common.{CommandLineArguments, Z3Solver}
 import brbo.verification.AmortizationMode.UNKNOWN
 import brbo.verification.Decomposition.{DecompositionResult, DeltaCounterPair}
 import com.microsoft.z3.AST
@@ -21,12 +21,14 @@ class BoundCheckingUnitTest extends AnyFlatSpec {
     BoundCheckingUnitTest.boundCheckingTests.foreach({
       case (testCase, solver, boundExpression) =>
         val deltaCounterPairs = Set[DeltaCounterPair](DeltaCounterPair("D100", "C1"))
-        val decompositionResult = DecompositionResult(testCase.className, testCase.inputProgram, deltaCounterPairs, UNKNOWN)
+        val inputMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
+        val decompositionResult = DecompositionResult(testCase.inputProgram, deltaCounterPairs, UNKNOWN, inputMethod)
         val result = BoundChecking.checkBound(
           solver,
           decompositionResult,
           boundExpression,
-          printModelIfFail = false
+          printModelIfFail = false,
+          CommandLineArguments(UNKNOWN, debugMode = false, "")
         )
         assert(result.toString == testCase.expectedOutput, s"Test case ${testCase.className} failed")
     })

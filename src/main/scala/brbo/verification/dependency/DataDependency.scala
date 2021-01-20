@@ -29,7 +29,7 @@ object DataDependency {
 
     cfg.getAllNodes.asScala.flatMap({
       node =>
-        GhostVariableUtils.extractGhostVariableUpdate(node, Resource) match {
+        GhostVariableUtils.extractUpdate(node, Resource) match {
           case Some(_) => getDataDependency(node, result, new HashSet[Node])
           case None => new HashSet[String]
         }

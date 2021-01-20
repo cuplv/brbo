@@ -1,6 +1,6 @@
 package brbo.common
 
-import brbo.common.BeforeOrAfter.{AFTER, BEFORE}
+import brbo.common.BeforeOrAfterOrThis.{AFTER, BEFORE}
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta}
 import brbo.common.TypeUtils.BrboType.{BrboType, INT}
 import brbo.verification.{BasicProcessor, BoundCheckingUnitTest}
@@ -26,7 +26,7 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
           Locations(
             {
               case expressionStatementTree: ExpressionStatementTree =>
-                GhostVariableUtils.extractGhostVariableUpdate(expressionStatementTree.getExpression, Delta) match {
+                GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Delta) match {
                   case Some(_) => true
                   case None => false
                 }
@@ -65,7 +65,7 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
           Locations(
             {
               case expressionStatementTree: ExpressionStatementTree =>
-                GhostVariableUtils.extractGhostVariableReset(expressionStatementTree.getExpression, Delta) match {
+                GhostVariableUtils.extractReset(expressionStatementTree.getExpression, Delta) match {
                   case Some(_) => true
                   case None => false
                 }
@@ -104,7 +104,7 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
           Locations(
             {
               case expressionStatementTree: ExpressionStatementTree =>
-                GhostVariableUtils.extractGhostVariableUpdate(expressionStatementTree.getExpression, Counter) match {
+                GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Counter) match {
                   case Some(_) => true
                   case None => false
                 }

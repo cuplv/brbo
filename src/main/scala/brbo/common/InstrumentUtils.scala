@@ -1,5 +1,6 @@
 package brbo.common
 
+import brbo.common.BeforeOrAfterOrThis.{AFTER, BEFORE, THIS}
 import brbo.common.GhostVariableUtils.GhostVariable.Resource
 import brbo.common.InstrumentUtils.FileFormat.{C_FORMAT, FileFormat, JAVA_FORMAT}
 import brbo.common.InstrumentUtils.InstrumentMode.{ALL, AT_MOST_ONCE, InstrumentMode}
@@ -20,13 +21,13 @@ object InstrumentUtils {
   val defaultResourceAssignment: AtomicStatementInstrumentation =
     AtomicStatementInstrumentation( // Replace `R = R + e` with `d = d + e`
       {
-        node: Node => GhostVariableUtils.extractGhostVariableUpdate(node, Resource).nonEmpty
+        node: Node => GhostVariableUtils.extractUpdate(node, Resource).nonEmpty
       },
       {
         case expressionStatement: ExpressionStatementTree =>
           expressionStatement.getExpression match {
             case assignmentTree: AssignmentTree =>
-              val update = GhostVariableUtils.extractGhostVariableUpdate(assignmentTree, Resource)
+              val update = GhostVariableUtils.extractUpdate(assignmentTree, Resource)
               s"$defaultDeltaVariable = $defaultDeltaVariable + ${update.get.increment}"
             case unaryTree: UnaryTree =>
               unaryTree.getKind match {
@@ -41,7 +42,7 @@ object InstrumentUtils {
   val removeResourceAssignment: AtomicStatementInstrumentation =
     AtomicStatementInstrumentation( // Replace `R = R + e` with `;`
       {
-        node: Node => GhostVariableUtils.extractGhostVariableUpdate(node, Resource).nonEmpty
+        node: Node => GhostVariableUtils.extractUpdate(node, Resource).nonEmpty
       },
       {
         case expressionStatement: ExpressionStatementTree =>
@@ -345,6 +346,15 @@ object InstrumentUtils {
 
   case class StatementTreeInstrumentation(locations: Locations, whatToInsert: StatementTree => String)
 
+  /**
+   *
+   * @param targetMethod    The method to be instrumented
+   * @param instrumentation How to instrument. Currently we only support two ways of instrumentation
+   *                        - Insert any strings before or after any AST nodes
+   *                        - Replace any AST commands with any strings
+   * @param indent          The indent of each line in the output file
+   * @return The instrumented method body
+   */
   def instrumentStatementTrees(targetMethod: TargetMethod, instrumentation: StatementTreeInstrumentation, indent: Int): String = {
     instrumentStatementTreesHelper(targetMethod.methodTree.getBody, instrumentation, indent)
   }
@@ -394,8 +404,13 @@ object InstrumentUtils {
     if (instrumentation.locations.predicate(tree)) {
       val part2 = s"$spaces${instrumentation.whatToInsert(tree)}"
       instrumentation.locations.beforeOrAfter match {
-        case brbo.common.BeforeOrAfter.BEFORE => s"$part2\n$part1"
-        case brbo.common.BeforeOrAfter.AFTER => s"$part1\n$part2"
+        case BEFORE => s"$part2\n$part1"
+        case AFTER => s"$part1\n$part2"
+        case THIS =>
+          if (TreeUtils.isCommand(tree)) {
+            s"$spaces${instrumentation.whatToInsert(tree)};"
+          }
+          else throw new Exception(s"Location should be either `$BEFORE` or `$AFTER` for compound AST node `$tree`")
       }
     }
     else part1

@@ -15,7 +15,7 @@ object GhostVariableUtils {
   private val resourceVariablePattern = (resourceVariablePrefix + """\d*""").r
   private val counterVariablePattern = (counterVariablePrefix + """\d*""").r
 
-  def generateGhostVariable(suffix: String, typ: GhostVariable): String = {
+  def generateName(suffix: String, typ: GhostVariable): String = {
     val result = typ match {
       case Resource => s"$resourceVariablePrefix$suffix"
       case Delta => s"$deltaVariablePrefix$suffix"
@@ -23,6 +23,10 @@ object GhostVariableUtils {
     }
     assert(isGhostVariable(result, typ))
     result
+  }
+
+  def isGhostVariable(identifier: String): Boolean = {
+    isGhostVariable(identifier, Resource) || isGhostVariable(identifier, Delta) || isGhostVariable(identifier, Counter)
   }
 
   def isGhostVariable(identifier: String, typ: GhostVariable): Boolean = {
@@ -45,7 +49,7 @@ object GhostVariableUtils {
     override def toString: String = s"$identifier = $identifier + $increment"
   }
 
-  def extractGhostVariableUpdate(cfgNode: Node, typ: GhostVariable): Option[GhostVariableUpdateNode] = {
+  def extractUpdate(cfgNode: Node, typ: GhostVariable): Option[GhostVariableUpdateNode] = {
     cfgNode match {
       case node: AssignmentNode =>
         // Must be in the form of g = g + e
@@ -66,17 +70,17 @@ object GhostVariableUtils {
     }
   }
 
-  def extractGhostVariableUpdate(cfgNode: Node, types: Iterable[GhostVariable]): Option[GhostVariableUpdateNode] = {
+  def extractUpdate(cfgNode: Node, types: Iterable[GhostVariable]): Option[GhostVariableUpdateNode] = {
     types.foldLeft(None: Option[GhostVariableUpdateNode])({
       (acc, typ) =>
         acc match {
           case Some(_) => acc
-          case None => extractGhostVariableUpdate(cfgNode, typ)
+          case None => extractUpdate(cfgNode, typ)
         }
     })
   }
 
-  def extractGhostVariableUpdate(tree: ExpressionTree, typ: GhostVariable): Option[GhostVariableUpdateTree] = {
+  def extractUpdate(tree: ExpressionTree, typ: GhostVariable): Option[GhostVariableUpdateTree] = {
     tree match {
       case tree: AssignmentTree =>
         // Must be in the form of g = g + e
@@ -107,7 +111,11 @@ object GhostVariableUtils {
     }
   }
 
-  def extractDeltaVariableReset(cfgNode: Node): Option[String] = {
+  def isUpdate(tree: ExpressionTree): Boolean = {
+    extractUpdate(tree, Resource).isDefined || extractUpdate(tree, Delta).isDefined || extractUpdate(tree, Counter).isDefined
+  }
+
+  def extractReset(cfgNode: Node): Option[String] = {
     cfgNode match {
       case node: AssignmentNode =>
         val variableName = node.getTarget.toString
@@ -121,7 +129,7 @@ object GhostVariableUtils {
     }
   }
 
-  def extractGhostVariableReset(tree: ExpressionTree, typ: GhostVariable): Option[String] = {
+  def extractReset(tree: ExpressionTree, typ: GhostVariable): Option[String] = {
     tree match {
       case tree: AssignmentTree =>
         if (isGhostVariable(tree.getVariable.toString, typ)) {
@@ -132,6 +140,10 @@ object GhostVariableUtils {
         else None
       case _ => None
     }
+  }
+
+  def isReset(tree: ExpressionTree): Boolean = {
+    extractReset(tree, Resource).isDefined || extractReset(tree, Delta).isDefined || extractReset(tree, Counter).isDefined
   }
 
   object GhostVariable extends Enumeration {

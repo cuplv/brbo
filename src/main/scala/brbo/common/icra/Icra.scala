@@ -41,7 +41,7 @@ object Icra {
         Await.result(future, duration.Duration(TIMEOUT, "sec"))
       } catch {
         case _: TimeoutException =>
-          logger.fatal(s"ICRA timed out after `$TIMEOUT`! seconds")
+          logger.fatal(s"ICRA timed out after `$TIMEOUT` seconds!")
           process.destroy()
           process.exitValue()
       }
@@ -52,7 +52,7 @@ object Icra {
         removeFile.!!
       }
       else {
-        logger.fatal("Error when running ICRA")
+        logger.fatal(s"Error when running ICRA. Exit code: `$result`")
       }
     }
     catch {

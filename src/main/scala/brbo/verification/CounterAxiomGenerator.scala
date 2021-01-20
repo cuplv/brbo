@@ -15,7 +15,7 @@ object CounterAxiomGenerator {
   private val FIRST_COUNTER_ID = 0
   val FIRST_COUNTER_NAME: String = generateCounterId(FIRST_COUNTER_ID)
 
-  def generateCounterId(id: Int): String = GhostVariableUtils.generateGhostVariable(id.toString, Counter)
+  def generateCounterId(id: Int): String = GhostVariableUtils.generateName(id.toString, Counter)
 
   /**
    *

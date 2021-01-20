@@ -1,31 +1,102 @@
 package brbo.verification
 
-import brbo.common.BeforeOrAfter.{AFTER, BEFORE}
+import brbo.BrboMain
+import brbo.common.BeforeOrAfterOrThis.{AFTER, BEFORE, THIS}
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, Resource}
+import brbo.common.InstrumentUtils.StatementTreeInstrumentation
 import brbo.common.TreeUtils.collectCommands
 import brbo.common.TypeUtils.BrboType.{BrboType, INT}
 import brbo.common.{Locations, _}
 import brbo.verification.AmortizationMode.SELECTIVE_AMORTIZE
 import brbo.verification.Decomposition.DecompositionResult
 import com.microsoft.z3.{AST, Expr}
-import com.sun.source.tree.{AssertTree, ExpressionStatementTree, MethodTree}
+import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
 
 object BoundChecking {
   private val logger = LogManager.getLogger("brbo.verification.BoundChecking")
 
-  def checkBound(solver: Z3Solver,
-                 decompositionResult: DecompositionResult,
-                 boundExpression: AST,
-                 printModelIfFail: Boolean): Boolean = {
-    logger.info("")
-    logger.info("")
-    logger.info(s"Checking bound... Mode: `${decompositionResult.amortizationMode}`")
+  def treatCounterAsResourceInstrumentation(counterVariable: String, resourceVariable: String): StatementTreeInstrumentation = {
+    StatementTreeInstrumentation(
+      Locations(shouldInstrument, THIS),
+      whatToInsert(counterVariable, resourceVariable)
+    )
+  }
 
+  private def shouldInstrument(tree: StatementTree): Boolean = {
+    if (tree == null) return false
+
+    if (TreeUtils.isCommand(tree)) {
+      tree match {
+        case variableTree: VariableTree => GhostVariableUtils.isGhostVariable(variableTree.getName.toString)
+        case expressionStatementTree: ExpressionStatementTree =>
+          GhostVariableUtils.isReset(expressionStatementTree.getExpression) || GhostVariableUtils.isUpdate(expressionStatementTree.getExpression)
+        case _ => false
+      }
+    }
+    else false
+  }
+
+  private def whatToInsert(counterVariable: String, resourceVariable: String) (tree: StatementTree): String = {
+    if (tree == null) return ""
+
+    if (TreeUtils.isCommand(tree)) {
+      val originalCommand = s"${tree.toString}"
+      tree match {
+        case variableTree: VariableTree =>
+          val variableName = variableTree.getName.toString
+          if (GhostVariableUtils.isGhostVariable(variableName)) {
+            if (variableName != counterVariable) ""
+            else {
+              s"int $resourceVariable = 0"
+            }
+          }
+          else originalCommand
+        case expressionStatementTree: ExpressionStatementTree =>
+          val expression = expressionStatementTree.getExpression
+          (GhostVariableUtils.isUpdate(expression), GhostVariableUtils.isReset(expression)) match {
+            case (true, true) => throw new Exception("Unreachable")
+            case (true, false) =>
+              expression match {
+                case assignmentTree: AssignmentTree =>
+                  val lhs = assignmentTree.getVariable.toString
+                  if (lhs == counterVariable) {
+                    GhostVariableUtils.extractUpdate(expression, Counter) match {
+                      case Some(updateTree) =>
+                        assert(updateTree.identifier == counterVariable)
+                        s"$resourceVariable = $resourceVariable + ${updateTree.increment.toString};"
+                      case None => throw new Exception("Unreachable")
+                    }
+                  }
+                  else ""
+                case _ => throw new Exception("Unreachable")
+              }
+            case (false, true) =>
+              expression match {
+                case assignmentTree: AssignmentTree =>
+                  val lhs = assignmentTree.getVariable.toString
+                  if (lhs == counterVariable) {
+                    GhostVariableUtils.extractReset(expression, Counter) match {
+                      case Some(variableName) =>
+                        assert(variableName == counterVariable)
+                        s"$resourceVariable = 0"
+                      case None => throw new Exception("Unreachable")
+                    }
+                  }
+                  else ""
+                case _ => throw new Exception("Unreachable")
+              }
+            case (false, false) => originalCommand
+          }
+        case _ => originalCommand
+      }
+    }
+    else throw new Exception("Unreachable")
+  }
+
+  def inferInvariantsForResource(solver: Z3Solver, decompositionResult: DecompositionResult, commandLineArguments: CommandLineArguments): GlobalInvariants = {
     val targetMethod = decompositionResult.targetMethod
     val deltaCounterPairs = decompositionResult.deltaCounterPairs
-
-    logger.info(s"Verify bound `$boundExpression` in method `${targetMethod.methodTree.getName}` of class `${targetMethod.className}`")
 
     val methodBody = targetMethod.methodTree.getBody
     assert(methodBody != null)
@@ -62,7 +133,7 @@ object BoundChecking {
           Locations(
             {
               case expressionStatementTree: ExpressionStatementTree =>
-                GhostVariableUtils.extractGhostVariableUpdate(expressionStatementTree.getExpression, Delta) match {
+                GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Delta) match {
                   case Some(update) => update.identifier == deltaVariable
                   case None => false
                 }
@@ -81,7 +152,7 @@ object BoundChecking {
             Locations(
               {
                 case expressionStatementTree: ExpressionStatementTree =>
-                  GhostVariableUtils.extractGhostVariableReset(expressionStatementTree.getExpression, Delta) match {
+                  GhostVariableUtils.extractReset(expressionStatementTree.getExpression, Delta) match {
                     case Some(identifier) => identifier == deltaVariable
                     case None => false
                   }
@@ -102,12 +173,21 @@ object BoundChecking {
         }
         logger.trace(s"Invariant for the accumulation of delta variable `$deltaVariable` (per visit to its subprogram):\n$accumulationInvariant")
 
+        /*val newSourceFileContents = InstrumentUtils.instrumentStatementTrees(
+          decompositionResult.targetMethod,
+          treatCounterAsResourceInstrumentation(counterVariable),
+          indent = 0
+        )
+        // TODO: Existentially quantify???
+        val invariant2 = BrboMain.inferResourceInvariants(solver, "fake/path/Counter.java", newSourceFileContents, commandLineArguments)
+        println(invariant2)*/
+
         val counterInvariant = invariantInference.inferInvariant(
           solver,
           Locations(
             {
               case expressionStatementTree: ExpressionStatementTree =>
-                GhostVariableUtils.extractGhostVariableUpdate(expressionStatementTree.getExpression, Counter) match {
+                GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Counter) match {
                   case Some(update) => update.identifier == counterVariable
                   case None => false
                 }
@@ -186,12 +266,30 @@ object BoundChecking {
     checkSAT(solver, solver.mkAnd(resourceInvariants, counterInvariants))
     checkSAT(solver, solver.mkAnd(deltaInvariants, deltaInvariants))
     checkSAT(solver, solver.mkAnd(resourceInvariants, deltaInvariants, counterInvariants))
+    logger.info(s"Sanity check finished")
+
+    GlobalInvariants(resourceInvariants, deltaInvariants, counterInvariants)
+  }
+
+  def checkBound(solver: Z3Solver,
+                 decompositionResult: DecompositionResult,
+                 boundExpression: AST,
+                 printModelIfFail: Boolean,
+                 commandLineArguments: CommandLineArguments): Boolean = {
+    logger.info("")
+    logger.info("")
+    logger.info(s"Checking bound... Mode: `${decompositionResult.amortizationMode}`")
+
+    val targetMethod = decompositionResult.targetMethod
+    logger.info(s"Verify bound `$boundExpression` in method `${targetMethod.methodTree.getName}` of class `${targetMethod.className}`")
 
     checkSAT(solver, solver.mkNot(boundExpression))
+    logger.info(s"Sanity check finished")
 
-    solver.mkAssert(resourceInvariants)
-    solver.mkAssert(deltaInvariants)
-    solver.mkAssert(counterInvariants)
+    val globalInvariants = inferInvariantsForResource(solver, decompositionResult, commandLineArguments)
+    solver.mkAssert(globalInvariants.resourceInvariants)
+    solver.mkAssert(globalInvariants.deltaInvariants)
+    solver.mkAssert(globalInvariants.counterInvariants)
     solver.mkAssert(solver.mkNot(boundExpression))
     val result: Boolean = {
       try {
@@ -216,7 +314,7 @@ object BoundChecking {
     result
   }
 
-  def checkSAT(solver: Z3Solver, ast: AST): Unit = {
+  private def checkSAT(solver: Z3Solver, ast: AST): Unit = {
     solver.push()
     solver.mkAssert(ast)
     assert(solver.checkSAT(printUnsatCore = true))
@@ -237,5 +335,15 @@ object BoundChecking {
     assert(GhostVariableUtils.isGhostVariable(identifier, Delta))
     s"$identifier\'\'"
   }
+
+  def extractBoundAndCheck(decompositionResult: DecompositionResult, commandLineArguments: CommandLineArguments): Unit = {
+    val inputMethod = decompositionResult.inputMethod
+    val solver: Z3Solver = new Z3Solver
+    val boundExpression: AST = BoundChecking.extractBoundExpression(solver, inputMethod.methodTree, inputMethod.inputVariables ++ inputMethod.localVariables)
+    logger.info(s"Extracted bound expression is `$boundExpression`")
+    checkBound(solver, decompositionResult, boundExpression, printModelIfFail = true, commandLineArguments)
+  }
+
+  case class GlobalInvariants(resourceInvariants: AST, deltaInvariants: AST, counterInvariants: AST)
 
 }
