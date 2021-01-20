@@ -5,7 +5,7 @@
 
 # Shell arguments
 src_dir="$1" # Relative path; Each file is compiled separately w.r.t. any other file
-lib_dir="$2" # *.classes or *.jar files that are necessary for compiling source code
+#lib_dir="$2" # *.classes or *.jar files that are necessary for compiling source code
 
 # Create output directory
 mkdir -p output/
@@ -24,14 +24,15 @@ export LD_LIBRARY_PATH=$z3lib:$LD_LIBRARY_PATH
 export DYLD_LIBRARY_PATH=$z3lib:$DYLD_LIBRARY_PATH
 
 # Find all jar files in directory $lib_dir
-target_project_lib=`find "$lib_dir" -name "*.jar" | tr '\n' ':'`
+#target_project_lib=`find "$lib_dir" -name "*.jar" | tr '\n' ':'`
 classpath=".:$brbo_jar:$tools_jar:$target_project_lib"
 
 # Find all source files
 javafiles="java_src_files.txt"
 find "$src_dir" -name "*.java" > $javafiles
 
-time java -cp $classpath brbo.BrboMain $javafiles
+set -x
+time java -cp $classpath brbo.BrboMain $javafiles "${@:2}"
 # time java -jar target/scala-2.12/brbo-impl-assembly-0.1.jar $javafiles
 
 # Clean up

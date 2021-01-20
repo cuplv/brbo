@@ -29,7 +29,7 @@ class InvariantInference(targetMethod: TargetMethod) {
       variables.filter(variable => !existentiallyQuantify.contains(variable) && !freeVariables.contains(variable))
     }
 
-    logger.info(s"Infer invariants in method ${methodTree.getName} ${locations.beforeOrAfter} specified nodes in CFG")
+    logger.info(s"Infer invariants in method `${methodTree.getName}` `${locations.beforeOrAfter}` specified nodes in CFG")
     val cProgram = translateToCAndInsertAssertions(locations)
     Icra.run(cProgram) match {
       case Some(parsedInvariants) =>

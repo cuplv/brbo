@@ -36,7 +36,7 @@ object ControlDependency {
           }
           catch {
             case e: IllegalArgumentException =>
-              logger.debug(s"Retrieving dominace frontiers - Exception: ${e.getMessage}")
+              logger.debug(s"Retrieve dominace frontiers - Exception: ${e.getMessage}")
               List[BrboNode]().iterator
           }
         }

@@ -27,6 +27,16 @@ object BrboMain {
           acc + (sourceFileLocation -> readFromFile(sourceFileLocation))
       })
     }
+    val debugMode: Boolean = {
+      if (args.length == 2) {
+        args(1) match {
+          case "debug" => true
+          case _ => false
+        }
+      }
+      else false
+    }
+    logger.info(s"Debug mode? $debugMode")
 
     sourceFiles.foreach({
       case (sourceFilePath, sourceFileContents) =>
@@ -44,7 +54,7 @@ object BrboMain {
           logger.info(s"Parsing...")
           val targetMethod: TargetMethod = BasicProcessor.getTargetMethod(className, sourceFileContents)
 
-          val decomposition: Decomposition = new Decomposition(targetMethod)
+          val decomposition: Decomposition = new Decomposition(targetMethod, debugMode)
           val decompositionResult: DecompositionResult = {
             logger.info(s"Decomposing...")
             val subprograms = decomposition.decompose()

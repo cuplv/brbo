@@ -13,18 +13,17 @@ import brbo.verification.dependency.{ControlDependency, DataDependency}
 import com.sun.source.tree.Tree.Kind
 import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
+import org.checkerframework.dataflow.cfg.block.Block.BlockType
 import org.checkerframework.dataflow.cfg.block.{Block, ConditionalBlock}
 import org.checkerframework.dataflow.cfg.node._
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable.{HashMap, HashSet}
 
-class Decomposition(inputMethod: TargetMethod) {
+class Decomposition(inputMethod: TargetMethod, debug: Boolean = false) {
   private val logger = LogManager.getLogger(classOf[Decomposition])
 
   private val commands = TreeUtils.collectCommands(inputMethod.methodTree.getBody)
-
-  private val debug = false
 
   private val counterMap = CounterAxiomGenerator.generateCounterMap(inputMethod.methodTree.getBody)
 
@@ -63,11 +62,11 @@ class Decomposition(inputMethod: TargetMethod) {
         val pair = interferedSubprograms.head
         val newSubprogram = {
           if (pair._1 == pair._2) {
-            traceOrError(s"Enlarging subprogram: ${pair._1}")
+            traceOrError(s"Enlarge subprogram: ${pair._1}")
             enlarge(pair._1)
           }
           else {
-            traceOrError(s"Merging subprograms: $pair")
+            traceOrError(s"Merge subprograms: $pair")
             merge(pair._1, pair._2)
           }
         }
@@ -204,7 +203,9 @@ class Decomposition(inputMethod: TargetMethod) {
       JAVA_FORMAT,
       indent = 2
     )
-    DecompositionResult(inputMethod.className, newSourceFile, deltaCounterPairs.values.toSet)
+    val result = DecompositionResult(inputMethod.className, newSourceFile, deltaCounterPairs.values.toSet)
+    if (debug) CFGUtils.printPDF(result.targetMethod.cfg)
+    result
   }
 
   /**
@@ -296,7 +297,7 @@ class Decomposition(inputMethod: TargetMethod) {
           case _ => false
         })
       }
-      traceOrError(s"Enlarging - Containing dangling `break` or `continue`? $containsBreakContinue")
+      traceOrError(s"Enlarge - Contain dangling `break` or `continue`? $containsBreakContinue")
       if (containsBreakContinue) {
         val minimalLoop = TreeUtils.getMinimalEnclosingLoop(inputMethod.getPath(minimalEnclosingBlock))
         assert(minimalLoop.isDefined)
@@ -311,17 +312,17 @@ class Decomposition(inputMethod: TargetMethod) {
         val statements = minimalEnclosingBlock.getStatements
         statements.indexOf(headAstNode) match {
           case -1 => throw new Exception(s"Unexpected")
-          case index =>
-            if (index == 0) {
+          case indexHead =>
+            if (indexHead == 0) {
               statements.indexOf(subprogram.astNodes.last) match {
                 case -1 => throw new Exception(s"Unexpected")
-                case index2 =>
-                  if (index2 == statements.size() - 1) {
+                case indexLast =>
+                  if (indexLast == statements.size() - 1) {
                     List(inputMethod.getPath(headAstNode).getParentPath.getLeaf)
                   }
                   else {
-                    val newStatement = statements.get(index + 1)
-                    traceOrError(s"Enlarging - (Next) New statement $newStatement")
+                    val newStatement = statements.get(indexLast + 1)
+                    traceOrError(s"Enlarge - (Next) New statement $newStatement")
                     avoidDanglingBreakContinue(newStatement, minimalEnclosingBlock) match {
                       case Some(minimalLoop) => List(minimalLoop)
                       case None => subprogram.astNodes :+ newStatement
@@ -330,7 +331,7 @@ class Decomposition(inputMethod: TargetMethod) {
               }
             }
             else {
-              val newStatement = statements.get(index - 1)
+              val newStatement = statements.get(indexHead - 1)
               traceOrError(s"Enlarging - (Previous) New statement $newStatement")
               avoidDanglingBreakContinue(newStatement, minimalEnclosingBlock) match {
                 case Some(minimalLoop) => List(minimalLoop)
@@ -400,7 +401,7 @@ class Decomposition(inputMethod: TargetMethod) {
     val modifiedSet = environmentModifiedSet(subprogram, subprograms)
     traceOrError(s"Environment modified set: `$modifiedSet`")
 
-    val taintSet = Decomposition.computeTaintSet(subprogram.targetMethod, debug = false)
+    val taintSet = Decomposition.computeTaintSet(subprogram.targetMethod, debug)
     traceOrError(s"Taint set `$taintSet` of subprogram\n$subprogram")
 
     modifiedSet.intersect(taintSet).nonEmpty
@@ -486,7 +487,7 @@ class Decomposition(inputMethod: TargetMethod) {
     }
 
     val modifiedSet1 = Decomposition.computeModifiedSet(subprogram1.targetMethod)
-    val taintSet2 = Decomposition.computeTaintSet(subprogram2.targetMethod, debug = false)
+    val taintSet2 = Decomposition.computeTaintSet(subprogram2.targetMethod, debug)
     traceOrError(s"Subprogram 1 modified set: $modifiedSet1")
     traceOrError(s"Subprogram 1:\n$subprogram1")
     traceOrError(s"Subprogram 2 taint set: $taintSet2")
@@ -672,8 +673,8 @@ object Decomposition {
                           conditionNode =>
                             val conditionTree = conditionNode.getTree.asInstanceOf[ExpressionTree]
                             traceOrError(s"The condition node is `$conditionNode`", debug)
-                            logger.trace(s"The condition tree is `$conditionTree` (hash code: ${conditionTree.hashCode()})")
-                            conditionTrees.foreach(t => logger.trace(s"Condition tree `$t` (hash code: ${t.hashCode()})"))
+                            logger.trace(s"The condition tree is `$conditionTree` (hash code: `${conditionTree.hashCode()}`)")
+                            conditionTrees.foreach(t => logger.trace(s"Condition tree `$t` (hash code: `${t.hashCode()}`)"))
                             if (conditionTrees.contains(conditionTree)) {
                               CFGUtils.getUsedVariables(conditionNode)
                             }
@@ -687,7 +688,7 @@ object Decomposition {
                 }
               case None => throw new Exception("Unexpected")
             }
-            traceOrError(s"Data dependent variables are $dataDependentVariables", debug)
+            traceOrError(s"Data dependent variables for AST `$statement`'s initial program are `$dataDependentVariables`", debug)
 
             // Compute transitive data dependency for the above variables, starting from the entry node of initial subprogram
             computeTransitiveDataDependencyInputsOnly(dataDependentVariables, entryNode, dataDependency, debug)
@@ -725,8 +726,6 @@ object Decomposition {
 
     val usedVariables: Set[String] = node match {
       case assignmentNode: AssignmentNode => CFGUtils.getUsedVariables(assignmentNode.getExpression)
-      case methodInvocationNode: MethodInvocationNode =>
-        methodInvocationNode.getArguments.asScala.flatMap(node => CFGUtils.getUsedVariables(node)).toSet
       case _: VariableDeclarationNode => new HashSet[String]
       case _ => throw new Exception(s"Expecting assignment or method invocation node `$node` (Type: `${node.getClass}`)")
     }
@@ -753,7 +752,7 @@ object Decomposition {
                                                  debug: Boolean): Set[Node] = {
     assert(node != null)
     if (visited.contains(node)) return new HashSet[Node]
-    traceOrError(s"Visit node `$node`", debug)
+    traceOrError(s"Compute transitive control dependency for node `$node`", debug)
 
     controlDependency.get(node.getBlock) match {
       case Some(blocks) =>
@@ -763,12 +762,32 @@ object Decomposition {
             val predecessors = block.getPredecessors.asScala
             assert(predecessors.size == 1)
 
-            val condition = predecessors.head.getLastNode
-            if (condition == null) {
-              traceOrError(s"${node.getBlock}'s predecessor block does not have a condition: `${predecessors.head}`", debug)
-              new HashSet[Node]
+            val predecessor = predecessors.head
+            val condition: Option[Node] = {
+              val condition = predecessor.getLastNode
+              if (condition == null) {
+                traceOrError(s"${node.getBlock}'s predecessor block does not have a condition: `$predecessor`", debug)
+                if (predecessor.getType == BlockType.EXCEPTION_BLOCK) {
+                  traceOrError(s"${node.getBlock}'s predecessor block is an exception block: `$predecessor`", debug)
+                  val predecessors2 = predecessor.getPredecessors.asScala
+                  assert(predecessors2.size == 1)
+                  traceOrError(s"The last node in the exception block is: `${predecessors2.head.getLastNode}`", debug)
+                  val predecessors3 = predecessors2.head.getPredecessors.asScala
+                  assert(predecessors3.size == 1)
+                  traceOrError(s"The last node is: `${predecessors3.head.getLastNode}`", debug)
+                  val predecessors4 = predecessors3.head.getPredecessors.asScala
+                  assert(predecessors4.size == 1)
+                  traceOrError(s"The last node is: `${predecessors4.head.getLastNode}`", debug)
+                  Some(predecessors4.head.getLastNode)
+                }
+                else None
+              }
+              else Some(condition)
             }
-            else computeTransitiveControlDependency(condition, controlDependency, visited + node, debug) + condition
+            condition match {
+              case Some(condition2) => computeTransitiveControlDependency(condition2, controlDependency, visited + node, debug) + condition2
+              case None => new HashSet[Node]
+            }
         })
       case None => new HashSet[Node]
     }

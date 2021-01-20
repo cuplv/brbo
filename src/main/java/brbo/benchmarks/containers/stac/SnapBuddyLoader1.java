@@ -10,10 +10,10 @@ public abstract class SnapBuddyLoader1 extends Common {
     int photos = 0;
     int iterator = lines;
     while (iterator > 0) {
-      int entry = ndInt2(4, iterator);
+      int entry = ndInt2(1, iterator);
       iterator -= entry;
       int filters = 0;
-      int filterIds = entry - 4;
+      int filterIds = entry - 1;
       int iterator1 = filterIds;
       while (iterator1 > 0) {
         iterator1--;

@@ -74,6 +74,11 @@ object CFGUtils {
       case n: BinaryOperationNode =>
         getUsedVariables(n.getLeftOperand) ++ getUsedVariables(n.getRightOperand)
       case _: ValueLiteralNode => new HashSet[String]
+      case methodInvocationNode: MethodInvocationNode =>
+        val usedVariables = methodInvocationNode.getArguments.asScala.flatMap(node => getUsedVariables(node)).toSet
+        logger.trace(s"Used variables in method invocation node `$methodInvocationNode` are `$usedVariables`")
+        usedVariables
+      case typeCastNode: TypeCastNode => getUsedVariables(typeCastNode.getOperand)
       case _ => throw new Exception(s"Get used variables - Node `$n` (type: `${n.getClass}`) is not yet supported")
     }
   }

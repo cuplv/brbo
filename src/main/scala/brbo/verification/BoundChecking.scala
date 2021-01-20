@@ -11,7 +11,7 @@ import com.sun.source.tree.{AssertTree, ExpressionStatementTree, MethodTree}
 import org.apache.logging.log4j.LogManager
 
 object BoundChecking {
-  private val logger = LogManager.getLogger("brbo.boundinference.BoundChecking")
+  private val logger = LogManager.getLogger("brbo.verification.BoundChecking")
 
   def checkBound(solver: Z3Solver,
                  decompositionResult: DecompositionResult,
@@ -20,7 +20,7 @@ object BoundChecking {
     val targetMethod = decompositionResult.targetMethod
     val deltaCounterPairs = decompositionResult.deltaCounterPairs
 
-    logger.info(s"Verifying bound `$boundExpression` in method `${targetMethod.methodTree.getName}` of class `${targetMethod.className}`")
+    logger.info(s"Verify bound `$boundExpression` in method `${targetMethod.methodTree.getName}` of class `${targetMethod.className}`")
 
     val methodBody = targetMethod.methodTree.getBody
     assert(methodBody != null)
@@ -44,7 +44,7 @@ object BoundChecking {
         (acc, variable) => acc + (variable -> INT)
       })
     }
-    logger.trace(s"For Z3, we declare these variables in the global scope: $globalScopeVariables")
+    logger.trace(s"For Z3, we declare these variables in the global scope: `$globalScopeVariables`")
 
     val invariantInference = new InvariantInference(targetMethod)
     val invariants: Set[(AST, AST, AST)] = deltaCounterPairs.map({
@@ -67,7 +67,7 @@ object BoundChecking {
           localVariables - deltaVariable,
           globalScopeVariables
         )
-        logger.trace(s"Invariant for the peak value of delta variable $deltaVariable:\n$peakInvariant")
+        logger.trace(s"Invariant for the peak value of delta variable `$deltaVariable`:\n$peakInvariant")
 
         val accumulationInvariant = {
           val accumulationInvariant = invariantInference.inferInvariant(
@@ -94,7 +94,7 @@ object BoundChecking {
           )
           doublePrimeInvariant
         }
-        logger.trace(s"Invariant for the accumulation of delta variable $deltaVariable (per visit to its subprogram):\n$accumulationInvariant")
+        logger.trace(s"Invariant for the accumulation of delta variable `$deltaVariable` (per visit to its subprogram):\n$accumulationInvariant")
 
         val counterInvariant = invariantInference.inferInvariant(
           solver,
@@ -112,7 +112,7 @@ object BoundChecking {
           localVariables - deltaCounterPair.counter,
           globalScopeVariables
         )
-        logger.trace(s"Invariant for AST counter $deltaCounterPair:\n$counterInvariant")
+        logger.trace(s"Invariant for AST counter `${deltaCounterPair.counter}`:\n$counterInvariant")
 
         (peakInvariant, accumulationInvariant, counterInvariant)
     })
@@ -189,7 +189,7 @@ object BoundChecking {
     solver.mkAssert(solver.mkNot(boundExpression))
     val result = !solver.checkSAT(printUnsatCore = false)
     if (!result && printModelIfFail) {
-      logger.fatal(s"Bound expression could not be verified: $boundExpression")
+      logger.fatal(s"Bound `$boundExpression` could not be verified!")
       // solver.printAssertions()
       solver.printModel()
     }
