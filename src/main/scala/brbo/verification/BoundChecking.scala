@@ -18,8 +18,8 @@ object BoundChecking {
                  decompositionResult: DecompositionResult,
                  boundExpression: AST,
                  printModelIfFail: Boolean): Boolean = {
-    logger.info()
-    logger.info()
+    logger.info("")
+    logger.info("")
     logger.info(s"Checking bound... Mode: `${decompositionResult.amortizationMode}`")
 
     val targetMethod = decompositionResult.targetMethod
