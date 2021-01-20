@@ -19,6 +19,7 @@
       <element id="dir-copy" path="$PROJECT_DIR$/src/resources" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/com.microsoft.z3.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$USER_HOME$/AppData/Local/Coursier/cache/v1/https/repo1.maven.org/maven2/commons-io/commons-io/2.5/commons-io-2.5.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$USER_HOME$/AppData/Local/Coursier/cache/v1/https/repo1.maven.org/maven2/args4j/args4j/2.33/args4j-2.33.jar" path-in-jar="/" />
     </root>
   </artifact>
 </component>

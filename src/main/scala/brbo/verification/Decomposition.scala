@@ -1,5 +1,6 @@
 package brbo.verification
 
+import brbo.BrboMain.AmortizationMode.AmortizationMode
 import brbo.common.BeforeOrAfter.BEFORE
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, Resource}
 import brbo.common.InstrumentUtils.FileFormat.JAVA_FORMAT
@@ -20,7 +21,7 @@ import org.checkerframework.dataflow.cfg.node._
 import scala.collection.JavaConverters._
 import scala.collection.immutable.{HashMap, HashSet}
 
-class Decomposition(inputMethod: TargetMethod, debug: Boolean = false) {
+class Decomposition(inputMethod: TargetMethod, amortizationMode: AmortizationMode, debug: Boolean) {
   private val logger = LogManager.getLogger(classOf[Decomposition])
 
   private val commands = TreeUtils.collectCommands(inputMethod.methodTree.getBody)

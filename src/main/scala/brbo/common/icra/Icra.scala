@@ -9,11 +9,14 @@ import com.microsoft.z3.AST
 import org.apache.logging.log4j.LogManager
 
 import scala.collection.immutable.HashSet
+import scala.concurrent.{Await, Future, TimeoutException, blocking, duration}
 import scala.sys.process._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 object Icra {
   private val logger = LogManager.getLogger("brbo.common.icra.Icra")
   private val icraPath = s"${System.getProperty("user.home")}/Documents/workspace/icra/icra"
+  private val TIMEOUT = 30 // Unit: Seconds
 
   def run(sourceCode: String): Option[List[ParsedInvariant]] = {
     val stdout = new StringBuilder
@@ -30,18 +33,27 @@ object Icra {
     var parsedInvariants: Option[List[ParsedInvariant]] = None
 
     try {
-      // TODO: Set a timeout: 60s
-      val status = cmd ! ProcessLogger(stdout append _, stderr append _)
-      if (status == 0) {
+      // Set a timeout
+      // val status = cmd ! ProcessLogger(stdout append _, stderr append _)
+      val process = cmd.run(ProcessLogger(stdout append _, stderr append _))
+      val future = Future(blocking(process.exitValue())) // wrap in Future
+      val result = try {
+        Await.result(future, duration.Duration(TIMEOUT, "sec"))
+      } catch {
+        case _: TimeoutException =>
+          logger.fatal(s"ICRA timed out after `$TIMEOUT`! seconds")
+          process.destroy()
+          process.exitValue()
+      }
+      if (result == 0) {
         logger.trace(s"stdout:\n$stdout")
         parsedInvariants = Some(parseInvariants(stdout.toString()))
+        val removeFile = s"rm $file"
+        removeFile.!!
       }
       else {
-        throw new RuntimeException("Error when running ICRA")
+        logger.fatal("Error when running ICRA")
       }
-
-      val removeFile = s"rm $file"
-      removeFile.!!
     }
     catch {
       case e: Exception =>

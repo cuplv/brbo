@@ -31,12 +31,6 @@ class ReachingDefinitionUnitTest extends AnyFlatSpec {
             }"
         }).sorted.mkString("\n")
         assert(StringCompare.ignoreWhitespaces(output, testCase.expectedOutput, testCase.className))
-      // TODO: I have no idea why this doesn't work
-      /*TreeUtils.collectCommands(targetMethod.methodTree.getBody).foreach({
-        statement =>
-          println(cfg.getNodesCorrespondingToTree(statement))
-          println(s"Command: `$statement` -> Store: ${result.getStoreBefore(statement)}")
-      })*/
     })
   }
 }

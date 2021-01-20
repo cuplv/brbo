@@ -1,5 +1,6 @@
 package brbo.verification
 
+import brbo.BrboMain.AmortizationMode.SELECTIVE
 import brbo.common.MathUtils
 import brbo.{StringCompare, TestCaseJavaProgram}
 import org.apache.logging.log4j.LogManager
@@ -12,7 +13,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.initializeSubprogramsUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod)
+        val decomposition = new Decomposition(targetMethod, SELECTIVE, debug = false)
         val result = decomposition.initializeSubprograms()
         assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
     })
@@ -22,7 +23,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.mergeSubprogramsUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod)
+        val decomposition = new Decomposition(targetMethod, SELECTIVE, debug = false)
         val initialSubprograms: Set[decomposition.Subprogram] = decomposition.initializeSubprograms()
         val result: Traversable[decomposition.Subprogram] = MathUtils.crossJoin(List(initialSubprograms, initialSubprograms)).map({
           subprograms =>
@@ -40,7 +41,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.mergeIfOverlapSubprogramsUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod)
+        val decomposition = new Decomposition(targetMethod, SELECTIVE, debug = false)
         val result = decomposition.mergeIfOverlap(decomposition.initializeSubprograms())
         assert(StringCompare.ignoreWhitespaces(result.programs, testCase.expectedOutput, testCase.className))
     })
@@ -50,7 +51,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.enlargeSubprogramsUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod)
+        val decomposition = new Decomposition(targetMethod, SELECTIVE, debug = false)
         val initialSubprograms: Set[decomposition.Subprogram] = decomposition.initializeSubprograms()
         val result: Set[decomposition.Subprogram] = initialSubprograms.map({
           subprogram =>
@@ -75,7 +76,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.environmentModifiedSetUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod)
+        val decomposition = new Decomposition(targetMethod, SELECTIVE, debug = false)
         val subprograms = decomposition.mergeIfOverlap(decomposition.initializeSubprograms())
         val result = decomposition.environmentModifiedSet(subprograms.programs.head, subprograms)
         assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
@@ -86,7 +87,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.subsequentExecutionUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod)
+        val decomposition = new Decomposition(targetMethod, SELECTIVE, debug = false)
         val initialSubprograms: List[decomposition.Subprogram] = decomposition.initializeSubprograms().toList
         val result = MathUtils.crossJoin2(initialSubprograms, initialSubprograms).map({
           case (subprogram1, subprogram2) =>
@@ -102,7 +103,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.decompositionUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod)
+        val decomposition = new Decomposition(targetMethod, SELECTIVE, debug = false)
         val result = decomposition.decompose().programs
         assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
     })
@@ -112,7 +113,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.insertingResetsAndUpdatesUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod)
+        val decomposition = new Decomposition(targetMethod, SELECTIVE, debug = false)
         val subprograms = decomposition.mergeIfOverlap(decomposition.initializeSubprograms())
         val result = decomposition.insertGhostVariables(subprograms)
         assert(StringCompare.ignoreWhitespaces(result.sourceFileContents, testCase.expectedOutput, testCase.className))

@@ -1,6 +1,9 @@
 package brbo
 
-import brbo.common.{TargetMethod, Z3Solver}
+import java.io.File
+
+import brbo.BrboMain.AmortizationMode.SELECTIVE
+import brbo.common.{CommandLineArguments, TargetMethod, Z3Solver}
 import brbo.verification.Decomposition.DecompositionResult
 import brbo.verification.{BasicProcessor, BoundChecking, Decomposition}
 import com.microsoft.z3.AST
@@ -17,29 +20,36 @@ object BrboMain {
     try source.mkString finally source.close()
   }
 
+  object AmortizationMode extends Enumeration {
+    type AmortizationMode = Value
+    val NO, FULL, SELECTIVE = Value
+  }
+
   def main(args: Array[String]) {
     logger.info("Brbo has started: Infer resource usage upper bounds for each method.")
-    logger.info(s"Reading source files in `${args(0)}`")
-    val sourceFiles: Map[String, String] = {
-      readFromFile(args(0)).split("\n").foldLeft(new HashMap[String, String])({
+
+    val commandLineArguments = CommandLineArguments.parseArguments(args)
+    logger.info(s"Analyze files under directory `${commandLineArguments.getDirectoryToAnalyze}`")
+    logger.info(s"Amortization mode: `${commandLineArguments.getAmortizationMode}`")
+    logger.info(s"Debug mode? ${commandLineArguments.getDebugMode}")
+
+    val sourceFiles: Map[File, String] = {
+      val file = new java.io.File(commandLineArguments.getDirectoryToAnalyze)
+      val allFiles: Array[File] = {
+        if (file.isDirectory) file.listFiles
+        else Array(file)
+      }
+      val allJavaFilePaths = allFiles.filter(_.getName.endsWith(".java"))
+      allJavaFilePaths.foldLeft(new HashMap[File, String])({
         (acc, sourceFileLocation) =>
           logger.info(s"Reading from source file `$sourceFileLocation`")
-          acc + (sourceFileLocation -> readFromFile(sourceFileLocation))
+          acc + (sourceFileLocation -> readFromFile(sourceFileLocation.getAbsolutePath))
       })
     }
-    val debugMode: Boolean = {
-      if (args.length == 2) {
-        args(1) match {
-          case "debug" => true
-          case _ => false
-        }
-      }
-      else false
-    }
-    logger.info(s"Debug mode? $debugMode")
 
     sourceFiles.foreach({
-      case (sourceFilePath, sourceFileContents) =>
+      case (sourceFile, sourceFileContents) =>
+        val sourceFilePath = sourceFile.getAbsolutePath
         logger.info(s"Inferring bound for file `$sourceFilePath`")
 
         val className: String = {
@@ -54,7 +64,7 @@ object BrboMain {
           logger.info(s"Parsing...")
           val targetMethod: TargetMethod = BasicProcessor.getTargetMethod(className, sourceFileContents)
 
-          val decomposition: Decomposition = new Decomposition(targetMethod, debugMode)
+          val decomposition: Decomposition = new Decomposition(targetMethod, SELECTIVE, commandLineArguments.getDebugMode)
           val decompositionResult: DecompositionResult = {
             logger.info(s"Decomposing...")
             val subprograms = decomposition.decompose()
@@ -66,7 +76,7 @@ object BrboMain {
           val boundExpression: AST = BoundChecking.extractBoundExpression(solver, targetMethod.methodTree, targetMethod.inputVariables ++ targetMethod.localVariables)
           logger.info(s"Extracted bound expression is `$boundExpression`")
           logger.info(s"Checking bound...")
-          BoundChecking.checkBound(solver, decompositionResult, boundExpression, printModelIfFail = true, debug = debugMode)
+          BoundChecking.checkBound(solver, decompositionResult, boundExpression, printModelIfFail = true)
         }
         else {
           logger.info(s"Skipping bound checking for file `$sourceFilePath`")

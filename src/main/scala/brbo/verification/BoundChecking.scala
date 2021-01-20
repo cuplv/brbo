@@ -16,8 +16,7 @@ object BoundChecking {
   def checkBound(solver: Z3Solver,
                  decompositionResult: DecompositionResult,
                  boundExpression: AST,
-                 printModelIfFail: Boolean,
-                 debug: Boolean = false): Boolean = {
+                 printModelIfFail: Boolean): Boolean = {
     val targetMethod = decompositionResult.targetMethod
     val deltaCounterPairs = decompositionResult.deltaCounterPairs
 
