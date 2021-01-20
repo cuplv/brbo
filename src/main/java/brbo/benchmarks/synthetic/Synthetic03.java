@@ -1,6 +1,6 @@
 package brbo.benchmarks.synthetic;
 
-class Synthetic01 {
+class Synthetic03 {
   void f(int n, int m) {
     int R = 0;
     int i = 0;
@@ -11,9 +11,14 @@ class Synthetic01 {
         j++;
         R = R + 1;
       }
-      j = 0;
-      while (j < m) {
-        j++;
+      i++;
+    }
+
+    i = 0;
+    while (i < n) {
+      int k = 0;
+      while (k < m) {
+        k++;
         R = R + 1;
       }
       i++;
