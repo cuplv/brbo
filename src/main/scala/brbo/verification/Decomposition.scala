@@ -940,7 +940,7 @@ object Decomposition {
                                  deltaCounterPairs: Set[DeltaCounterPair],
                                  amortizationMode: AmortizationMode,
                                  inputMethod: TargetMethod) {
-    logger.info(s"Decomposition result (Mode: $amortizationMode):\n$newSourceFileContents")
+    logger.info(s"Decomposition result (Mode: `$amortizationMode`):\n$newSourceFileContents")
     val outputMethod: TargetMethod = BasicProcessor.getTargetMethod(inputMethod.fullQualifiedClassName, newSourceFileContents)
   }
 

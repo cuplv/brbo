@@ -48,7 +48,7 @@ case class TargetMethod(fullQualifiedClassName: String,
     // We expect input method's class name to be a fully qualified class name (e.g., `brbo.benchmarks.containers.stac.OutputHandler`)
     val index = fullQualifiedClassName.lastIndexOf(".")
     val newClassName = fullQualifiedClassName.substring(index + 1)
-    logger.info(s"New class name: `$newClassName`")
+    logger.trace(s"New class name: `$newClassName`")
     newClassName
   }
 
@@ -57,7 +57,7 @@ case class TargetMethod(fullQualifiedClassName: String,
       case -1 => None
       case index =>
         val packageName = fullQualifiedClassName.substring(0, index)
-        logger.info(s"Package name: `$packageName`")
+        logger.trace(s"Package name: `$packageName`")
         Some(packageName)
     }
   }

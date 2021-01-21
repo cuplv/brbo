@@ -134,6 +134,7 @@ object BoundChecking {
         val deltaVariable = deltaCounterPair.delta
         val counterVariable = deltaCounterPair.counter
 
+        logger.info(s"Infer invariant for the peak value of delta variable `$deltaVariable`")
         val peakInvariant = invariantInference.inferInvariant(
           solver,
           Locations(
@@ -150,8 +151,8 @@ object BoundChecking {
           localVariables - deltaVariable,
           globalScopeVariables
         )
-        logger.trace(s"Invariant for the peak value of delta variable `$deltaVariable`:\n$peakInvariant")
 
+        logger.info(s"Infer invariant for the accumulation of delta variable `$deltaVariable` (per visit to its subprogram)")
         val accumulationInvariant = {
           val accumulationInvariant = invariantInference.inferInvariant(
             solver,
@@ -177,7 +178,6 @@ object BoundChecking {
           )
           doublePrimeInvariant
         }
-        logger.trace(s"Invariant for the accumulation of delta variable `$deltaVariable` (per visit to its subprogram):\n$accumulationInvariant")
 
         val isCounterUpdateInLoop: Boolean = {
           decompositionResult.outputMethod.commands.find({
@@ -243,7 +243,6 @@ object BoundChecking {
             globalScopeVariables
           )
         }
-        logger.trace(s"Invariant for AST counter `$counterVariable`:\n$counterInvariant")
 
         (peakInvariant, accumulationInvariant, counterInvariant)
     })
@@ -354,8 +353,8 @@ object BoundChecking {
           false
       }
     }
-    if (!result) logger.fatal(s"Bound could not be verified: `$boundExpression`")
-    else logger.info(s"Bound is verified: `$boundExpression`")
+    val yesOrNo = if (result) "Yes!" else "No!"
+    logger.info(s"Is bound `$boundExpression` verified? $yesOrNo (Mode: `${decompositionResult.amortizationMode}`; Class `${decompositionResult.inputMethod.fullQualifiedClassName}`)")
     result
   }
 

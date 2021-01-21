@@ -11,15 +11,16 @@ public abstract class TemplateEngine extends Common {
     int startTagLocation = 0;
     int endTagLocation = 0;
     int stringBuilder = 0;
-    while (endTagLocation < text - 1) {
-      startTagLocation = ndInt2(endTagLocation + 1, text - 1);
-      endTagLocation = ndInt2(startTagLocation + 1, text - 1);
+    while (true) {
+      startTagLocation = ndInt2(endTagLocation + 1, text);
+      endTagLocation = ndInt2(startTagLocation + 1, text);
+      if (endTagLocation == text) break;
       stringBuilder += startTagLocation - linePointer;
-      R = R + startTagLocation - linePointer;
+      R = R + (startTagLocation - linePointer);
       linePointer = endTagLocation;
     }
     stringBuilder += text - linePointer;
-    R = R + text - linePointer;
+    R = R + (text - linePointer);
   }
   // No (Imprecise); Yes; Yes (Same as Brbo)
 }
