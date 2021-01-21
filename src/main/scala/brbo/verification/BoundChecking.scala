@@ -129,7 +129,6 @@ object BoundChecking {
     }
     logger.trace(s"For Z3, we declare these variables in the global scope: `$globalScopeVariables`")
 
-    logger.info(s"No matter what is the specified amortization mode, we infer invariants for counters with `$SELECTIVE_AMORTIZE`")
     val newCommandLineArguments = CommandLineArguments(SELECTIVE_AMORTIZE, commandLineArguments.debugMode, commandLineArguments.directoryToAnalyze)
     val invariantInference = new InvariantInference(decompositionResult.outputMethod)
     val invariants: Set[(AST, AST, AST)] = deltaCounterPairs.map({
@@ -204,7 +203,7 @@ object BoundChecking {
 
         val counterInvariantFuture = Future {
           if (isCounterUpdateInLoop) {
-            logger.info(s"Infer invariants for AST counter `$counterVariable` by treating it as consuming resources")
+            logger.info(s"Infer invariants for AST counter `$counterVariable` by treating it as consuming resources (Mode: `$SELECTIVE_AMORTIZE`)")
             val newResourceVariable = GhostVariableUtils.generateName(HashSet[String](resourceVariable._1), Resource)
             val newMethodBody = InstrumentUtils.instrumentStatementTrees(
               decompositionResult.outputMethod,
