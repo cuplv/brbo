@@ -16,10 +16,11 @@ object BrboMain {
   private val logger = LogManager.getLogger("brbo.BrboMain")
 
   def main(args: Array[String]) {
-    logger.info("Brbo has started: Infer resource usage upper bounds for each method.")
+    logger.info("Brbo has started.")
 
     val commandLineArguments = CommandLineArgumentsReflect.parseArguments(args)
-    logger.info(s"Analyze files under directory `${commandLineArguments.directoryToAnalyze}`")
+    logger.info(s"Infer resource usage upper bounds for each method in each file `*.java` under directory `${commandLineArguments.directoryToAnalyze}`")
+    logger.warn(s"We assume each class contains exactly one method")
     logger.info(s"Amortization mode: `${commandLineArguments.amortizationMode}`")
     logger.info(s"Debug mode? `${commandLineArguments.debugMode}`")
 

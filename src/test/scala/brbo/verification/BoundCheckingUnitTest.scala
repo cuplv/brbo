@@ -1,9 +1,9 @@
 package brbo.verification
 
-import brbo.TestCaseJavaProgram
 import brbo.common.{CommandLineArguments, Z3Solver}
 import brbo.verification.AmortizationMode.UNKNOWN
 import brbo.verification.Decomposition.{DecompositionResult, DeltaCounterPair}
+import brbo.{StringCompare, TestCaseJavaProgram}
 import com.microsoft.z3.AST
 import org.apache.logging.log4j.LogManager
 import org.scalatest.flatspec.AnyFlatSpec
@@ -27,10 +27,9 @@ class BoundCheckingUnitTest extends AnyFlatSpec {
           solver,
           decompositionResult,
           boundExpression,
-          printModelIfFail = false,
           CommandLineArguments(UNKNOWN, debugMode = false, "")
         )
-        assert(result.toString == testCase.expectedOutput, s"Test case ${testCase.className} failed")
+        assert(StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput, s"Test case ${testCase.className} failed"))
     })
   }
 }
@@ -352,20 +351,23 @@ object BoundCheckingUnitTest {
     val FALSE = "false"
 
     val solver1 = new Z3Solver
-    val boundExpression1 = solver1.mkLe(
-      solver1.mkIntVar("R"),
-      solver1.mkIntVar("n")
-    )
+    val boundExpression1 = {
+      val R = solver1.mkIntVar("R")
+      val n = solver1.mkIntVar("n")
+      solver1.mkITE(
+        solver1.mkGe(n, solver1.mkIntVal(0)),
+        solver1.mkLe(R, n),
+        solver1.mkTrue()
+      )
+    }
 
     val solver2 = new Z3Solver
     val boundExpression2 = {
       val R = solver2.mkIntVar("R")
+      val n = solver2.mkIntVar("n")
       solver2.mkITE(
-        solver2.mkGt(R, solver2.mkIntVal(1)),
-        solver2.mkLe(
-          R,
-          solver2.mkIntVal(1)
-        ),
+        solver2.mkGe(n, solver2.mkIntVal(0)),
+        solver2.mkLe(R, solver2.mkSub(n, solver2.mkIntVal(1))),
         solver2.mkFalse()
       )
     }

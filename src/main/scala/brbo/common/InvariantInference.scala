@@ -16,20 +16,13 @@ class InvariantInference(targetMethod: TargetMethod) {
    *
    * @param solver                The solver that is used to construct Z3 ASTs that represent the inferred invariants
    * @param locations             The locations before or after which we wish to infer invariants
-   * @param existentiallyQuantify The inferred invariants must existentially quantify these variables
    * @param freeVariables         The inferred invariants must only contain free variables that appear in this set
    * @return The conjunction of local invariants that are existentially quantified by some variables
    */
   def inferInvariant(solver: Z3Solver,
                      locations: Locations,
                      whichVariable: String,
-                     existentiallyQuantify: Map[String, BrboType],
                      freeVariables: Map[String, BrboType]): BoolExpr = {
-    // Intermediate variables must be existentially quantified
-    def getExtraExistentiallyQuantify(variables: Set[String]): Set[String] = {
-      variables.filter(variable => !existentiallyQuantify.contains(variable) && !freeVariables.contains(variable))
-    }
-
     logger.info(s"Infer invariants in method `${methodTree.getName}` `${locations.beforeOrAfter}` specified nodes in CFG")
     val cProgram = translateToCAndInsertAssertions(locations, whichVariable)
     Icra.run(cProgram) match {
@@ -38,30 +31,28 @@ class InvariantInference(targetMethod: TargetMethod) {
           parsedInvariants.map {
             parsedInvariant =>
               val (invariant, variableNames) = Icra.translateToZ3AndCollectVariables(parsedInvariant.invariant, BOOL, solver)
-              var extraExistentiallyQuantify = getExtraExistentiallyQuantify(variableNames)
+              // Intermediate variables must be existentially quantified
+              var usedVariables: Set[String] = variableNames
 
               val equalities = {
                 val equalities: List[AST] = parsedInvariant.declarations.map({
                   case Assignment(variable, expression) =>
                     val (variableAst, variableNames1) = Icra.translateToZ3AndCollectVariables(variable, INT, solver)
-                    extraExistentiallyQuantify = extraExistentiallyQuantify ++ getExtraExistentiallyQuantify(variableNames1)
+                    usedVariables = usedVariables ++ variableNames1
                     val (expressionAst, variableNames2) = Icra.translateToZ3AndCollectVariables(expression, INT, solver)
-                    extraExistentiallyQuantify = extraExistentiallyQuantify ++ getExtraExistentiallyQuantify(variableNames2)
+                    usedVariables = usedVariables ++ variableNames2
                     solver.mkEq(variableAst, expressionAst)
                   case x@_ => throw new Exception(s"Declaration $x should be parsed into `Assignment`")
                 })
                 solver.mkAnd(equalities: _*)
               }
-              solver.mkExists(
-                existentiallyQuantify.map({
-                  case (identifier, typ) =>
-                    typ match {
-                      case INT => solver.mkIntVar(identifier)
-                      case BOOL => solver.mkBoolVar(identifier)
-                    }
-                }) ++ extraExistentiallyQuantify.map(variable => solver.mkIntVar(variable)),
-                solver.mkAnd(invariant, equalities).asInstanceOf[Expr]
-              )
+              val constraint = solver.mkAnd(invariant, equalities).asInstanceOf[Expr]
+              val existentiallyQuantify = usedVariables.filter(variable => !freeVariables.contains(variable)).map(variable => solver.mkIntVar(variable))
+              if (existentiallyQuantify.isEmpty) {
+                logger.debug(s"No local variable to quantify - Used variables: `$usedVariables`. Expected free variables: `$freeVariables`")
+                constraint
+              }
+              else solver.mkExists(existentiallyQuantify, constraint)
           }
         solver.mkOr(existentiallyQuantifiedInvariants: _*)
       case None =>

@@ -36,17 +36,9 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
           ),
           whichVariable = "D100",
           HashMap[String, BrboType](
-            "R" -> INT,
-            "C1" -> INT,
-            "i" -> INT,
-            "j" -> INT
-          ),
-          HashMap[String, BrboType](
-            "R" -> INT,
             "n" -> INT,
             "m" -> INT,
             "l" -> INT,
-            "C1" -> INT,
             "D100" -> INT
           )
         )
@@ -76,17 +68,9 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
           ),
           whichVariable = "D100",
           HashMap[String, BrboType](
-            "R" -> INT,
-            "C1" -> INT,
-            "i" -> INT,
-            "j" -> INT
-          ),
-          HashMap[String, BrboType](
-            "R" -> INT,
             "n" -> INT,
             "m" -> INT,
             "l" -> INT,
-            "C1" -> INT,
             "D100" -> INT
           )
         )
@@ -116,18 +100,10 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
           ),
           whichVariable = "C1",
           HashMap[String, BrboType](
-            "R" -> INT,
-            "D100" -> INT,
-            "i" -> INT,
-            "j" -> INT
-          ),
-          HashMap[String, BrboType](
-            "R" -> INT,
             "n" -> INT,
             "m" -> INT,
             "l" -> INT,
-            "C1" -> INT,
-            "D100" -> INT
+            "C1" -> INT
           )
         )
         logger.debug(result)
@@ -139,10 +115,8 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
 object InvariantInferenceUnitTest {
   val deltaVariableUpdateTests: HashSet[TestCaseJavaProgram] = {
     val test01Expected =
-      """(let ((a!1 (exists ((C1 Int)
-        |                    (j Int)
-        |                    (i Int)
-        |                    (R Int)
+      """(let ((a!1 (exists ((i Int)
+        |                    (C1 Int)
         |                    (|K:146| Int)
         |                    (|mid_R:148| Int)
         |                    (|param0:12| Int)
@@ -153,6 +127,7 @@ object InvariantInferenceUnitTest {
         |                    (|C1':153| Int)
         |                    (|mid_D100:147| Int)
         |                    (|K:150| Int)
+        |                    (R Int)
         |                    (|K:155| Int)
         |                    (|D100':154| Int))
         |             (! (let ((a!1 (and (<= 1 |K:146|)
@@ -198,16 +173,15 @@ object InvariantInferenceUnitTest {
         |                :weight 0))))
         |  (or a!1))""".stripMargin
     val test02Expected =
-      """(let ((a!1 (exists ((C1 Int)
-        |                    (j Int)
+      """(let ((a!1 (exists ((|mid_j:211| Int)
         |                    (i Int)
-        |                    (R Int)
-        |                    (|mid_j:211| Int)
         |                    (|j':217| Int)
+        |                    (C1 Int)
         |                    (|K:219| Int)
         |                    (|param0:14| Int)
         |                    (|param1:17| Int)
         |                    (|K:222| Int)
+        |                    (j Int)
         |                    (|mid_R:223| Int)
         |                    (|mid_C1:212| Int)
         |                    (|D100':226| Int)
@@ -222,6 +196,7 @@ object InvariantInferenceUnitTest {
         |                    (|C1':218| Int)
         |                    (|mid_i:207| Int)
         |                    (|mid_D100:210| Int)
+        |                    (R Int)
         |                    (|mid_R:209| Int)
         |                    (|R':227| Int)
         |                    (|mid_j:220| Int)
@@ -347,19 +322,18 @@ object InvariantInferenceUnitTest {
 
   val deltaVariableResetTests: HashSet[TestCaseJavaProgram] = {
     val test01Expected =
-      """(let ((a!1 (exists ((C1 Int)
-        |                    (j Int)
-        |                    (i Int)
-        |                    (R Int)
-        |                    (|C1':154| Int)
+      """(let ((a!1 (exists ((|C1':154| Int)
         |                    (|D100':155| Int)
         |                    (|K:151| Int)
+        |                    (i Int)
+        |                    (C1 Int)
         |                    (|i':152| Int)
         |                    (|param0:12| Int)
         |                    (|R':153| Int)
         |                    (|K:156| Int)
         |                    (|mid_i:146| Int)
         |                    (|K:147| Int)
+        |                    (R Int)
         |                    (|mid_C1:150| Int)
         |                    (|mid_R:149| Int)
         |                    (|mid_D100:148| Int))
@@ -406,15 +380,14 @@ object InvariantInferenceUnitTest {
         |                :weight 0))))
         |  (or a!1))""".stripMargin
     val test02Expected =
-      """(let ((a!1 (exists ((C1 Int)
-        |                    (j Int)
+      """(let ((a!1 (exists ((|mid_j:211| Int)
         |                    (i Int)
-        |                    (R Int)
-        |                    (|mid_j:211| Int)
         |                    (|j':217| Int)
+        |                    (C1 Int)
         |                    (|K:219| Int)
         |                    (|param0:14| Int)
         |                    (|param1:17| Int)
+        |                    (j Int)
         |                    (|mid_C1:212| Int)
         |                    (|i':215| Int)
         |                    (|K:214| Int)
@@ -423,6 +396,7 @@ object InvariantInferenceUnitTest {
         |                    (|C1':218| Int)
         |                    (|mid_i:207| Int)
         |                    (|mid_D100:210| Int)
+        |                    (R Int)
         |                    (|j:4| Int)
         |                    (|mid_R:209| Int)
         |                    (|K:208| Int))
@@ -517,20 +491,19 @@ object InvariantInferenceUnitTest {
 
   val counterVariableUpdateTests: HashSet[TestCaseJavaProgram] = {
     val test01Expected =
-      """(let ((a!1 (exists ((j Int)
-        |                    (i Int)
-        |                    (D100 Int)
-        |                    (R Int)
-        |                    (|C1':154| Int)
+      """(let ((a!1 (exists ((|C1':154| Int)
         |                    (|D100':155| Int)
         |                    (|K:151| Int)
+        |                    (i Int)
         |                    (|i':152| Int)
         |                    (|param0:12| Int)
         |                    (|R':153| Int)
         |                    (|K:156| Int)
         |                    (|mid_i:146| Int)
         |                    (|K:147| Int)
+        |                    (R Int)
         |                    (|mid_C1:150| Int)
+        |                    (D100 Int)
         |                    (|mid_R:149| Int)
         |                    (|mid_D100:148| Int))
         |             (! (let ((a!1 (and (<= 1 |K:147|)
@@ -576,15 +549,13 @@ object InvariantInferenceUnitTest {
         |                :weight 0))))
         |  (or a!1))""".stripMargin
     val test02Expected =
-      """(let ((a!1 (exists ((j Int)
+      """(let ((a!1 (exists ((|mid_j:211| Int)
         |                    (i Int)
-        |                    (D100 Int)
-        |                    (R Int)
-        |                    (|mid_j:211| Int)
         |                    (|j':217| Int)
         |                    (|K:219| Int)
         |                    (|param0:14| Int)
         |                    (|param1:17| Int)
+        |                    (j Int)
         |                    (|mid_C1:212| Int)
         |                    (|i':215| Int)
         |                    (|K:214| Int)
@@ -593,7 +564,9 @@ object InvariantInferenceUnitTest {
         |                    (|C1':218| Int)
         |                    (|mid_i:207| Int)
         |                    (|mid_D100:210| Int)
+        |                    (R Int)
         |                    (|mid_R:209| Int)
+        |                    (D100 Int)
         |                    (|j:3| Int)
         |                    (|K:208| Int))
         |             (! (let ((a!1 (= |mid_j:211| (* (ite (= |K:208| 0) 1 0) |j:3|)))

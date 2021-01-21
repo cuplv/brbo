@@ -8,11 +8,12 @@ import brbo.common.TypeUtils.BrboType.{BrboType, INT}
 import brbo.common.{Locations, _}
 import brbo.verification.AmortizationMode.SELECTIVE_AMORTIZE
 import brbo.verification.Decomposition.{DecompositionResult, DeltaCounterPair}
-import com.microsoft.z3.{AST, Expr}
+import com.microsoft.z3.AST
 import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
 
 import scala.collection.JavaConverters._
+import scala.collection.immutable.HashMap
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.concurrent.duration._
@@ -107,27 +108,31 @@ object BoundChecking {
     assert(methodBody != null)
 
     val inputVariables = decompositionResult.outputMethod.inputVariables
-    val localVariables = decompositionResult.outputMethod.localVariables
+    val originalLocalVariables: Map[String, BrboType] = decompositionResult.outputMethod.localVariables
 
     val resourceVariable: (String, BrboType) = {
-      val resourceVariables = localVariables.filter({ case (identifier, _) => GhostVariableUtils.isGhostVariable(identifier, Resource) })
+      val resourceVariables = originalLocalVariables.filter({ case (identifier, _) => GhostVariableUtils.isGhostVariable(identifier, Resource) })
       assert(resourceVariables.size == 1, s"There must be exactly 1 resource variable. Instead we have `$resourceVariables`")
       resourceVariables.head
     }
     logger.info(s"Resource variable: $resourceVariable")
 
-    val globalScopeVariables: Map[String, BrboType] = {
-      val variables: Set[String] =
-        deltaCounterPairs.map({ deltaCounterPair => deltaCounterPair.delta }) ++ // Delta variables
-          CounterAxiomGenerator.generateCounterMap(methodBody).values + // Counters for all ASTs
-          resourceVariable._1 // Resource variable
-      variables.foldLeft(inputVariables)({
-        (acc, variable) => acc + (variable -> INT)
+    val deltaVariables: Map[String, BrboType] =
+      deltaCounterPairs.map({ deltaCounterPair => deltaCounterPair.delta }).foldLeft(new HashMap[String, BrboType])({
+        (acc, delta) => acc + (delta -> INT)
       })
+    val counterVariables: Map[String, BrboType] =
+      CounterAxiomGenerator.generateCounterMap(methodBody).values.foldLeft(new HashMap[String, BrboType])({
+        (acc, counter) => acc + (counter -> INT)
+      })
+    val allLocalVariables: Map[String, BrboType] = originalLocalVariables ++ deltaVariables ++ counterVariables
+    val z3GlobalScopeVariables: Map[String, BrboType] = {
+      val variables: Map[String, BrboType] = deltaVariables ++ counterVariables + (resourceVariable._1 -> INT) // Resource variable
+      variables ++ inputVariables
     }
-    logger.trace(s"For Z3, we declare these variables in the global scope: `$globalScopeVariables`")
+    logger.trace(s"For Z3, we declare these variables in the global scope: `$z3GlobalScopeVariables`")
 
-    val newCommandLineArguments = CommandLineArguments(SELECTIVE_AMORTIZE, commandLineArguments.debugMode, commandLineArguments.directoryToAnalyze)
+    // val newCommandLineArguments = CommandLineArguments(SELECTIVE_AMORTIZE, commandLineArguments.debugMode, commandLineArguments.directoryToAnalyze)
     val lastTree = decompositionResult.outputMethod.methodTree.getBody.getStatements.asScala.last
     val invariantInference = new InvariantInference(decompositionResult.outputMethod)
     val invariants: Set[(AST, AST, AST)] = deltaCounterPairs.map({
@@ -151,14 +156,13 @@ object BoundChecking {
               AFTER
             ),
             deltaVariable,
-            localVariables - deltaVariable,
-            globalScopeVariables
+            inputVariables + (deltaVariable -> INT)
           )
         }
 
         logger.info(s"Infer invariant for the accumulation of delta variable `$deltaVariable` (per visit to its subprogram)")
         val accumulationInvariantFuture = Future {
-          val accumulationInvariant = invariantInference.inferInvariant(
+          invariantInference.inferInvariant(
             solver,
             Locations(
               {
@@ -172,19 +176,11 @@ object BoundChecking {
               BEFORE
             ),
             deltaVariable,
-            localVariables - deltaVariable,
-            globalScopeVariables
+            inputVariables + (deltaVariable -> INT)
           )
-
-          // Delta variables' double primed version represents the maximum amount of accumulation per execution of subprograms
-          val doublePrimeInvariant = accumulationInvariant.asInstanceOf[Expr].substitute(
-            solver.mkIntVar(deltaVariable).asInstanceOf[Expr],
-            solver.mkIntVar(generateDeltaVariableDoublePrime(deltaVariable)).asInstanceOf[Expr]
-          )
-          doublePrimeInvariant
         }
 
-        val isCounterUpdateInLoop: Boolean = {
+        /*val isCounterUpdateInLoop: Boolean = {
           decompositionResult.outputMethod.commands.find({
             case expressionStatementTree: ExpressionStatementTree =>
               GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Counter) match {
@@ -200,7 +196,7 @@ object BoundChecking {
               }
             case None => throw new Exception("Unreachable")
           }
-        }
+        }*/
 
         val counterInvariantFuture = Future {
           /*if (isCounterUpdateInLoop) {
@@ -241,8 +237,7 @@ object BoundChecking {
               AFTER
             ),
             counterVariable,
-            localVariables - counterVariable,
-            globalScopeVariables
+            inputVariables + (counterVariable -> INT)
           )
           //}
         }
@@ -250,7 +245,44 @@ object BoundChecking {
         val peakInvariant = Await.result(peakInvariantFuture, Duration.Inf)
         val accumulationInvariant = Await.result(accumulationInvariantFuture, Duration.Inf)
         val counterInvariant = Await.result(counterInvariantFuture, Duration.Inf)
-        (peakInvariant, accumulationInvariant, counterInvariant)
+
+        // Delta variables' double primed version represents the maximum amount of accumulation per execution of subprograms
+        val accumulationInvariantDoublePrime = accumulationInvariant.substitute(
+          solver.mkIntVar(deltaVariable),
+          solver.mkIntVar(generateDeltaVariableDoublePrime(deltaVariable))
+        )
+
+        logger.info(s"Sanity check - The total accumulation should be no larger than the peak accumulation")
+        /*sanityCheck(
+          solver,
+          solver.mkAnd(
+            solver.mkNe(solver.mkIntVar(deltaVariable), solver.mkIntVal(0)), // Exclude the 1st time reaching `d=0`
+            accumulationInvariant,
+            solver.mkNot(peakInvariant)
+          ),
+          expect = false
+        )*/
+
+        /*
+        sanityCheck(
+          solver,
+          solver.mkAnd(
+            accumulationInvariantDoublePrime,
+            solver.mkForall(
+              Seq(solver.mkIntVar(deltaVariable)),
+              solver.mkImplies(
+                peakInvariant,
+                solver.mkGt(
+                  solver.mkIntVar(generateDeltaVariableDoublePrime(deltaVariable)),
+                  solver.mkIntVar(deltaVariable),
+                )
+              )
+            )
+          ),
+          expect = false
+        )*/
+
+        (peakInvariant, accumulationInvariantDoublePrime, counterInvariant)
     })
 
     if (invariants.isEmpty) logger.fatal(s"No invariant was inferred by ICRA!")
@@ -291,10 +323,7 @@ object BoundChecking {
       logger.trace(s"Counter axioms:\n$counterAxioms")
 
       val counterConstraints: AST = {
-        val nonNegativeCounters =
-          globalScopeVariables
-            .filter({ case (identifier, _) => GhostVariableUtils.isGhostVariable(identifier, Counter) })
-            .map({ case (counter, _) => solver.mkGe(solver.mkIntVar(counter), solver.mkIntVal(0)) }).toSeq
+        val nonNegativeCounters = counterVariables.map({ case (counter, _) => solver.mkGe(solver.mkIntVar(counter), solver.mkIntVal(0)) }).toSeq
         solver.mkAnd(
           solver.mkLe(solver.mkIntVar(CounterAxiomGenerator.FIRST_COUNTER_NAME), solver.mkIntVal(1)),
           solver.mkAnd(nonNegativeCounters: _*)
@@ -308,15 +337,24 @@ object BoundChecking {
       )
     }
 
-    // Sanity check: We assume the generated constraints won't contradict with each other
-    checkSAT(solver, resourceInvariants)
-    checkSAT(solver, deltaInvariants)
-    checkSAT(solver, counterInvariants)
-    checkSAT(solver, solver.mkAnd(resourceInvariants, deltaInvariants))
-    checkSAT(solver, solver.mkAnd(resourceInvariants, counterInvariants))
-    checkSAT(solver, solver.mkAnd(deltaInvariants, deltaInvariants))
-    checkSAT(solver, solver.mkAnd(resourceInvariants, deltaInvariants, counterInvariants))
-    logger.info(s"Sanity check finished")
+    {
+      // Sanity check: We assume the generated constraints won't contradict with each other
+      logger.info(s"Sanity check - Invariants about resource variables should SAT")
+      sanityCheck(solver, resourceInvariants, expect = true)
+      logger.info(s"Sanity check - Invariants about delta variables should SAT")
+      sanityCheck(solver, deltaInvariants, expect = true)
+      logger.info(s"Sanity check - Invariants about counter variables should SAT")
+      sanityCheck(solver, counterInvariants, expect = true)
+      logger.info(s"Sanity check - Invariants about resource and delta variables should SAT")
+      sanityCheck(solver, solver.mkAnd(resourceInvariants, deltaInvariants), expect = true)
+      logger.info(s"Sanity check - Invariants about resource and counter variables should SAT")
+      sanityCheck(solver, solver.mkAnd(resourceInvariants, counterInvariants), expect = true)
+      logger.info(s"Sanity check - Invariants about delta and counter variables should SAT")
+      sanityCheck(solver, solver.mkAnd(deltaInvariants, counterInvariants), expect = true)
+      logger.info(s"Sanity check - Invariants about resource, delta, and counter variables should SAT")
+      sanityCheck(solver, solver.mkAnd(resourceInvariants, deltaInvariants, counterInvariants), expect = true)
+      logger.info(s"Sanity check finished")
+    }
 
     GlobalInvariants(resourceInvariants, deltaInvariants, counterInvariants, deltaCounterPairs)
   }
@@ -324,17 +362,16 @@ object BoundChecking {
   def checkBound(solver: Z3Solver,
                  decompositionResult: DecompositionResult,
                  boundExpression: AST,
-                 printModelIfFail: Boolean,
                  commandLineArguments: CommandLineArguments): Boolean = {
     logger.info("")
     logger.info("")
-    logger.info(s"Checking bound... Mode: `${decompositionResult.amortizationMode}`")
+    logger.info(s"Check bound (Mode: `${decompositionResult.amortizationMode}`)")
 
     val targetMethod = decompositionResult.outputMethod
     logger.info(s"Verify bound `$boundExpression` in method `${targetMethod.methodTree.getName}` of class `${targetMethod.fullQualifiedClassName}`")
 
-    checkSAT(solver, solver.mkNot(boundExpression))
-    logger.info(s"Sanity check finished")
+    logger.info(s"Sanity check - The bound expression should SAT")
+    sanityCheck(solver, solver.mkNot(boundExpression), expect = true)
 
     val globalInvariants = inferInvariantsForResource(solver, decompositionResult, commandLineArguments)
     solver.mkAssert(globalInvariants.resourceInvariants)
@@ -344,9 +381,11 @@ object BoundChecking {
     val result: Boolean = {
       try {
         val result = !solver.checkSAT(printUnsatCore = false)
-        if (!result && printModelIfFail && decompositionResult.amortizationMode == SELECTIVE_AMORTIZE) {
-          // solver.printAssertions()
-          solver.printModel()
+        if (!result) {
+          if (commandLineArguments.debugMode || decompositionResult.amortizationMode == SELECTIVE_AMORTIZE) {
+            // solver.printAssertions()
+            solver.printModel()
+          }
         }
         result
       }
@@ -364,10 +403,14 @@ object BoundChecking {
     result
   }
 
-  private def checkSAT(solver: Z3Solver, ast: AST): Unit = {
+  private def sanityCheck(solver: Z3Solver, ast: AST, expect: Boolean): Unit = {
     solver.push()
     solver.mkAssert(ast)
-    assert(solver.checkSAT(printUnsatCore = true))
+    val result = solver.checkSAT(printUnsatCore = true)
+    if (expect)
+      assert(result)
+    else
+      assert(!result, solver.printModel())
     solver.pop()
   }
 
@@ -391,7 +434,7 @@ object BoundChecking {
     val solver: Z3Solver = new Z3Solver
     val boundExpression: AST = BoundChecking.extractBoundExpression(solver, inputMethod.methodTree, inputMethod.inputVariables ++ inputMethod.localVariables)
     logger.info(s"Extracted bound expression is `$boundExpression`")
-    checkBound(solver, decompositionResult, boundExpression, printModelIfFail = true, commandLineArguments)
+    checkBound(solver, decompositionResult, boundExpression, commandLineArguments)
   }
 
   case class GlobalInvariants(resourceInvariants: AST, deltaInvariants: AST, counterInvariants: AST, deltaCounterPairs: Set[DeltaCounterPair])

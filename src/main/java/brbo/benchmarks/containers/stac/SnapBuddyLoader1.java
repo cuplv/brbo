@@ -5,7 +5,8 @@ import brbo.benchmarks.Common;
 public abstract class SnapBuddyLoader1 extends Common {
   void getPhotos(int lines) {
     int R = 0;
-    assert (lines < 0 || R <= lines);
+    assume (lines >0);
+    assert (R <= lines);
 
     int photos = 0;
     int iterator = lines;

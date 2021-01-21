@@ -1,6 +1,10 @@
 package brbo.common
 
+import org.apache.logging.log4j.LogManager
+
 object MathUtils {
+  private val logger = LogManager.getLogger("brbo.common.MathUtils")
+
   // Generate Cartesian product
   def crossJoin[T](list: Traversable[Traversable[T]]): List[List[T]] = {
     // Even when the input is Set, ensure the output is list-typed
