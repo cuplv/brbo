@@ -15,6 +15,9 @@ import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
 
 import scala.collection.immutable.HashSet
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent._
+import scala.concurrent.duration._
 
 object BoundChecking {
   private val logger = LogManager.getLogger("brbo.verification.BoundChecking")
@@ -135,25 +138,27 @@ object BoundChecking {
         val counterVariable = deltaCounterPair.counter
 
         logger.info(s"Infer invariant for the peak value of delta variable `$deltaVariable`")
-        val peakInvariant = invariantInference.inferInvariant(
-          solver,
-          Locations(
-            {
-              case expressionStatementTree: ExpressionStatementTree =>
-                GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Delta) match {
-                  case Some(update) => update.identifier == deltaVariable
-                  case None => false
-                }
-              case _ => false
-            },
-            AFTER
-          ),
-          localVariables - deltaVariable,
-          globalScopeVariables
-        )
+        val peakInvariantFuture = Future {
+          invariantInference.inferInvariant(
+            solver,
+            Locations(
+              {
+                case expressionStatementTree: ExpressionStatementTree =>
+                  GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Delta) match {
+                    case Some(update) => update.identifier == deltaVariable
+                    case None => false
+                  }
+                case _ => false
+              },
+              AFTER
+            ),
+            localVariables - deltaVariable,
+            globalScopeVariables
+          )
+        }
 
         logger.info(s"Infer invariant for the accumulation of delta variable `$deltaVariable` (per visit to its subprogram)")
-        val accumulationInvariant = {
+        val accumulationInvariantFuture = Future {
           val accumulationInvariant = invariantInference.inferInvariant(
             solver,
             Locations(
@@ -197,53 +202,58 @@ object BoundChecking {
           }
         }
 
-        val counterInvariant: Expr = if (isCounterUpdateInLoop) {
-          logger.info(s"Infer invariants for AST counter `$counterVariable` by treating it as consuming resources")
-          val newResourceVariable = GhostVariableUtils.generateName(HashSet[String](resourceVariable._1), Resource)
-          val newMethodBody = InstrumentUtils.instrumentStatementTrees(
-            decompositionResult.outputMethod,
-            treatCounterAsResourceInstrumentation(counterVariable, newResourceVariable),
-            indent = 0
-          )
-          val newSourceFileContents = InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(
-            decompositionResult.outputMethod,
-            NewMethodInformation(None, None, None, List("import brbo.benchmarks.Common;"), Some("Common"), isAbstractClass = true, newMethodBody),
-            JAVA_FORMAT,
-            indent = 2
-          )
-          val sourceFilePath = s"${decompositionResult.outputMethod.fullQualifiedClassName}.java"
-          BrboMain.inferResourceInvariants(solver, sourceFilePath, newSourceFileContents, newCommandLineArguments) match {
-            case Some(globalInvariant) =>
-              val invariant = solver.mkAnd(globalInvariant.resourceInvariants, globalInvariant.deltaInvariants, globalInvariant.counterInvariants)
-              val existentiallyQuantify: Set[Expr] = globalInvariant.deltaCounterPairs
-                .flatMap(pair => HashSet[String](pair.delta, pair.counter))
-                .map(identifier => solver.mkIntVar(identifier))
-              val invariant2 = solver.mkExists(existentiallyQuantify, invariant)
-              val invariant3 = invariant2.substitute(solver.mkIntVar(newResourceVariable), solver.mkIntVar(counterVariable))
-              invariant3
-            case None => solver.mkTrue()
+        val counterInvariantFuture = Future {
+          if (isCounterUpdateInLoop) {
+            logger.info(s"Infer invariants for AST counter `$counterVariable` by treating it as consuming resources")
+            val newResourceVariable = GhostVariableUtils.generateName(HashSet[String](resourceVariable._1), Resource)
+            val newMethodBody = InstrumentUtils.instrumentStatementTrees(
+              decompositionResult.outputMethod,
+              treatCounterAsResourceInstrumentation(counterVariable, newResourceVariable),
+              indent = 0
+            )
+            val newSourceFileContents = InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(
+              decompositionResult.outputMethod,
+              NewMethodInformation(None, None, None, List("import brbo.benchmarks.Common;"), Some("Common"), isAbstractClass = true, newMethodBody),
+              JAVA_FORMAT,
+              indent = 2
+            )
+            val sourceFilePath = s"${decompositionResult.outputMethod.fullQualifiedClassName}.java"
+            BrboMain.inferResourceInvariants(solver, sourceFilePath, newSourceFileContents, newCommandLineArguments) match {
+              case Some(globalInvariant) =>
+                val invariant = solver.mkAnd(globalInvariant.resourceInvariants, globalInvariant.deltaInvariants, globalInvariant.counterInvariants)
+                val existentiallyQuantify: Set[Expr] = globalInvariant.deltaCounterPairs
+                  .flatMap(pair => HashSet[String](pair.delta, pair.counter))
+                  .map(identifier => solver.mkIntVar(identifier))
+                val invariant2 = solver.mkExists(existentiallyQuantify, invariant)
+                val invariant3 = invariant2.substitute(solver.mkIntVar(newResourceVariable), solver.mkIntVar(counterVariable))
+                invariant3
+              case None => solver.mkTrue()
+            }
+          }
+          else {
+            logger.info(s"Infer invariants for AST counter `$counterVariable` with ICRA")
+            invariantInference.inferInvariant(
+              solver,
+              Locations(
+                {
+                  case expressionStatementTree: ExpressionStatementTree =>
+                    GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Counter) match {
+                      case Some(update) => update.identifier == counterVariable
+                      case None => false
+                    }
+                  case _ => false
+                },
+                AFTER
+              ),
+              localVariables - counterVariable,
+              globalScopeVariables
+            )
           }
         }
-        else {
-          logger.info(s"Infer invariants for AST counter `$counterVariable` with ICRA")
-          invariantInference.inferInvariant(
-            solver,
-            Locations(
-              {
-                case expressionStatementTree: ExpressionStatementTree =>
-                  GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Counter) match {
-                    case Some(update) => update.identifier == counterVariable
-                    case None => false
-                  }
-                case _ => false
-              },
-              AFTER
-            ),
-            localVariables - counterVariable,
-            globalScopeVariables
-          )
-        }
 
+        val peakInvariant = Await.result(peakInvariantFuture, Duration.Inf)
+        val accumulationInvariant = Await.result(accumulationInvariantFuture, Duration.Inf)
+        val counterInvariant = Await.result(counterInvariantFuture, Duration.Inf)
         (peakInvariant, accumulationInvariant, counterInvariant)
     })
 

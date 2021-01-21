@@ -3,7 +3,10 @@ package brbo.common
 import com.microsoft.z3._
 import org.apache.logging.log4j.LogManager
 
-class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
+class Z3Solver {
+  // Copied from hopper: https://github.com/cuplv/hopper
+  // This is a thread safe version
+  // Otherwise, inferring invariants in parallel would break, due to concurrently invoking Z3 APIs
   private val logger = LogManager.getLogger(classOf[Z3Solver])
 
   Z3Solver.loadNativeLibraries()
@@ -11,50 +14,88 @@ class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
   private val context: Context = Z3Solver.createContext
   private val solver: Solver = Z3Solver.createSolverUnderContext(context)
 
-  def checkSAT(printUnsatCore: Boolean): Boolean = Z3Solver.solverCheck(solver, printUnsatCore)
+  def checkSAT(printUnsatCore: Boolean): Boolean = this.synchronized {
+    Z3Solver.solverCheck(solver, printUnsatCore)
+  }
 
-  def getAssertions: Array[BoolExpr] = solver.getAssertions
+  def getAssertions: Array[BoolExpr] = this.synchronized {
+    solver.getAssertions
+  }
 
-  def push(): Unit = solver.push()
+  def push(): Unit = this.synchronized {
+    solver.push()
+  }
 
-  def pop(): Unit = solver.pop()
+  def pop(): Unit = this.synchronized {
+    solver.pop()
+  }
 
-  def mkAssert(assertion: AST): Unit = solver.add(assertion.asInstanceOf[BoolExpr])
+  def mkAssert(assertion: AST): Unit = this.synchronized {
+    solver.add(assertion.asInstanceOf[BoolExpr])
+  }
 
-  def mkNot(assertion: AST): BoolExpr = context.mkNot(assertion.asInstanceOf[BoolExpr])
+  def mkNot(assertion: AST): BoolExpr = this.synchronized {
+    context.mkNot(assertion.asInstanceOf[BoolExpr])
+  }
 
-  def mkEq(left: AST, right: AST): BoolExpr = context.mkEq(left.asInstanceOf[Expr], right.asInstanceOf[Expr])
+  def mkEq(left: AST, right: AST): BoolExpr = this.synchronized {
+    context.mkEq(left.asInstanceOf[Expr], right.asInstanceOf[Expr])
+  }
 
-  def mkNe(left: AST, right: AST): BoolExpr = context.mkNot(context.mkEq(left.asInstanceOf[Expr], right.asInstanceOf[Expr]))
+  def mkNe(left: AST, right: AST): BoolExpr = this.synchronized {
+    context.mkNot(context.mkEq(left.asInstanceOf[Expr], right.asInstanceOf[Expr]))
+  }
 
-  def mkGt(left: AST, right: AST): BoolExpr = context.mkGt(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  def mkGt(left: AST, right: AST): BoolExpr = this.synchronized {
+    context.mkGt(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  }
 
-  def mkLt(left: AST, right: AST): BoolExpr = context.mkLt(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  def mkLt(left: AST, right: AST): BoolExpr = this.synchronized {
+    context.mkLt(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  }
 
-  def mkGe(left: AST, right: AST): BoolExpr = context.mkGe(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  def mkGe(left: AST, right: AST): BoolExpr = this.synchronized {
+    context.mkGe(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  }
 
-  def mkLe(left: AST, right: AST): BoolExpr = context.mkLe(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  def mkLe(left: AST, right: AST): BoolExpr = this.synchronized {
+    context.mkLe(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  }
 
-  def mkAdd(left: AST, right: AST): ArithExpr = context.mkAdd(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  def mkAdd(left: AST, right: AST): ArithExpr = this.synchronized {
+    context.mkAdd(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  }
 
-  def mkAdd(astSequence: AST*): ArithExpr = {
+  def mkAdd(astSequence: AST*): ArithExpr = this.synchronized {
     if (astSequence.isEmpty) mkIntVal(0)
     else context.mkAdd(astSequence.map(ast => ast.asInstanceOf[ArithExpr]): _*)
   }
 
-  def mkSub(left: AST, right: AST): ArithExpr = context.mkSub(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  def mkSub(left: AST, right: AST): ArithExpr = this.synchronized {
+    context.mkSub(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  }
 
-  def mkMul(left: AST, right: AST): ArithExpr = context.mkMul(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  def mkMul(left: AST, right: AST): ArithExpr = this.synchronized {
+    context.mkMul(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  }
 
-  def mkDiv(left: AST, right: AST): ArithExpr = context.mkDiv(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  def mkDiv(left: AST, right: AST): ArithExpr = this.synchronized {
+    context.mkDiv(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  }
 
-  def mkMod(left: AST, right: AST): IntExpr = context.mkMod(left.asInstanceOf[IntExpr], right.asInstanceOf[IntExpr])
+  def mkMod(left: AST, right: AST): IntExpr = this.synchronized {
+    context.mkMod(left.asInstanceOf[IntExpr], right.asInstanceOf[IntExpr])
+  }
 
-  def mkImplies(left: AST, right: AST): BoolExpr = context.mkImplies(left.asInstanceOf[BoolExpr], right.asInstanceOf[BoolExpr])
+  def mkImplies(left: AST, right: AST): BoolExpr = this.synchronized {
+    context.mkImplies(left.asInstanceOf[BoolExpr], right.asInstanceOf[BoolExpr])
+  }
 
-  def mkAnd(left: AST, right: AST): BoolExpr = context.mkAnd(left.asInstanceOf[BoolExpr], right.asInstanceOf[BoolExpr])
+  def mkAnd(left: AST, right: AST): BoolExpr = this.synchronized {
+    context.mkAnd(left.asInstanceOf[BoolExpr], right.asInstanceOf[BoolExpr])
+  }
 
-  def mkAnd(astSequence: AST*): BoolExpr = {
+  def mkAnd(astSequence: AST*): BoolExpr = this.synchronized {
     if (astSequence.isEmpty) {
       logger.fatal("Attempting to conjoin empty AST")
       mkTrue()
@@ -62,24 +103,36 @@ class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
     else context.mkAnd(astSequence.map(ast => ast.asInstanceOf[BoolExpr]): _*)
   }
 
-  def mkOr(left: AST, right: AST): BoolExpr = context.mkOr(left.asInstanceOf[BoolExpr], right.asInstanceOf[BoolExpr])
+  def mkOr(left: AST, right: AST): BoolExpr = this.synchronized {
+    context.mkOr(left.asInstanceOf[BoolExpr], right.asInstanceOf[BoolExpr])
+  }
 
-  def mkOr(astSequence: AST*): BoolExpr = {
+  def mkOr(astSequence: AST*): BoolExpr = this.synchronized {
     if (astSequence.isEmpty) throw new Exception("Attempting to disjoin empty AST")
     else context.mkOr(astSequence.map(ast => ast.asInstanceOf[BoolExpr]): _*)
   }
 
-  def mkXor(left: AST, right: AST): BoolExpr = context.mkXor(left.asInstanceOf[BoolExpr], right.asInstanceOf[BoolExpr])
+  def mkXor(left: AST, right: AST): BoolExpr = this.synchronized {
+    context.mkXor(left.asInstanceOf[BoolExpr], right.asInstanceOf[BoolExpr])
+  }
 
-  def mkIntVal(i: Int): IntNum = context.mkInt(i)
+  def mkIntVal(i: Int): IntNum = this.synchronized {
+    context.mkInt(i)
+  }
 
-  def mkBoolVal(b: Boolean): BoolExpr = context.mkBool(b)
+  def mkBoolVal(b: Boolean): BoolExpr = this.synchronized {
+    context.mkBool(b)
+  }
 
-  def mkIntVar(s: String): IntExpr = context.mkIntConst(s)
+  def mkIntVar(s: String): IntExpr = this.synchronized {
+    context.mkIntConst(s)
+  }
 
-  def mkBoolVar(s: String): BoolExpr = context.mkBoolConst(s)
+  def mkBoolVar(s: String): BoolExpr = this.synchronized {
+    context.mkBoolConst(s)
+  }
 
-  def mkExists(boundConstants: Iterable[AST], body: AST): Quantifier = {
+  def mkExists(boundConstants: Iterable[AST], body: AST): Quantifier = this.synchronized {
     /**
      * Weight annotations to quantifiers influence the priority of quantifier
      * instantiations.  They should be handled with care for solvers, which support
@@ -106,20 +159,25 @@ class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
     context.mkExists(boundConstants.map(ast => ast.asInstanceOf[Expr]).toArray, body.asInstanceOf[Expr], 0, null, null, null, null)
   }
 
-  def mkForall(boundConstants: Iterable[AST], body: AST): Quantifier = {
+  def mkForall(boundConstants: Iterable[AST], body: AST): Quantifier = this.synchronized {
     context.mkForall(boundConstants.map(ast => ast.asInstanceOf[Expr]).toArray, body.asInstanceOf[Expr], 0, null, null, null, null)
   }
 
-  def mkTrue(): BoolExpr = mkBoolVal(true)
+  def mkTrue(): BoolExpr = this.synchronized {
+    mkBoolVal(true)
+  }
 
-  def mkFalse(): BoolExpr = mkBoolVal(false)
+  def mkFalse(): BoolExpr = this.synchronized {
+    mkBoolVal(false)
+  }
 
-  def mkITE(condition: AST, trueCase: AST, falseExpr: AST): Expr =
+  def mkITE(condition: AST, trueCase: AST, falseExpr: AST): Expr = this.synchronized {
     context.mkITE(
       condition.asInstanceOf[BoolExpr],
       trueCase.asInstanceOf[Expr],
       falseExpr.asInstanceOf[Expr]
     )
+  }
 
   def printAssertions(): Unit = {
     logger.error("Assertions are:")
