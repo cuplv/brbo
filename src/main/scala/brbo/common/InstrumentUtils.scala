@@ -241,60 +241,32 @@ object InstrumentUtils {
     }
   }
 
+  case class NewMethodInformation(newParameters: Option[String],
+                                  newClassName: Option[String],
+                                  packageName: Option[String],
+                                  imports: List[String],
+                                  extendsClass: Option[String],
+                                  isAbstractClass: Boolean,
+                                  newMethodBody: String)
+
   /**
    *
    * @param targetMethod  The method whose body will be replaced
-   * @param newParameters The new method parameters
-   * @param newMethodBody The new method body
    * @param fileFormat    The file format of the output string
    * @param indent        The indent before the method signature in the output
    * @return A valid Java or C program that contains the new method body
    */
   def replaceMethodBodyAndGenerateSourceCode(targetMethod: TargetMethod,
-                                             newParameters: Option[String],
-                                             newClassName: Option[String],
-                                             packageName: Option[String],
-                                             imports: List[String],
-                                             extendsClass: Option[String],
-                                             isAbstractClass: Boolean,
-                                             newMethodBody: String,
+                                             newMethodInformation: NewMethodInformation,
                                              fileFormat: FileFormat,
                                              indent: Int): String = {
-    val cFilePrefix =
-      """extern void __VERIFIER_error() __attribute__((noreturn));
-        |extern void __VERIFIER_assume (int);
-        |extern int __VERIFIER_nondet_int ();
-        |#define static_assert __VERIFIER_assert
-        |#define assume __VERIFIER_assume
-        |#define LARGE_INT 1000000
-        |#define true 1
-        |#define false 0
-        |void __VERIFIER_assert(int cond) {
-        |  if (!(cond)) {
-        |    ERROR: __VERIFIER_error();
-        |  }
-        |  return;
-        |}
-        |void assert(int cond) {
-        |  if (!(cond)) {
-        |    ERROR: __VERIFIER_error();
-        |  }
-        |  return;
-        |}
-        |int ndInt() {
-        |  return __VERIFIER_nondet_int();
-        |}
-        |int ndBool() {
-        |  int x = ndInt();
-        |  assume(x == 1 || x == 0);
-        |  return x;
-        |}
-        |int ndInt2(int lower, int upper) {
-        |  int x = ndInt();
-        |  assume(lower <= x && x <= upper);
-        |  return x;
-        |}
-        |""".stripMargin
+    val newParameters: Option[String] = newMethodInformation.newParameters
+    val newClassName: Option[String] = newMethodInformation.newClassName
+    val packageName: Option[String] = newMethodInformation.packageName
+    val imports: List[String] = newMethodInformation.imports
+    val extendsClass: Option[String] = newMethodInformation.extendsClass
+    val isAbstractClass: Boolean = newMethodInformation.isAbstractClass
+    val newMethodBody: String = newMethodInformation.newMethodBody
 
     val methodSignature: String = {
       val parameters = newParameters match {
@@ -306,20 +278,23 @@ object InstrumentUtils {
     fileFormat match {
       case JAVA_FORMAT =>
         val spaces = " " * indent
-        val className = newClassName match {
+        val className: String = newClassName match {
           case Some(value) => value
           case None => targetMethod.className
         }
-        val importsString = imports.mkString("\n")
-        val packageNameString = packageName match {
+        val importsString: String = imports.mkString("\n")
+        val packageNameString: String = packageName match {
           case Some(value) => s"package $value;\n"
-          case None => ""
+          case None => targetMethod.packageName match {
+            case Some(value) => s"package $value;\n"
+            case None => ""
+          }
         }
-        val extendsClassString = extendsClass match {
+        val extendsClassString: String = extendsClass match {
           case Some(value) => s"extends $value"
           case None => ""
         }
-        val abstractString = if (isAbstractClass) "abstract " else ""
+        val abstractString: String = if (isAbstractClass) "abstract " else ""
         s"$packageNameString$importsString\n${abstractString}class $className $extendsClassString {\n" +
           s"$spaces$methodSignature\n$newMethodBody\n}"
       case C_FORMAT =>
@@ -419,4 +394,41 @@ object InstrumentUtils {
   private def instrumentStatementTreesHelper2(trees: Iterable[StatementTree], instrumentation: StatementTreeInstrumentation, indent: Int): String = {
     trees.map(tree => instrumentStatementTreesHelper(tree, instrumentation, indent)).mkString("\n")
   }
+
+
+  private val cFilePrefix =
+    """extern void __VERIFIER_error() __attribute__((noreturn));
+      |extern void __VERIFIER_assume (int);
+      |extern int __VERIFIER_nondet_int ();
+      |#define static_assert __VERIFIER_assert
+      |#define assume __VERIFIER_assume
+      |#define LARGE_INT 1000000
+      |#define true 1
+      |#define false 0
+      |void __VERIFIER_assert(int cond) {
+      |  if (!(cond)) {
+      |    ERROR: __VERIFIER_error();
+      |  }
+      |  return;
+      |}
+      |void assert(int cond) {
+      |  if (!(cond)) {
+      |    ERROR: __VERIFIER_error();
+      |  }
+      |  return;
+      |}
+      |int ndInt() {
+      |  return __VERIFIER_nondet_int();
+      |}
+      |int ndBool() {
+      |  int x = ndInt();
+      |  assume(x == 1 || x == 0);
+      |  return x;
+      |}
+      |int ndInt2(int lower, int upper) {
+      |  int x = ndInt();
+      |  assume(lower <= x && x <= upper);
+      |  return x;
+      |}
+      |""".stripMargin
 }

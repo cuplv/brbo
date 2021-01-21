@@ -4,9 +4,9 @@ import java.io.File
 
 import brbo.common.{CommandLineArguments, CommandLineArgumentsReflect, TargetMethod, Z3Solver}
 import brbo.verification.AmortizationMode.ALL_AMORTIZE
+import brbo.verification.BoundChecking.GlobalInvariants
 import brbo.verification.Decomposition.DecompositionResult
 import brbo.verification.{BasicProcessor, BoundChecking, Decomposition}
-import com.microsoft.z3.AST
 import org.apache.commons.io.FilenameUtils
 import org.apache.logging.log4j.LogManager
 
@@ -43,6 +43,13 @@ object BrboMain {
     })
   }
 
+  /**
+   *
+   * @param sourceFilePath Used to extract class name
+   * @param sourceFileContents
+   * @param commandLineArguments
+   * @return
+   */
   def decompose(sourceFilePath: String, sourceFileContents: String, commandLineArguments: CommandLineArguments): Option[List[DecompositionResult]] = {
     logger.info(s"Infer invariants for the resource variable in file `$sourceFilePath`")
     // TODO: Check if there is only 1 resource variable in the file
@@ -73,6 +80,12 @@ object BrboMain {
     }
   }
 
+  /**
+   *
+   * @param sourceFilePath Used to extract class name
+   * @param sourceFileContents
+   * @param commandLineArguments
+   */
   def checkBound(sourceFilePath: String, sourceFileContents: String, commandLineArguments: CommandLineArguments): Unit = {
     decompose(sourceFilePath, sourceFileContents, commandLineArguments) match {
       case Some(decompositionResults) =>
@@ -81,16 +94,23 @@ object BrboMain {
     }
   }
 
-  def inferResourceInvariants(solver: Z3Solver, sourceFilePath: String, sourceFileContents: String, commandLineArguments: CommandLineArguments): AST = {
+  /**
+   *
+   * @param solver
+   * @param sourceFilePath Used to extract class name
+   * @param sourceFileContents
+   * @param commandLineArguments
+   * @return
+   */
+  def inferResourceInvariants(solver: Z3Solver, sourceFilePath: String, sourceFileContents: String, commandLineArguments: CommandLineArguments): Option[GlobalInvariants] = {
     assert(commandLineArguments.amortizationMode != ALL_AMORTIZE, "Expect choosing one amortization mode")
 
     decompose(sourceFilePath, sourceFileContents, commandLineArguments) match {
       case Some(decompositionResults) =>
         val globalInvariants = decompositionResults.map({ result => BoundChecking.inferInvariantsForResource(solver, result, commandLineArguments) })
         assert(globalInvariants.size == 1, "Expect that choosing one amortization mode leads to one decomposition result")
-        val globalInvariant = globalInvariants.head
-        solver.mkAnd(globalInvariant.resourceInvariants, globalInvariant.deltaInvariants, globalInvariant.counterInvariants)
-      case None => solver.mkTrue()
+        Some(globalInvariants.head)
+      case None => None
     }
   }
 

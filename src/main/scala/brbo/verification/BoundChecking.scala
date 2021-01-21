@@ -3,15 +3,18 @@ package brbo.verification
 import brbo.BrboMain
 import brbo.common.BeforeOrAfterOrThis.{AFTER, BEFORE, THIS}
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, Resource}
-import brbo.common.InstrumentUtils.StatementTreeInstrumentation
+import brbo.common.InstrumentUtils.FileFormat.JAVA_FORMAT
+import brbo.common.InstrumentUtils.{NewMethodInformation, StatementTreeInstrumentation}
 import brbo.common.TreeUtils.collectCommands
 import brbo.common.TypeUtils.BrboType.{BrboType, INT}
 import brbo.common.{Locations, _}
 import brbo.verification.AmortizationMode.SELECTIVE_AMORTIZE
-import brbo.verification.Decomposition.DecompositionResult
+import brbo.verification.Decomposition.{DecompositionResult, DeltaCounterPair}
 import com.microsoft.z3.{AST, Expr}
 import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
+
+import scala.collection.immutable.HashSet
 
 object BoundChecking {
   private val logger = LogManager.getLogger("brbo.verification.BoundChecking")
@@ -37,7 +40,7 @@ object BoundChecking {
     else false
   }
 
-  private def whatToInsert(counterVariable: String, resourceVariable: String) (tree: StatementTree): String = {
+  private def whatToInsert(counterVariable: String, resourceVariable: String)(tree: StatementTree): String = {
     if (tree == null) return ""
 
     if (TreeUtils.isCommand(tree)) {
@@ -95,14 +98,13 @@ object BoundChecking {
   }
 
   def inferInvariantsForResource(solver: Z3Solver, decompositionResult: DecompositionResult, commandLineArguments: CommandLineArguments): GlobalInvariants = {
-    val targetMethod = decompositionResult.targetMethod
     val deltaCounterPairs = decompositionResult.deltaCounterPairs
 
-    val methodBody = targetMethod.methodTree.getBody
+    val methodBody = decompositionResult.outputMethod.methodTree.getBody
     assert(methodBody != null)
 
-    val inputVariables = targetMethod.inputVariables
-    val localVariables = targetMethod.localVariables
+    val inputVariables = decompositionResult.outputMethod.inputVariables
+    val localVariables = decompositionResult.outputMethod.localVariables
 
     val resourceVariable: (String, BrboType) = {
       val resourceVariables = localVariables.filter({ case (identifier, _) => GhostVariableUtils.isGhostVariable(identifier, Resource) })
@@ -122,7 +124,9 @@ object BoundChecking {
     }
     logger.trace(s"For Z3, we declare these variables in the global scope: `$globalScopeVariables`")
 
-    val invariantInference = new InvariantInference(targetMethod)
+    logger.info(s"No matter what is the specified amortization mode, we infer invariants for counters with `$SELECTIVE_AMORTIZE`")
+    val newCommandLineArguments = CommandLineArguments(SELECTIVE_AMORTIZE, commandLineArguments.debugMode, commandLineArguments.directoryToAnalyze)
+    val invariantInference = new InvariantInference(decompositionResult.outputMethod)
     val invariants: Set[(AST, AST, AST)] = deltaCounterPairs.map({
       deltaCounterPair =>
         val deltaVariable = deltaCounterPair.delta
@@ -173,31 +177,68 @@ object BoundChecking {
         }
         logger.trace(s"Invariant for the accumulation of delta variable `$deltaVariable` (per visit to its subprogram):\n$accumulationInvariant")
 
-        /*val newSourceFileContents = InstrumentUtils.instrumentStatementTrees(
-          decompositionResult.targetMethod,
-          treatCounterAsResourceInstrumentation(counterVariable),
-          indent = 0
-        )
-        // TODO: Existentially quantify???
-        val invariant2 = BrboMain.inferResourceInvariants(solver, "fake/path/Counter.java", newSourceFileContents, commandLineArguments)
-        println(invariant2)*/
+        val isCounterUpdateInLoop: Boolean = {
+          decompositionResult.outputMethod.commands.find({
+            case expressionStatementTree: ExpressionStatementTree =>
+              GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Counter) match {
+                case Some(updateTree) => updateTree.identifier == counterVariable
+                case None => false
+              }
+            case _ => false
+          }) match {
+            case Some(command) =>
+              TreeUtils.getMinimalEnclosingLoop(decompositionResult.outputMethod.getPath(command)) match {
+                case Some(_) => true
+                case None => false
+              }
+            case None => throw new Exception("Unreachable")
+          }
+        }
 
-        val counterInvariant = invariantInference.inferInvariant(
-          solver,
-          Locations(
-            {
-              case expressionStatementTree: ExpressionStatementTree =>
-                GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Counter) match {
-                  case Some(update) => update.identifier == counterVariable
-                  case None => false
-                }
-              case _ => false
-            },
-            AFTER
-          ),
-          localVariables - counterVariable,
-          globalScopeVariables
-        )
+        val counterInvariant: Expr = if (isCounterUpdateInLoop) {
+          val newResourceVariable = GhostVariableUtils.generateName(HashSet[String](resourceVariable._1), Resource)
+          val newMethodBody = InstrumentUtils.instrumentStatementTrees(
+            decompositionResult.outputMethod,
+            treatCounterAsResourceInstrumentation(counterVariable, newResourceVariable),
+            indent = 0
+          )
+          val newSourceFileContents = InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(
+            decompositionResult.outputMethod,
+            NewMethodInformation(None, None, None, List("import brbo.benchmarks.Common;"), Some("Common"), isAbstractClass = true, newMethodBody),
+            JAVA_FORMAT,
+            indent = 2
+          )
+          val sourceFilePath = s"${decompositionResult.outputMethod.fullQualifiedClassName}.java"
+          BrboMain.inferResourceInvariants(solver, sourceFilePath, newSourceFileContents, newCommandLineArguments) match {
+            case Some(globalInvariant) =>
+              val invariant = solver.mkAnd(globalInvariant.resourceInvariants, globalInvariant.deltaInvariants, globalInvariant.counterInvariants)
+              val existentiallyQuantify: Set[Expr] = globalInvariant.deltaCounterPairs
+                .flatMap(pair => HashSet[String](pair.delta, pair.counter))
+                .map(identifier => solver.mkIntVar(identifier))
+              val invariant2 = solver.mkExists(existentiallyQuantify, invariant)
+              val invariant3 = invariant2.substitute(solver.mkIntVar(newResourceVariable), solver.mkIntVar(counterVariable))
+              invariant3
+            case None => solver.mkTrue()
+          }
+        }
+        else {
+          invariantInference.inferInvariant(
+            solver,
+            Locations(
+              {
+                case expressionStatementTree: ExpressionStatementTree =>
+                  GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Counter) match {
+                    case Some(update) => update.identifier == counterVariable
+                    case None => false
+                  }
+                case _ => false
+              },
+              AFTER
+            ),
+            localVariables - counterVariable,
+            globalScopeVariables
+          )
+        }
         logger.trace(s"Invariant for AST counter `$counterVariable`:\n$counterInvariant")
 
         (peakInvariant, accumulationInvariant, counterInvariant)
@@ -268,7 +309,7 @@ object BoundChecking {
     checkSAT(solver, solver.mkAnd(resourceInvariants, deltaInvariants, counterInvariants))
     logger.info(s"Sanity check finished")
 
-    GlobalInvariants(resourceInvariants, deltaInvariants, counterInvariants)
+    GlobalInvariants(resourceInvariants, deltaInvariants, counterInvariants, deltaCounterPairs)
   }
 
   def checkBound(solver: Z3Solver,
@@ -280,8 +321,8 @@ object BoundChecking {
     logger.info("")
     logger.info(s"Checking bound... Mode: `${decompositionResult.amortizationMode}`")
 
-    val targetMethod = decompositionResult.targetMethod
-    logger.info(s"Verify bound `$boundExpression` in method `${targetMethod.methodTree.getName}` of class `${targetMethod.className}`")
+    val targetMethod = decompositionResult.outputMethod
+    logger.info(s"Verify bound `$boundExpression` in method `${targetMethod.methodTree.getName}` of class `${targetMethod.fullQualifiedClassName}`")
 
     checkSAT(solver, solver.mkNot(boundExpression))
     logger.info(s"Sanity check finished")
@@ -344,6 +385,6 @@ object BoundChecking {
     checkBound(solver, decompositionResult, boundExpression, printModelIfFail = true, commandLineArguments)
   }
 
-  case class GlobalInvariants(resourceInvariants: AST, deltaInvariants: AST, counterInvariants: AST)
+  case class GlobalInvariants(resourceInvariants: AST, deltaInvariants: AST, counterInvariants: AST, deltaCounterPairs: Set[DeltaCounterPair])
 
 }

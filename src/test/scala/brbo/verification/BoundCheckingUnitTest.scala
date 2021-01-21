@@ -69,7 +69,7 @@ object BoundCheckingUnitTest {
       |      D100 = 0;
       |      while (j < m) {
       |        j++;
-      |        R++;
+      |        R = R + 1;
       |        D100 = D100 + 1;
       |      }
       |      i++;
@@ -88,9 +88,9 @@ object BoundCheckingUnitTest {
       |    C1 = C1 + 1;
       |    D100 = 0;
       |    D100 = D100 + 1;
-      |    R++;
+      |    R = R + 1;
       |    while (i < n) {
-      |      R++;
+      |      R = R + 1;
       |      D100 = D100 + 1;
       |      i++;
       |    }

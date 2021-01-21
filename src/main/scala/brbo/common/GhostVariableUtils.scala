@@ -25,6 +25,29 @@ object GhostVariableUtils {
     result
   }
 
+  def generateName(typ: GhostVariable): String = {
+    val r = new scala.util.Random()
+    val suffix: Long = {
+      val n = r.nextLong()
+      if (n < 0) -n else n
+    }
+    val result = typ match {
+      case Resource => s"$resourceVariablePrefix$suffix"
+      case Delta => s"$deltaVariablePrefix$suffix"
+      case Counter => s"$counterVariablePrefix$suffix"
+    }
+    assert(isGhostVariable(result, typ), s"Generated name is $result")
+    result
+  }
+
+  def generateName(avoid: Set[String], typ: GhostVariable): String = {
+    var newName = GhostVariableUtils.generateName(typ)
+    while(avoid.contains(newName)) {
+      newName = GhostVariableUtils.generateName(typ)
+    }
+    newName
+  }
+
   def isGhostVariable(identifier: String): Boolean = {
     isGhostVariable(identifier, Resource) || isGhostVariable(identifier, Delta) || isGhostVariable(identifier, Counter)
   }

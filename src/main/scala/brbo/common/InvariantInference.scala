@@ -1,10 +1,10 @@
 package brbo.common
 
 import brbo.common.InstrumentUtils.FileFormat.C_FORMAT
-import brbo.common.InstrumentUtils.StatementTreeInstrumentation
+import brbo.common.InstrumentUtils.{NewMethodInformation, StatementTreeInstrumentation}
 import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT}
 import brbo.common.icra.{Assignment, Icra}
-import com.microsoft.z3.{AST, Expr}
+import com.microsoft.z3.{AST, BoolExpr, Expr}
 import org.apache.logging.log4j.LogManager
 
 class InvariantInference(targetMethod: TargetMethod) {
@@ -23,7 +23,7 @@ class InvariantInference(targetMethod: TargetMethod) {
   def inferInvariant(solver: Z3Solver,
                      locations: Locations,
                      existentiallyQuantify: Map[String, BrboType],
-                     freeVariables: Map[String, BrboType]): AST = {
+                     freeVariables: Map[String, BrboType]): BoolExpr = {
     // Intermediate variables must be existentially quantified
     def getExtraExistentiallyQuantify(variables: Set[String]): Set[String] = {
       variables.filter(variable => !existentiallyQuantify.contains(variable) && !freeVariables.contains(variable))
@@ -85,13 +85,7 @@ class InvariantInference(targetMethod: TargetMethod) {
     )
     InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(
       targetMethod,
-      None,
-      None,
-      None,
-      Nil,
-      None,
-      isAbstractClass = false,
-      newMethodBody,
+      NewMethodInformation(None, None, None, Nil, None, isAbstractClass = false, newMethodBody),
       C_FORMAT,
       indent
     )

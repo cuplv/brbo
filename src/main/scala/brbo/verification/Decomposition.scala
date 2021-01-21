@@ -3,7 +3,7 @@ package brbo.verification
 import brbo.common.BeforeOrAfterOrThis.BEFORE
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, Resource}
 import brbo.common.InstrumentUtils.FileFormat.JAVA_FORMAT
-import brbo.common.InstrumentUtils.StatementTreeInstrumentation
+import brbo.common.InstrumentUtils.{NewMethodInformation, StatementTreeInstrumentation}
 import brbo.common.TypeUtils.BrboType
 import brbo.common.TypeUtils.BrboType.{BrboType, INT}
 import brbo.common._
@@ -25,27 +25,9 @@ class Decomposition(inputMethod: TargetMethod, commandLineArguments: CommandLine
   private val debug = commandLineArguments.debugMode
   private val logger = LogManager.getLogger(classOf[Decomposition])
 
-  private val commands = TreeUtils.collectCommands(inputMethod.methodTree.getBody)
+  private val commands = inputMethod.commands
 
   private val counterMap = CounterAxiomGenerator.generateCounterMap(inputMethod.methodTree.getBody)
-
-  private val newClassName: String = {
-    // We expect input method's class name to be a fully qualified class name (e.g., `brbo.benchmarks.containers.stac.OutputHandler`)
-    val index = inputMethod.className.lastIndexOf(".")
-    val newClassName = inputMethod.className.substring(index + 1)
-    logger.info(s"New class name: `$newClassName`")
-    newClassName
-  }
-
-  private val packageName: Option[String] = {
-    inputMethod.className.lastIndexOf(".") match {
-      case -1 => None
-      case index =>
-        val packageName = inputMethod.className.substring(0, index)
-        logger.info(s"Package name: `$packageName`")
-        Some(packageName)
-    }
-  }
 
   private def traceOrError(message: String): Unit = {
     if (debug) logger.error(message)
@@ -246,18 +228,12 @@ class Decomposition(inputMethod: TargetMethod, commandLineArguments: CommandLine
     }
     val newSourceFile = InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(
       inputMethod,
-      None,
-      Some(newClassName),
-      packageName,
-      List("import brbo.benchmarks.Common;"),
-      Some("Common"),
-      isAbstractClass = true,
-      newMethodBody,
+      NewMethodInformation(None, None, None, List("import brbo.benchmarks.Common;"), Some("Common"), isAbstractClass = true, newMethodBody),
       JAVA_FORMAT,
       indent = 2
     )
     val result = DecompositionResult(newSourceFile, deltaCounterPairs.values.toSet, amortizationMode, inputMethod)
-    if (debug) CFGUtils.printPDF(result.targetMethod.cfg)
+    if (debug) CFGUtils.printPDF(result.outputMethod.cfg)
     result
   }
 
@@ -603,19 +579,13 @@ class Decomposition(inputMethod: TargetMethod, commandLineArguments: CommandLine
       val methodBody = astNodes.map(tree => s"${tree.toString};").mkString("\n")
       InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(
         inputMethod,
-        Some(parameters),
-        Some(newClassName),
-        packageName,
-        List("import brbo.benchmarks.Common;"),
-        Some("Common"),
-        isAbstractClass = true,
-        newMethodBody = s"{\n$methodBody\n}",
+        NewMethodInformation(Some(parameters), None, None, List("import brbo.benchmarks.Common;"), Some("Common"), isAbstractClass = true, newMethodBody = s"{\n$methodBody\n}"),
         JAVA_FORMAT,
         indent = 2
       )
     }
 
-    val targetMethod: TargetMethod = BasicProcessor.getTargetMethod(inputMethod.className, javaProgramRepresentation)
+    val targetMethod: TargetMethod = BasicProcessor.getTargetMethod(inputMethod.fullQualifiedClassName, javaProgramRepresentation)
   }
 
   case class Subprograms(programs: Set[Subprogram]) {
@@ -970,7 +940,7 @@ object Decomposition {
                                  amortizationMode: AmortizationMode,
                                  inputMethod: TargetMethod) {
     logger.info(s"Decomposition result (Mode: $amortizationMode):\n$newSourceFileContents")
-    val targetMethod: TargetMethod = BasicProcessor.getTargetMethod(inputMethod.className, newSourceFileContents)
+    val outputMethod: TargetMethod = BasicProcessor.getTargetMethod(inputMethod.fullQualifiedClassName, newSourceFileContents)
   }
 
 }

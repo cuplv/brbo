@@ -21,40 +21,40 @@ class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
 
   def mkAssert(assertion: AST): Unit = solver.add(assertion.asInstanceOf[BoolExpr])
 
-  def mkNot(assertion: AST): AST = context.mkNot(assertion.asInstanceOf[BoolExpr])
+  def mkNot(assertion: AST): BoolExpr = context.mkNot(assertion.asInstanceOf[BoolExpr])
 
-  def mkEq(left: AST, right: AST): AST = context.mkEq(left.asInstanceOf[Expr], right.asInstanceOf[Expr])
+  def mkEq(left: AST, right: AST): BoolExpr = context.mkEq(left.asInstanceOf[Expr], right.asInstanceOf[Expr])
 
-  def mkNe(left: AST, right: AST): AST = context.mkNot(context.mkEq(left.asInstanceOf[Expr], right.asInstanceOf[Expr]))
+  def mkNe(left: AST, right: AST): BoolExpr = context.mkNot(context.mkEq(left.asInstanceOf[Expr], right.asInstanceOf[Expr]))
 
-  def mkGt(left: AST, right: AST): AST = context.mkGt(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  def mkGt(left: AST, right: AST): BoolExpr = context.mkGt(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
 
-  def mkLt(left: AST, right: AST): AST = context.mkLt(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  def mkLt(left: AST, right: AST): BoolExpr = context.mkLt(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
 
-  def mkGe(left: AST, right: AST): AST = context.mkGe(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  def mkGe(left: AST, right: AST): BoolExpr = context.mkGe(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
 
-  def mkLe(left: AST, right: AST): AST = context.mkLe(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  def mkLe(left: AST, right: AST): BoolExpr = context.mkLe(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
 
-  def mkAdd(left: AST, right: AST): AST = context.mkAdd(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  def mkAdd(left: AST, right: AST): ArithExpr = context.mkAdd(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
 
-  def mkAdd(astSequence: AST*): AST = {
+  def mkAdd(astSequence: AST*): ArithExpr = {
     if (astSequence.isEmpty) mkIntVal(0)
     else context.mkAdd(astSequence.map(ast => ast.asInstanceOf[ArithExpr]): _*)
   }
 
-  def mkSub(left: AST, right: AST): AST = context.mkSub(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  def mkSub(left: AST, right: AST): ArithExpr = context.mkSub(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
 
-  def mkMul(left: AST, right: AST): AST = context.mkMul(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  def mkMul(left: AST, right: AST): ArithExpr = context.mkMul(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
 
-  def mkDiv(left: AST, right: AST): AST = context.mkDiv(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
+  def mkDiv(left: AST, right: AST): ArithExpr = context.mkDiv(left.asInstanceOf[ArithExpr], right.asInstanceOf[ArithExpr])
 
-  def mkMod(left: AST, right: AST): AST = context.mkMod(left.asInstanceOf[IntExpr], right.asInstanceOf[IntExpr])
+  def mkMod(left: AST, right: AST): IntExpr = context.mkMod(left.asInstanceOf[IntExpr], right.asInstanceOf[IntExpr])
 
-  def mkImplies(left: AST, right: AST): AST = context.mkImplies(left.asInstanceOf[BoolExpr], right.asInstanceOf[BoolExpr])
+  def mkImplies(left: AST, right: AST): BoolExpr = context.mkImplies(left.asInstanceOf[BoolExpr], right.asInstanceOf[BoolExpr])
 
-  def mkAnd(left: AST, right: AST): AST = context.mkAnd(left.asInstanceOf[BoolExpr], right.asInstanceOf[BoolExpr])
+  def mkAnd(left: AST, right: AST): BoolExpr = context.mkAnd(left.asInstanceOf[BoolExpr], right.asInstanceOf[BoolExpr])
 
-  def mkAnd(astSequence: AST*): AST = {
+  def mkAnd(astSequence: AST*): BoolExpr = {
     if (astSequence.isEmpty) {
       logger.fatal("Attempting to conjoin empty AST")
       mkTrue()
@@ -62,24 +62,24 @@ class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
     else context.mkAnd(astSequence.map(ast => ast.asInstanceOf[BoolExpr]): _*)
   }
 
-  def mkOr(left: AST, right: AST): AST = context.mkOr(left.asInstanceOf[BoolExpr], right.asInstanceOf[BoolExpr])
+  def mkOr(left: AST, right: AST): BoolExpr = context.mkOr(left.asInstanceOf[BoolExpr], right.asInstanceOf[BoolExpr])
 
-  def mkOr(astSequence: AST*): AST = {
+  def mkOr(astSequence: AST*): BoolExpr = {
     if (astSequence.isEmpty) throw new Exception("Attempting to disjoin empty AST")
     else context.mkOr(astSequence.map(ast => ast.asInstanceOf[BoolExpr]): _*)
   }
 
-  def mkXor(left: AST, right: AST): AST = context.mkXor(left.asInstanceOf[BoolExpr], right.asInstanceOf[BoolExpr])
+  def mkXor(left: AST, right: AST): BoolExpr = context.mkXor(left.asInstanceOf[BoolExpr], right.asInstanceOf[BoolExpr])
 
-  def mkIntVal(i: Int): AST = context.mkInt(i)
+  def mkIntVal(i: Int): IntNum = context.mkInt(i)
 
-  def mkBoolVal(b: Boolean): AST = context.mkBool(b)
+  def mkBoolVal(b: Boolean): BoolExpr = context.mkBool(b)
 
-  def mkIntVar(s: String): AST = context.mkIntConst(s)
+  def mkIntVar(s: String): IntExpr = context.mkIntConst(s)
 
-  def mkBoolVar(s: String): AST = context.mkBoolConst(s)
+  def mkBoolVar(s: String): BoolExpr = context.mkBoolConst(s)
 
-  def mkExists(boundConstants: Iterable[AST], body: AST): AST = {
+  def mkExists(boundConstants: Iterable[AST], body: AST): Quantifier = {
     /**
      * Weight annotations to quantifiers influence the priority of quantifier
      * instantiations.  They should be handled with care for solvers, which support
@@ -106,15 +106,15 @@ class Z3Solver { // Copied from hopper: https://github.com/cuplv/hopper
     context.mkExists(boundConstants.map(ast => ast.asInstanceOf[Expr]).toArray, body.asInstanceOf[Expr], 0, null, null, null, null)
   }
 
-  def mkForall(boundConstants: Iterable[AST], body: AST): AST = {
+  def mkForall(boundConstants: Iterable[AST], body: AST): Quantifier = {
     context.mkForall(boundConstants.map(ast => ast.asInstanceOf[Expr]).toArray, body.asInstanceOf[Expr], 0, null, null, null, null)
   }
 
-  def mkTrue(): AST = mkBoolVal(true)
+  def mkTrue(): BoolExpr = mkBoolVal(true)
 
-  def mkFalse(): AST = mkBoolVal(false)
+  def mkFalse(): BoolExpr = mkBoolVal(false)
 
-  def mkITE(condition: AST, trueCase: AST, falseExpr: AST): AST =
+  def mkITE(condition: AST, trueCase: AST, falseExpr: AST): Expr =
     context.mkITE(
       condition.asInstanceOf[BoolExpr],
       trueCase.asInstanceOf[Expr],
