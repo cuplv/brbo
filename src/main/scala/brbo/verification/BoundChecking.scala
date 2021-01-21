@@ -1,10 +1,8 @@
 package brbo.verification
 
-import brbo.BrboMain
 import brbo.common.BeforeOrAfterOrThis.{AFTER, BEFORE, THIS}
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, Resource}
-import brbo.common.InstrumentUtils.FileFormat.JAVA_FORMAT
-import brbo.common.InstrumentUtils.{NewMethodInformation, StatementTreeInstrumentation}
+import brbo.common.InstrumentUtils.StatementTreeInstrumentation
 import brbo.common.TreeUtils.collectCommands
 import brbo.common.TypeUtils.BrboType.{BrboType, INT}
 import brbo.common.{Locations, _}
@@ -14,7 +12,7 @@ import com.microsoft.z3.{AST, Expr}
 import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
 
-import scala.collection.immutable.HashSet
+import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.concurrent.duration._
@@ -130,6 +128,7 @@ object BoundChecking {
     logger.trace(s"For Z3, we declare these variables in the global scope: `$globalScopeVariables`")
 
     val newCommandLineArguments = CommandLineArguments(SELECTIVE_AMORTIZE, commandLineArguments.debugMode, commandLineArguments.directoryToAnalyze)
+    val lastTree = decompositionResult.outputMethod.methodTree.getBody.getStatements.asScala.last
     val invariantInference = new InvariantInference(decompositionResult.outputMethod)
     val invariants: Set[(AST, AST, AST)] = deltaCounterPairs.map({
       deltaCounterPair =>
@@ -151,6 +150,7 @@ object BoundChecking {
               },
               AFTER
             ),
+            deltaVariable,
             localVariables - deltaVariable,
             globalScopeVariables
           )
@@ -171,6 +171,7 @@ object BoundChecking {
               },
               BEFORE
             ),
+            deltaVariable,
             localVariables - deltaVariable,
             globalScopeVariables
           )
@@ -202,7 +203,7 @@ object BoundChecking {
         }
 
         val counterInvariantFuture = Future {
-          if (isCounterUpdateInLoop) {
+          /*if (isCounterUpdateInLoop) {
             logger.info(s"Infer invariants for AST counter `$counterVariable` by treating it as consuming resources (Mode: `$SELECTIVE_AMORTIZE`)")
             val newResourceVariable = GhostVariableUtils.generateName(HashSet[String](resourceVariable._1), Resource)
             val newMethodBody = InstrumentUtils.instrumentStatementTrees(
@@ -229,25 +230,21 @@ object BoundChecking {
               case None => solver.mkTrue()
             }
           }
-          else {
-            logger.info(s"Infer invariants for AST counter `$counterVariable` with ICRA")
-            invariantInference.inferInvariant(
-              solver,
-              Locations(
-                {
-                  case expressionStatementTree: ExpressionStatementTree =>
-                    GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Counter) match {
-                      case Some(update) => update.identifier == counterVariable
-                      case None => false
-                    }
-                  case _ => false
-                },
-                AFTER
-              ),
-              localVariables - counterVariable,
-              globalScopeVariables
-            )
-          }
+          else {*/
+          logger.info(s"Infer invariants for AST counter `$counterVariable` with ICRA")
+          invariantInference.inferInvariant(
+            solver,
+            Locations(
+              {
+                tree: Tree => if (tree == lastTree) true else false
+              },
+              AFTER
+            ),
+            counterVariable,
+            localVariables - counterVariable,
+            globalScopeVariables
+          )
+          //}
         }
 
         val peakInvariant = Await.result(peakInvariantFuture, Duration.Inf)

@@ -22,6 +22,7 @@ class InvariantInference(targetMethod: TargetMethod) {
    */
   def inferInvariant(solver: Z3Solver,
                      locations: Locations,
+                     whichVariable: String,
                      existentiallyQuantify: Map[String, BrboType],
                      freeVariables: Map[String, BrboType]): BoolExpr = {
     // Intermediate variables must be existentially quantified
@@ -30,7 +31,7 @@ class InvariantInference(targetMethod: TargetMethod) {
     }
 
     logger.info(s"Infer invariants in method `${methodTree.getName}` `${locations.beforeOrAfter}` specified nodes in CFG")
-    val cProgram = translateToCAndInsertAssertions(locations)
+    val cProgram = translateToCAndInsertAssertions(locations, whichVariable)
     Icra.run(cProgram) match {
       case Some(parsedInvariants) =>
         val existentiallyQuantifiedInvariants =
@@ -74,9 +75,9 @@ class InvariantInference(targetMethod: TargetMethod) {
    * @param locations The locations before or after which we insert `assert(1)`
    * @return The C program that is translated from the input Java program, and is asserted with `assert(1)`
    */
-  private def translateToCAndInsertAssertions(locations: Locations): String = {
+  private def translateToCAndInsertAssertions(locations: Locations, whichVariable: String): String = {
     val indent = 2
-    val ASSERT_TRUE = "assert(true)"
+    val ASSERT_TRUE = s"assert($whichVariable == $whichVariable)"
 
     val newMethodBody = InstrumentUtils.instrumentStatementTrees(
       targetMethod,

@@ -34,6 +34,7 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
             },
             AFTER
           ),
+          whichVariable = "D100",
           HashMap[String, BrboType](
             "R" -> INT,
             "C1" -> INT,
@@ -73,6 +74,7 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
             },
             BEFORE
           ),
+          whichVariable = "D100",
           HashMap[String, BrboType](
             "R" -> INT,
             "C1" -> INT,
@@ -112,6 +114,7 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
             },
             AFTER
           ),
+          whichVariable = "C1",
           HashMap[String, BrboType](
             "R" -> INT,
             "D100" -> INT,
@@ -420,10 +423,10 @@ object InvariantInferenceUnitTest {
         |                    (|C1':218| Int)
         |                    (|mid_i:207| Int)
         |                    (|mid_D100:210| Int)
+        |                    (|j:4| Int)
         |                    (|mid_R:209| Int)
-        |                    (|j:3| Int)
         |                    (|K:208| Int))
-        |             (! (let ((a!1 (= |mid_j:211| (* (ite (= |K:208| 0) 1 0) |j:3|)))
+        |             (! (let ((a!1 (= |mid_j:211| (* (ite (= |K:208| 0) 1 0) |j:4|)))
         |                      (a!2 (and (<= 1 |K:208|)
         |                                (<= 0 (+ (- 0 1) |param0:14|))
         |                                (<= 0 (- 0 |param1:17|))
@@ -465,7 +468,7 @@ object InvariantInferenceUnitTest {
         |                       (<= |mid_D100:210| 0)
         |                       (= |K:208| |K:208|)
         |                       (or (and (= |K:208| 0)
-        |                                (= |j:3| |mid_j:211|)
+        |                                (= |j:4| |mid_j:211|)
         |                                (= 0 |mid_i:207|)
         |                                (= 0 |mid_D100:210|)
         |                                (= 0 |mid_C1:212|)
@@ -490,8 +493,8 @@ object InvariantInferenceUnitTest {
         |                       a!8
         |                       (= (+ |K:208| |K:214|) |K:219|)
         |                       (<= 0 |K:219|)
-        |                       (<= 0 |D100':216|)
         |                       (<= 0 |R':213|)
+        |                       (<= 0 |D100':216|)
         |                       (<= 0 |C1':218|)
         |                       (<= 0 |i':215|)
         |                       (= (+ (- 0 |i':215|) |C1':218|) 0)
