@@ -175,6 +175,7 @@ class Decomposition(inputMethod: TargetMethod, commandLineArguments: CommandLine
 
     def appendSemiColonWhenNecessary(string: String): String = {
       if (string == "") ""
+      else if (string.endsWith(";")) s"$string"
       else s"$string;"
     }
 

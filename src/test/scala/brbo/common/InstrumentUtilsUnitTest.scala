@@ -68,7 +68,7 @@ object InstrumentUtilsUnitTest {
         |}""".stripMargin
     val assertTestExpected =
       """{
-        |  assert (1 == 1);;
+        |  assert (1 == 1);
         |}""".stripMargin
 
     val breakTest =
@@ -83,7 +83,7 @@ object InstrumentUtilsUnitTest {
       """{
         |  while (true)
         |  {
-        |    break;;
+        |    break;
         |  }
         |}""".stripMargin
 
@@ -99,7 +99,7 @@ object InstrumentUtilsUnitTest {
       """{
         |  while (true)
         |  {
-        |    continue;;
+        |    continue;
         |  }
         |}""".stripMargin
 
@@ -130,7 +130,7 @@ object InstrumentUtilsUnitTest {
         |}""".stripMargin
     val emptyTestExpected =
       """{
-        |  ;;
+        |  ;
         |}""".stripMargin
 
     val forLoopTest =
@@ -146,8 +146,8 @@ object InstrumentUtilsUnitTest {
         |  {// For loop
         |    int i = 0;
         |    while (i < 10) {
-        |      i--;;
-        |      i++;;
+        |      i--;
+        |      i++;
         |    }
         |  }
         |}""".stripMargin
@@ -187,7 +187,7 @@ object InstrumentUtilsUnitTest {
       """{
         |  int i = 0;
         |  Label:
-        |  i = 1;;
+        |  i = 1;
         |}""".stripMargin
 
     val returnTest =
@@ -198,7 +198,7 @@ object InstrumentUtilsUnitTest {
         |}""".stripMargin
     val returnTestExpected =
       """{
-        |  return n;;
+        |  return n;
         |}""".stripMargin
 
     val variableTest =
@@ -228,7 +228,7 @@ object InstrumentUtilsUnitTest {
         |  int i = 0;
         |  while (i < n)
         |  {
-        |    i--;;
+        |    i--;
         |  }
         |}""".stripMargin
 
@@ -592,18 +592,18 @@ object InstrumentUtilsUnitTest {
         |}""".stripMargin
     val test01ExpectedOutput =
       """{
-        |  ;
+        |
         |  int R3 = 0;
-        |  ;
+        |
         |  int i = 0;
         |  while (i < n)
         |  {
-        |    R3 = 0;
-        |    i++;;
-        |    R3 = R3 + 1;;
-        |    ;
-        |    ;
-        |    ;
+        |    R3 = 0
+        |    i++;
+        |    R3 = R3 + 1;
+        |
+        |
+        |
         |  }
         |}""".stripMargin
 
@@ -631,23 +631,23 @@ object InstrumentUtilsUnitTest {
         |}""".stripMargin
     val test02ExpectedOutput =
       """{
-        |  ;
+        |
         |  int R3 = 0;
-        |  ;
+        |
         |  int i = 0;
-        |  R3 = 0;
+        |  R3 = 0
         |  while (i < n)
         |  {
         |    int j = 0;
-        |    R3 = R3 + 1;;
-        |    ;
+        |    R3 = R3 + 1;
+        |
         |    while (j < m)
         |    {
-        |      j++;;
-        |      ;
-        |      ;
+        |      j++;
+        |
+        |
         |    }
-        |    i++;;
+        |    i++;
         |  }
         |}""".stripMargin
 

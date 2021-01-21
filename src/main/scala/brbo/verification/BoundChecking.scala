@@ -34,6 +34,7 @@ object BoundChecking {
         case variableTree: VariableTree => GhostVariableUtils.isGhostVariable(variableTree.getName.toString)
         case expressionStatementTree: ExpressionStatementTree =>
           GhostVariableUtils.isReset(expressionStatementTree.getExpression) || GhostVariableUtils.isUpdate(expressionStatementTree.getExpression)
+        case _: AssertTree => true
         case _ => false
       }
     }
@@ -51,7 +52,7 @@ object BoundChecking {
           if (GhostVariableUtils.isGhostVariable(variableName)) {
             if (variableName != counterVariable) ""
             else {
-              s"int $resourceVariable = 0"
+              s"int $resourceVariable = 0;"
             }
           }
           else originalCommand
@@ -91,6 +92,7 @@ object BoundChecking {
               }
             case (false, false) => originalCommand
           }
+        case _: AssertTree => ""
         case _ => originalCommand
       }
     }
@@ -108,7 +110,7 @@ object BoundChecking {
 
     val resourceVariable: (String, BrboType) = {
       val resourceVariables = localVariables.filter({ case (identifier, _) => GhostVariableUtils.isGhostVariable(identifier, Resource) })
-      assert(resourceVariables.size == 1)
+      assert(resourceVariables.size == 1, s"There must be exactly 1 resource variable. Instead we have `$resourceVariables`")
       resourceVariables.head
     }
     logger.info(s"Resource variable: $resourceVariable")
@@ -196,6 +198,7 @@ object BoundChecking {
         }
 
         val counterInvariant: Expr = if (isCounterUpdateInLoop) {
+          logger.info(s"Infer invariants for AST counter `$counterVariable` by treating it as consuming resources")
           val newResourceVariable = GhostVariableUtils.generateName(HashSet[String](resourceVariable._1), Resource)
           val newMethodBody = InstrumentUtils.instrumentStatementTrees(
             decompositionResult.outputMethod,
@@ -222,6 +225,7 @@ object BoundChecking {
           }
         }
         else {
+          logger.info(s"Infer invariants for AST counter `$counterVariable` with ICRA")
           invariantInference.inferInvariant(
             solver,
             Locations(

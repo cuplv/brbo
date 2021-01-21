@@ -116,6 +116,26 @@ object BoundCheckingUnitTest {
       |  }
       |}""".stripMargin
 
+  val test05: String = // A loop with a nesting depth of 2
+    """class Test05 {
+      |  void f(int n, int m, int l)
+      |  {
+      |    int R = 0;
+      |    int C1 = 0;
+      |    int D100 = 0;
+      |    int x = 0;
+      |    while (x < n) {
+      |      while (x < n) {
+      |        R = R + 1;
+      |        C1 = C1 + 1;
+      |        D100 = 0;
+      |        D100 = D100 + 1;
+      |        x++;
+      |      }
+      |    }
+      |  }
+      |}""".stripMargin
+
   private val blockTest =
     """class BlockTest {
       |  void f(int n) {
@@ -436,6 +456,19 @@ object BoundCheckingUnitTest {
       )
     }
 
+    val solver9 = new Z3Solver
+    val boundExpression9 = {
+      val n = solver9.mkIntVar("n")
+      solver9.mkITE(
+        solver9.mkGe(n, solver9.mkIntVal(0)),
+        solver9.mkLe(
+          solver9.mkIntVar("R"),
+          solver9.mkIntVar("n")
+        ),
+        solver9.mkTrue()
+      )
+    }
+
     List[(TestCaseJavaProgram, Z3Solver, AST)](
       (TestCaseJavaProgram("Test01", test01, TRUE), solver1, boundExpression1),
       (TestCaseJavaProgram("Test01", test01, FALSE), solver2, boundExpression2),
@@ -445,6 +478,7 @@ object BoundCheckingUnitTest {
       (TestCaseJavaProgram("Test03", test03, FALSE), solver6, boundExpression6),
       (TestCaseJavaProgram("Test04", test04, TRUE), solver7, boundExpression7),
       (TestCaseJavaProgram("Test04", test04, FALSE), solver8, boundExpression8),
+      (TestCaseJavaProgram("Test05", test05, TRUE), solver9, boundExpression9),
     )
   }
 }

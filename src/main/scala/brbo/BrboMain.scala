@@ -52,7 +52,6 @@ object BrboMain {
    */
   def decompose(sourceFilePath: String, sourceFileContents: String, commandLineArguments: CommandLineArguments): Option[List[DecompositionResult]] = {
     logger.info(s"Infer invariants for the resource variable in file `$sourceFilePath`")
-    // TODO: Check if there is only 1 resource variable in the file
 
     val className: String = {
       val prefix = """src/main/java/"""

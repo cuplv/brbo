@@ -251,9 +251,9 @@ object InstrumentUtils {
 
   /**
    *
-   * @param targetMethod  The method whose body will be replaced
-   * @param fileFormat    The file format of the output string
-   * @param indent        The indent before the method signature in the output
+   * @param targetMethod The method whose body will be replaced
+   * @param fileFormat   The file format of the output string
+   * @param indent       The indent before the method signature in the output
    * @return A valid Java or C program that contains the new method body
    */
   def replaceMethodBodyAndGenerateSourceCode(targetMethod: TargetMethod,
@@ -339,7 +339,10 @@ object InstrumentUtils {
 
     val spaces = " " * indent
     val part1: String = tree match {
-      case _ if TreeUtils.isCommand(tree) => s"$spaces${tree.toString};"
+      case _ if TreeUtils.isCommand(tree) =>
+        val string = tree.toString
+        if (!string.endsWith(";")) s"$spaces${tree.toString};"
+        else s"$spaces${tree.toString}"
       case blockTree: BlockTree =>
         val body = instrumentStatementTreesHelper2(blockTree.getStatements.asScala, instrumentation, indent + INDENT)
         s"$spaces{\n$body\n$spaces}"
@@ -383,7 +386,9 @@ object InstrumentUtils {
         case AFTER => s"$part1\n$part2"
         case THIS =>
           if (TreeUtils.isCommand(tree)) {
-            s"$spaces${instrumentation.whatToInsert(tree)};"
+            val insertString = instrumentation.whatToInsert(tree)
+            if (insertString != "") s"$spaces$insertString"
+            else ""
           }
           else throw new Exception(s"Location should be either `$BEFORE` or `$AFTER` for compound AST node `$tree`")
       }
