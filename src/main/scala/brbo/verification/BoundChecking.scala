@@ -4,11 +4,11 @@ import brbo.common.BeforeOrAfterOrThis.{AFTER, BEFORE, THIS}
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, Resource}
 import brbo.common.InstrumentUtils.StatementTreeInstrumentation
 import brbo.common.TreeUtils.collectCommands
-import brbo.common.TypeUtils.BrboType.{BrboType, INT}
+import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT, VOID}
 import brbo.common.{Locations, _}
 import brbo.verification.AmortizationMode.SELECTIVE_AMORTIZE
 import brbo.verification.Decomposition.{DecompositionResult, DeltaCounterPair}
-import com.microsoft.z3.AST
+import com.microsoft.z3.{AST, Expr}
 import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
 
@@ -102,6 +102,14 @@ object BoundChecking {
   }
 
   def inferInvariantsForResource(solver: Z3Solver, decompositionResult: DecompositionResult, commandLineArguments: CommandLineArguments): GlobalInvariants = {
+    def createVar(pair: (String, BrboType)): Expr = {
+      pair._2 match {
+        case INT => solver.mkIntVar(pair._1)
+        case BOOL => solver.mkBoolVar(pair._1)
+        case VOID => throw new Exception("Unexpected")
+      }
+    }
+
     val deltaCounterPairs = decompositionResult.deltaCounterPairs
 
     val methodBody = decompositionResult.outputMethod.methodTree.getBody
@@ -125,12 +133,13 @@ object BoundChecking {
       CounterAxiomGenerator.generateCounterMap(methodBody).values.foldLeft(new HashMap[String, BrboType])({
         (acc, counter) => acc + (counter -> INT)
       })
-    val allLocalVariables: Map[String, BrboType] = originalLocalVariables ++ deltaVariables ++ counterVariables
-    val z3GlobalScopeVariables: Map[String, BrboType] = {
+    /*val z3GlobalScopeVariables: Map[String, BrboType] = {
       val variables: Map[String, BrboType] = deltaVariables ++ counterVariables + (resourceVariable._1 -> INT) // Resource variable
       variables ++ inputVariables
     }
-    logger.trace(s"For Z3, we declare these variables in the global scope: `$z3GlobalScopeVariables`")
+    logger.trace(s"For Z3, we declare these variables in the global scope: `$z3GlobalScopeVariables`")*/
+    val localVariables: Map[String, BrboType] = originalLocalVariables ++ deltaVariables ++ counterVariables + (resourceVariable._1 -> INT)
+    val allVariables: Map[String, BrboType] = inputVariables ++ localVariables
 
     // val newCommandLineArguments = CommandLineArguments(SELECTIVE_AMORTIZE, commandLineArguments.debugMode, commandLineArguments.directoryToAnalyze)
     val lastTree = decompositionResult.outputMethod.methodTree.getBody.getStatements.asScala.last
@@ -142,21 +151,33 @@ object BoundChecking {
 
         logger.info(s"Infer invariant for the peak value of delta variable `$deltaVariable`")
         val peakInvariantFuture = Future {
-          invariantInference.inferInvariant(
+          val invariant = invariantInference.inferInvariant(
             solver,
             Locations(
               {
                 case expressionStatementTree: ExpressionStatementTree =>
-                  GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Delta) match {
+                  val isUpdate = GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Delta) match {
                     case Some(update) => update.identifier == deltaVariable
                     case None => false
                   }
+                  val isReset = GhostVariableUtils.extractReset(expressionStatementTree.getExpression, Delta) match {
+                    case Some(identifier) => identifier == deltaVariable
+                    case None => false
+                  }
+                  isUpdate || isReset
+                case variableTree: VariableTree =>
+                  if (variableTree.getName.toString == deltaVariable) true
+                  else false
                 case _ => false
               },
               AFTER
             ),
             deltaVariable,
-            inputVariables + (deltaVariable -> INT)
+            allVariables
+          )
+          solver.mkExists(
+            (localVariables - deltaVariable).map(pair => createVar(pair)),
+            solver.mkOr(invariant, solver.mkEq(solver.mkIntVar(deltaVariable), solver.mkIntVal(0)))
           )
         }
 
@@ -176,7 +197,7 @@ object BoundChecking {
               BEFORE
             ),
             deltaVariable,
-            inputVariables + (deltaVariable -> INT)
+            allVariables
           )
         }
 
@@ -228,7 +249,7 @@ object BoundChecking {
           }
           else {*/
           logger.info(s"Infer invariants for AST counter `$counterVariable` with ICRA")
-          invariantInference.inferInvariant(
+          val invariant = invariantInference.inferInvariant(
             solver,
             Locations(
               {
@@ -237,7 +258,11 @@ object BoundChecking {
               AFTER
             ),
             counterVariable,
-            inputVariables + (counterVariable -> INT)
+            allVariables
+          )
+          solver.mkExists(
+            (localVariables - counterVariable).map(pair => createVar(pair)),
+            invariant
           )
           //}
         }
@@ -247,40 +272,50 @@ object BoundChecking {
         val counterInvariant = Await.result(counterInvariantFuture, Duration.Inf)
 
         // Delta variables' double primed version represents the maximum amount of accumulation per execution of subprograms
-        val accumulationInvariantDoublePrime = accumulationInvariant.substitute(
-          solver.mkIntVar(deltaVariable),
-          solver.mkIntVar(generateDeltaVariableDoublePrime(deltaVariable))
-        )
-
+        val accumulationInvariantDoublePrime = {
+          val accumulationConstraint = solver.mkExists(
+            localVariables.map(pair => createVar(pair)),
+            accumulationInvariant.substitute(
+              solver.mkIntVar(deltaVariable),
+              solver.mkIntVar(generateDeltaVariableDoublePrime(deltaVariable))
+            )
+          )
+          val maxConstraint = solver.mkForall(
+            List(solver.mkIntVar(deltaVariable)),
+            solver.mkImplies(
+              solver.mkExists(
+                (localVariables - deltaVariable).map(pair => createVar(pair)),
+                accumulationInvariant
+              ),
+              solver.mkGe(
+                solver.mkIntVar(generateDeltaVariableDoublePrime(deltaVariable)),
+                solver.mkIntVar(deltaVariable),
+              )
+            )
+          )
+          solver.mkAnd(accumulationConstraint, maxConstraint)
+        }
         logger.info(s"Sanity check - The total accumulation should be no larger than the peak accumulation")
-        /*sanityCheck(
-          solver,
-          solver.mkAnd(
-            solver.mkNe(solver.mkIntVar(deltaVariable), solver.mkIntVal(0)), // Exclude the 1st time reaching `d=0`
-            accumulationInvariant,
-            solver.mkNot(peakInvariant)
-          ),
-          expect = false
-        )*/
-
-        /*
         sanityCheck(
           solver,
-          solver.mkAnd(
-            accumulationInvariantDoublePrime,
-            solver.mkForall(
-              Seq(solver.mkIntVar(deltaVariable)),
-              solver.mkImplies(
-                peakInvariant,
-                solver.mkGt(
-                  solver.mkIntVar(generateDeltaVariableDoublePrime(deltaVariable)),
-                  solver.mkIntVar(deltaVariable),
+          solver.mkNot(
+            solver.mkImplies(
+              accumulationInvariantDoublePrime,
+              solver.mkExists(
+                List(solver.mkIntVar(deltaVariable)),
+                solver.mkAnd(
+                  peakInvariant,
+                  solver.mkGe(
+                    solver.mkIntVar(deltaVariable),
+                    solver.mkIntVar(generateDeltaVariableDoublePrime(deltaVariable))
+                  )
                 )
               )
             )
           ),
-          expect = false
-        )*/
+          expect = false,
+          allowFail = true
+        )
 
         (peakInvariant, accumulationInvariantDoublePrime, counterInvariant)
     })
@@ -380,6 +415,7 @@ object BoundChecking {
     solver.mkAssert(solver.mkNot(boundExpression))
     val result: Boolean = {
       try {
+        logger.info(s"Discharge bound check query to Z3")
         val result = !solver.checkSAT(printUnsatCore = false)
         if (!result) {
           if (commandLineArguments.debugMode || decompositionResult.amortizationMode == SELECTIVE_AMORTIZE) {
@@ -403,14 +439,27 @@ object BoundChecking {
     result
   }
 
-  private def sanityCheck(solver: Z3Solver, ast: AST, expect: Boolean): Unit = {
+  private def sanityCheck(solver: Z3Solver, asts: Iterable[AST], expect: Boolean, allowFail: Boolean = false): Unit = {
+    ???
+  }
+
+  private def sanityCheck(solver: Z3Solver, ast: AST, expect: Boolean, allowFail: Boolean = false): Unit = {
     solver.push()
     solver.mkAssert(ast)
-    val result = solver.checkSAT(printUnsatCore = true)
-    if (expect)
-      assert(result)
-    else
-      assert(!result, solver.printModel())
+    try {
+      val result = solver.checkSAT(printUnsatCore = false)
+      if (expect) assert(result)
+      else assert(!result, solver.printModel())
+    }
+    catch {
+      case e: Z3TimeoutException =>
+        logger.fatal(s"Exception when running Z3: ${e.message}")
+      case e: AssertionError =>
+        if (!allowFail) throw e
+        else {
+          logger.fatal(s"Sanity check failed!")
+        }
+    }
     solver.pop()
   }
 
@@ -422,6 +471,11 @@ object BoundChecking {
     val assertions = commands.filter(tree => tree.isInstanceOf[AssertTree])
     assert(assertions.size == 1, "Please use exact 1 assertion as the bound expression to be verified")
     TreeUtils.translatePureExpressionToZ3AST(solver, assertions.head.asInstanceOf[AssertTree].getCondition, typeContext)
+  }
+
+  private def generateDeltaVariablePrime(identifier: String): String = {
+    assert(GhostVariableUtils.isGhostVariable(identifier, Delta))
+    s"$identifier\'"
   }
 
   private def generateDeltaVariableDoublePrime(identifier: String): String = {

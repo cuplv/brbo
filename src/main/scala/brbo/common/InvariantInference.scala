@@ -27,7 +27,7 @@ class InvariantInference(targetMethod: TargetMethod) {
     val cProgram = translateToCAndInsertAssertions(locations, whichVariable)
     Icra.run(cProgram) match {
       case Some(parsedInvariants) =>
-        val existentiallyQuantifiedInvariants =
+        val existentiallyQuantifiedInvariants = {
           parsedInvariants.map {
             parsedInvariant =>
               val (invariant, variableNames) = Icra.translateToZ3AndCollectVariables(parsedInvariant.invariant, BOOL, solver)
@@ -54,6 +54,7 @@ class InvariantInference(targetMethod: TargetMethod) {
               }
               else solver.mkExists(existentiallyQuantify, constraint)
           }
+        }
         solver.mkOr(existentiallyQuantifiedInvariants: _*)
       case None =>
         logger.fatal("ICRA returns no invariant!")

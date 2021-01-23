@@ -942,6 +942,7 @@ object Decomposition {
                                  inputMethod: TargetMethod) {
     logger.info(s"Decomposition result (Mode: `$amortizationMode`):\n$newSourceFileContents")
     val outputMethod: TargetMethod = BasicProcessor.getTargetMethod(inputMethod.fullQualifiedClassName, newSourceFileContents)
+    assert(outputMethod.inputVariables == inputMethod.inputVariables)
   }
 
 }
