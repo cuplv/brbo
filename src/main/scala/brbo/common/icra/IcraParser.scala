@@ -18,7 +18,7 @@ class IcraParser(input: String) {
 
   def parseRawInvariant(rawInvariant: RawInvariant): ParsedInvariant = {
     ParsedInvariant(
-      IcraParser.parseDeclarations(rawInvariant.declarations),
+      if (rawInvariant.declarations == "") List[IcraAST]() else IcraParser.parseDeclarations(rawInvariant.declarations),
       IcraParser.parseInvariant(rawInvariant.invariant)
     )
   }
@@ -26,7 +26,7 @@ class IcraParser(input: String) {
   def extractRawInvariants: List[RawInvariant] = {
     def parseInvariant(invariant: String): RawInvariant = {
       logger.trace(s"Parsing invariant: $invariant")
-      val keywordWhen = " when "
+      val keywordWhen = "when "
       val indexOfWhen = {
         val indexOfWhen = invariant.indexOf(keywordWhen)
         if (indexOfWhen == -1) {
@@ -184,7 +184,7 @@ object IcraParser extends Parsers {
   }
 
   private def declarations: Parser[List[IcraAST]] = {
-    phrase(rep1(declaration)) ^^ (declarations => declarations)
+    phrase(rep(declaration)) ^^ (declarations => declarations)
   }
 
   private def declaration: Parser[Assignment] = {

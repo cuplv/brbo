@@ -84,7 +84,12 @@ object Icra {
           variables = variables + identifier
           typ match {
             case INT => solver.mkIntVar(identifier)
-            case BOOL => throw new RuntimeException(s"Did not expect ICRA to define bool-typed variable $identifier in invariants!")
+            case BOOL =>
+              identifier match {
+                case "true" => solver.mkTrue()
+                case "false" => solver.mkFalse()
+                case _ => throw new RuntimeException(s"Did not expect ICRA to define bool-typed variable $identifier in invariants!")
+              }
           }
         case Number(number) => solver.mkIntVal(number)
         case Addition(left, right) => solver.mkAdd(helper(left, INT, solver), helper(right, INT, solver))
