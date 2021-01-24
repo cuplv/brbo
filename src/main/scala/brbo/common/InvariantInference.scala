@@ -2,14 +2,13 @@ package brbo.common
 
 import brbo.common.InstrumentUtils.FileFormat.C_FORMAT
 import brbo.common.InstrumentUtils.{NewMethodInformation, StatementTreeInstrumentation}
+import brbo.common.InvariantInference.logger
 import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT}
 import brbo.common.icra.{Assignment, Icra}
 import com.microsoft.z3.{AST, BoolExpr, Expr}
 import org.apache.logging.log4j.LogManager
 
 class InvariantInference(targetMethod: TargetMethod) {
-  private val logger = LogManager.getLogger(classOf[InvariantInference])
-
   private val methodTree = targetMethod.methodTree
 
   /**
@@ -31,7 +30,12 @@ class InvariantInference(targetMethod: TargetMethod) {
         val existentiallyQuantifiedInvariants = {
           parsedInvariants.map {
             parsedInvariant =>
-              val (invariant, variableNames) = Icra.translateToZ3AndCollectVariables(parsedInvariant.invariant, BOOL, solver)
+              val (invariant, variableNames) = {
+                val (invariant, variableNames) = Icra.translateToZ3AndCollectVariables(parsedInvariant.invariant, BOOL, solver)
+                if (invariant == solver.mkFalse())
+                  throw new Exception(s"ICRA infers invariant `$invariant`")
+                else (invariant, variableNames)
+              }
               // Intermediate variables must be existentially quantified
               var usedVariables: Set[String] = variableNames
 
@@ -71,7 +75,8 @@ class InvariantInference(targetMethod: TargetMethod) {
   private def translateToCAndInsertAssertions(locations: Locations, whichVariable: String): String = {
     val indent = 2
     // If this assertion was too easy (e.g., `true` or `x>=0`), then it seems ICRA doesn't infer strong invariants!
-    val ASSERT_TRUE = s"assert($whichVariable >= 101)"
+    // Do not use `assert(x>0)`, because if the first assertion fails, then the invariants at the following assertion locations will be simply `false`
+    val ASSERT_TRUE = s"assert(true)" // s"assert($whichVariable == $whichVariable)" // s"assert($whichVariable >= 101)"
 
     val newMethodBody = InstrumentUtils.instrumentStatementTrees(
       targetMethod,
@@ -85,4 +90,8 @@ class InvariantInference(targetMethod: TargetMethod) {
       indent
     )
   }
+}
+
+object InvariantInference {
+  private val logger = LogManager.getLogger("brbo.common.InvariantInference")
 }

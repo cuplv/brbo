@@ -81,9 +81,10 @@ object Icra {
     def helper(icraAST: IcraAST, typ: BrboType, solver: Z3Solver): AST = {
       icraAST match {
         case Identifier(identifier) =>
-          variables = variables + identifier
           typ match {
-            case INT => solver.mkIntVar(identifier)
+            case INT =>
+              variables = variables + identifier
+              solver.mkIntVar(identifier)
             case BOOL =>
               identifier match {
                 case "true" => solver.mkTrue()

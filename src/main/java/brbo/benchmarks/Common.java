@@ -34,5 +34,5 @@ public abstract class Common {
    */
   public abstract void reach(int x, int... args);
 
-  public abstract void boundAssertion(boolean e);
+  public abstract void boundAssertion(boolean assertion);
 }

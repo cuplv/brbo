@@ -5,10 +5,11 @@ import brbo.benchmarks.Common;
 abstract class Test01 extends Common {
   void f(int n) {
     int R = 0;
-    boundAssertion (n < 0 || R <= n);
+    // boundAssertion (n < 0 || R <= n);
+    boundAssertion (R <= 1);
     int i = 0;
     while (i < n) {
-      i++;
+      // i++;
       R = R + 1;
     }
   }

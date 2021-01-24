@@ -18,6 +18,14 @@ class Z3Solver {
     Z3Solver.solverCheck(solver, printUnsatCore)
   }
 
+  def checkAssertionPushPop(ast: AST, printUnsatCore: Boolean): Boolean = this.synchronized {
+    push()
+    mkAssert(ast)
+    val result = checkSAT(printUnsatCore)
+    pop()
+    result
+  }
+
   def getAssertions: Array[BoolExpr] = this.synchronized {
     solver.getAssertions
   }

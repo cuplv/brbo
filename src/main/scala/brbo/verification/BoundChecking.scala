@@ -276,7 +276,7 @@ object BoundChecking {
               solver.mkIntVar(generateDeltaVariableDoublePrime(deltaVariable))
             )
           )
-          /*val maxConstraint = solver.mkForall(
+          val maxConstraint = solver.mkForall(
             List(solver.mkIntVar(deltaVariable)),
             solver.mkImplies(
               solver.mkExists(
@@ -289,7 +289,7 @@ object BoundChecking {
               )
             )
           )
-          solver.mkAnd(accumulationConstraint, maxConstraint)*/
+          // solver.mkAnd(accumulationConstraint, maxConstraint)
           solver.mkAnd(
             accumulationConstraint,
             // Ensure the total accumulation should satisfy global invariants
@@ -322,7 +322,7 @@ object BoundChecking {
               )
             )
         }).toSeq
-        solver.mkEq(
+        solver.mkLe(
           solver.mkIntVar(resourceVariable._1),
           solver.mkAdd(items: _*)
         )
@@ -339,6 +339,7 @@ object BoundChecking {
 
     val counterInvariants = {
       val counterAxioms: AST = {
+        logger.info(s"Provide counter axioms only for mode `$SELECTIVE_AMORTIZE` (Current mode: `${arguments.amortizationMode}`)")
         arguments.amortizationMode match {
           case SELECTIVE_AMORTIZE => CounterAxiomGenerator.generateCounterAxioms(solver, methodBody)
           case _ => solver.mkTrue()
@@ -361,21 +362,6 @@ object BoundChecking {
       )
     }
 
-    {
-      // Sanity check: We assume the generated constraints won't contradict with each other
-      val checks = List[(AST, String)](
-        (resourceInvariants, s"Sanity check - Invariants about resource variables should SAT"),
-        (deltaInvariants, s"Sanity check - Invariants about delta variables should SAT"),
-        (counterInvariants, s"Sanity check - Invariants about counter variables should SAT"),
-        (solver.mkAnd(resourceInvariants, deltaInvariants), s"Sanity check - Invariants about resource and delta variables should SAT"),
-        (solver.mkAnd(resourceInvariants, counterInvariants), s"Sanity check - Invariants about resource and counter variables should SAT"),
-        (solver.mkAnd(deltaInvariants, counterInvariants), s"Sanity check - Invariants about delta and counter variables should SAT"),
-        (solver.mkAnd(resourceInvariants, deltaInvariants, counterInvariants), s"Sanity check - Invariants about resource, delta, and counter variables should SAT"),
-      )
-      sanityCheck(solver, checks, expect = true, allowFail = false, arguments.skipSanityCheck)
-      logger.info(s"Sanity check finished")
-    }
-
     GlobalInvariants(resourceInvariants, deltaInvariants, counterInvariants, deltaCounterPairs)
   }
 
@@ -383,19 +369,37 @@ object BoundChecking {
                  decompositionResult: DecompositionResult,
                  boundExpression: AST,
                  arguments: CommandLineArguments): Boolean = {
-    logger.info("")
-    logger.info("")
     logger.info(s"Check bound (Mode: `${decompositionResult.amortizationMode}`)")
 
     val targetMethod = decompositionResult.outputMethod
     logger.info(s"Verify bound `$boundExpression` in method `${targetMethod.methodTree.getName}` of class `${targetMethod.fullQualifiedClassName}`")
 
-    sanityCheck(solver, solver.mkNot(boundExpression), expect = true, allowFail = false, s"Sanity check - The bound expression should SAT", arguments.skipSanityCheck)
-
     val globalInvariants = inferInvariantsForResource(solver, decompositionResult, arguments)
-    solver.mkAssert(globalInvariants.resourceInvariants)
-    solver.mkAssert(globalInvariants.deltaInvariants)
-    solver.mkAssert(globalInvariants.counterInvariants)
+
+    val resourceInvariants = globalInvariants.resourceInvariants
+    val deltaInvariants = globalInvariants.deltaInvariants
+    val counterInvariants = globalInvariants.counterInvariants
+
+    // Sanity check: We assume the generated constraints won't contradict with each other
+    val checks = List[(AST, String)](
+      (resourceInvariants, s"Sanity check - Invariants about resource variables should SAT"),
+      (deltaInvariants, s"Sanity check - Invariants about delta variables should SAT"),
+      (counterInvariants, s"Sanity check - Invariants about counter variables should SAT"),
+      (solver.mkAnd(resourceInvariants, deltaInvariants), s"Sanity check - Invariants about resource and delta variables should SAT"),
+      (solver.mkAnd(resourceInvariants, counterInvariants), s"Sanity check - Invariants about resource and counter variables should SAT"),
+      (solver.mkAnd(deltaInvariants, counterInvariants), s"Sanity check - Invariants about delta and counter variables should SAT"),
+      (solver.mkAnd(resourceInvariants, deltaInvariants, counterInvariants), s"Sanity check - Invariants about resource, delta, and counter variables should SAT"),
+      (boundExpression, s"Sanity check - The bound expression should SAT"),
+      (solver.mkAnd(resourceInvariants, deltaInvariants, boundExpression), "1"),
+      (solver.mkAnd(resourceInvariants, counterInvariants, boundExpression), "2"),
+      (solver.mkAnd(deltaInvariants, counterInvariants, boundExpression), "3")
+    )
+    sanityCheck(solver, checks, expect = true, allowFail = true, arguments.skipSanityCheck)
+    logger.info(s"Sanity check finished")
+
+    solver.mkAssert(resourceInvariants)
+    solver.mkAssert(deltaInvariants)
+    solver.mkAssert(counterInvariants)
     solver.mkAssert(solver.mkNot(boundExpression))
     val result: Boolean = {
       try {
@@ -481,7 +485,7 @@ object BoundChecking {
         }
       case _ => false
     })
-    assert(assertions.size == 1, "Please use exact 1 bound expression to be verified")
+    assert(assertions.size == 1, s"Please verify exactly 1 bound expression. Instead, we have `${assertions.size}` bound expression(s)")
     val boundExpression = assertions.head.asInstanceOf[ExpressionStatementTree].getExpression.asInstanceOf[MethodInvocationTree].getArguments.get(0)
     TreeUtils.translatePureExpressionToZ3AST(solver, boundExpression, typeContext)
   }
@@ -496,6 +500,8 @@ object BoundChecking {
     val solver: Z3Solver = new Z3Solver
     BoundChecking.ensureNoAssertion(inputMethod.methodTree)
     val boundExpression: AST = BoundChecking.extractBoundExpression(solver, inputMethod.methodTree, inputMethod.inputVariables ++ inputMethod.localVariables)
+    logger.info("")
+    logger.info("")
     logger.info(s"Extracted bound expression is `$boundExpression`")
     checkBound(solver, decompositionResult, boundExpression, commandLineArguments)
   }
