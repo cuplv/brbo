@@ -115,11 +115,12 @@ object BoundChecking {
     val methodBody = decompositionResult.outputMethod.methodTree.getBody
     assert(methodBody != null)
 
-    val inputVariables = decompositionResult.outputMethod.inputVariables
-    val originalLocalVariables: Map[String, BrboType] = decompositionResult.outputMethod.localVariables
+    val inputVariables: Map[String, BrboType] = decompositionResult.outputMethod.inputVariables
+    val localVariables: Map[String, BrboType] = decompositionResult.outputMethod.localVariables
+    val allVariables: Map[String, BrboType] = inputVariables ++ localVariables
 
     val resourceVariable: (String, BrboType) = {
-      val resourceVariables = originalLocalVariables.filter({ case (identifier, _) => GhostVariableUtils.isGhostVariable(identifier, Resource) })
+      val resourceVariables = localVariables.filter({ case (identifier, _) => GhostVariableUtils.isGhostVariable(identifier, Resource) })
       assert(resourceVariables.size == 1, s"There must be exactly 1 resource variable. Instead we have `$resourceVariables`")
       resourceVariables.head
     }
@@ -138,8 +139,6 @@ object BoundChecking {
       variables ++ inputVariables
     }
     logger.trace(s"For Z3, we declare these variables in the global scope: `$z3GlobalScopeVariables`")*/
-    val localVariables: Map[String, BrboType] = originalLocalVariables ++ deltaVariables ++ counterVariables + (resourceVariable._1 -> INT)
-    val allVariables: Map[String, BrboType] = inputVariables ++ localVariables
 
     // val newCommandLineArguments = CommandLineArguments(SELECTIVE_AMORTIZE, commandLineArguments.debugMode, commandLineArguments.directoryToAnalyze)
     val lastTree = decompositionResult.outputMethod.methodTree.getBody.getStatements.asScala.last
@@ -275,12 +274,19 @@ object BoundChecking {
         val accumulationInvariantDoublePrime = {
           val accumulationConstraint = solver.mkExists(
             localVariables.map(pair => createVar(pair)),
-            accumulationInvariant.substitute(
+            /*accumulationInvariant.substitute(
               solver.mkIntVar(deltaVariable),
               solver.mkIntVar(generateDeltaVariableDoublePrime(deltaVariable))
+            )*/
+            solver.mkAnd(
+              accumulationInvariant,
+              solver.mkEq(
+                solver.mkIntVar(deltaVariable),
+                solver.mkIntVar(generateDeltaVariableDoublePrime(deltaVariable))
+              )
             )
           )
-          val maxConstraint = solver.mkForall(
+          /*val maxConstraint = solver.mkForall(
             List(solver.mkIntVar(deltaVariable)),
             solver.mkImplies(
               solver.mkExists(
@@ -293,7 +299,8 @@ object BoundChecking {
               )
             )
           )
-          solver.mkAnd(accumulationConstraint, maxConstraint)
+          solver.mkAnd(accumulationConstraint, maxConstraint)*/
+          accumulationConstraint
         }
 
         // sanityCheck(solver, accumulationInvariantDoublePrime, expect = true, allowFail = false, s"Sanity check - There must exist a max total accumulation", arguments.skipSanityCheck)
@@ -342,7 +349,7 @@ object BoundChecking {
                 solver.mkIntVar(generateDeltaVariableDoublePrime(deltaCounterPair.delta)))
             )
         }).toSeq
-        solver.mkLe(
+        solver.mkEq(
           solver.mkIntVar(resourceVariable._1),
           solver.mkAdd(items: _*)
         )

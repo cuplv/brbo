@@ -46,7 +46,7 @@ class InvariantInference(targetMethod: TargetMethod) {
                 })
                 solver.mkAnd(equalities: _*)
               }
-              val constraint = solver.mkAnd(invariant, equalities).asInstanceOf[Expr]
+              val constraint = solver.mkAnd(invariant, equalities)
               val existentiallyQuantify = usedVariables.filter(variable => !freeVariables.contains(variable)).map(variable => solver.mkIntVar(variable))
               if (existentiallyQuantify.isEmpty) {
                 logger.debug(s"No local variable to quantify - Used variables: `$usedVariables`. Expected free variables: `$freeVariables`")
