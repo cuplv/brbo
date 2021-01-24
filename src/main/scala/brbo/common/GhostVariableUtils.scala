@@ -165,6 +165,30 @@ object GhostVariableUtils {
     }
   }
 
+  def generateDeltaVariablePrime(identifier: String): String = {
+    assert(GhostVariableUtils.isGhostVariable(identifier, Delta))
+    s"${identifier}p"
+  }
+
+  @deprecated
+  def generateDeltaVariableDoublePrime(identifier: String): String = {
+    assert(GhostVariableUtils.isGhostVariable(identifier, Delta))
+    s"$identifier\'\'"
+  }
+
+  def extractDeltaPrime(tree: ExpressionTree): Option[String] = {
+    tree match {
+      case tree: AssignmentTree =>
+        val identifier = tree.getVariable.toString
+        if (isGhostVariable(identifier.dropRight(1), Delta)) {
+          // TODO:
+          Some(identifier)
+        }
+        else None
+      case _ => None
+    }
+  }
+
   def isReset(tree: ExpressionTree): Boolean = {
     extractReset(tree, Resource).isDefined || extractReset(tree, Delta).isDefined || extractReset(tree, Counter).isDefined
   }

@@ -1,6 +1,6 @@
 package brbo.verification.dependency.reachdef
 
-import brbo.verification.{BasicProcessor, BoundCheckingUnitTest}
+import brbo.verification.BasicProcessor
 import brbo.{StringCompare, TestCaseJavaProgram}
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.analysis.{AnalysisResult, ForwardAnalysisImpl}
@@ -37,6 +37,25 @@ class ReachingDefinitionUnitTest extends AnyFlatSpec {
 
 object ReachingDefinitionUnitTest {
   val reachingDefinitionUnitTest: HashSet[TestCaseJavaProgram] = {
+    val test01: String = // A loop with a nesting depth of 1
+      """class Test01 {
+        |  void f(int n)
+        |  {
+        |    int D100 = 0;
+        |    int C1 = 0;
+        |    int R = 0;
+        |    int i = 0;
+        |    while (i < n)
+        |    {
+        |      i++;
+        |      C1 = C1 + 1;
+        |      D100 = 0;
+        |      D100 = D100 + 1;
+        |      R = R + 1;
+        |    }
+        |  }
+        |}""".stripMargin
+
     val test01ExpectedOutput =
       """Node: `(C1 + 1)` -> Store: List(`C1` in `C1 = (C1 + 1)`, `C1` in `C1 = 0`, `D100` in `D100 = (D100 + 1)`, `D100` in `D100 = 0`, `R` in `R = (R + 1)`, `R` in `R = 0`, `i` in `i = (i + 1)`, `n` (input), `tempPostfix#num0` in `tempPostfix#num0 = i`)
         |Node: `(D100 + 1)` -> Store: List(`C1` in `C1 = (C1 + 1)`, `D100` in `D100 = 0`, `R` in `R = (R + 1)`, `R` in `R = 0`, `i` in `i = (i + 1)`, `n` (input), `tempPostfix#num0` in `tempPostfix#num0 = i`)
@@ -81,7 +100,7 @@ object ReachingDefinitionUnitTest {
         |Node: `tempPostfix#num0` -> Store: List(`C1` in `C1 = (C1 + 1)`, `C1` in `C1 = 0`, `D100` in `D100 = (D100 + 1)`, `D100` in `D100 = 0`, `R` in `R = (R + 1)`, `R` in `R = 0`, `i` in `i = (i + 1)`, `n` (input), `tempPostfix#num0` in `tempPostfix#num0 = i`, `tempPostfix#num0` in `tempPostfix#num0`)""".stripMargin
 
     HashSet[TestCaseJavaProgram](
-      TestCaseJavaProgram("Test01", BoundCheckingUnitTest.test01, test01ExpectedOutput),
+      TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),
     )
   }
 }

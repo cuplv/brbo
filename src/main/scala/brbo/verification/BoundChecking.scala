@@ -2,6 +2,7 @@ package brbo.verification
 
 import brbo.common.BeforeOrAfterOrThis.{AFTER, BEFORE, THIS}
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, Resource}
+import brbo.common.GhostVariableUtils.{generateDeltaVariableDoublePrime, generateDeltaVariablePrime}
 import brbo.common.InstrumentUtils.StatementTreeInstrumentation
 import brbo.common.TreeUtils.collectCommands
 import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT, VOID}
@@ -126,7 +127,7 @@ object BoundChecking {
 
     val deltaVariables: Map[String, BrboType] =
       deltaCounterPairs.map({ deltaCounterPair => deltaCounterPair.delta }).foldLeft(new HashMap[String, BrboType])({
-        (acc, delta) => acc + (delta -> INT)
+        (acc, delta) => acc + (delta -> INT) + (generateDeltaVariablePrime(delta) -> INT)
       })
     val counterVariables: Map[String, BrboType] =
       CounterAxiomGenerator.generateCounterMap(methodBody).values.foldLeft(new HashMap[String, BrboType])({
@@ -179,21 +180,28 @@ object BoundChecking {
         // TODO: It seems that ICRA cannot infer strong invariants right before `D=0`
         logger.info(s"Infer invariant for the accumulation of delta variable `$deltaVariable` (per visit to its subprogram)")
         val accumulationInvariantFuture = Future {
-          invariantInference.inferInvariant(
+          val invariant = invariantInference.inferInvariant(
             solver,
             Locations(
               {
-                case expressionStatementTree: ExpressionStatementTree =>
-                  GhostVariableUtils.extractReset(expressionStatementTree.getExpression, Delta) match {
-                    case Some(identifier) => identifier == deltaVariable
+                /*case expressionStatementTree: ExpressionStatementTree =>
+                  GhostVariableUtils.extractDeltaPrime(expressionStatementTree.getExpression) match {
+                    case Some(identifier) => identifier == generateDeltaVariablePrime(deltaVariable)
                     case None => false
                   }
+                case _ => false*/
+                case _: VariableTree => false // To ensure `D` is declared before each `assert(D==D)`
+                case tree if TreeUtils.isCommand(tree) => true
                 case _ => false
               },
-              BEFORE
+              AFTER
             ),
-            deltaVariable,
+            generateDeltaVariablePrime(deltaVariable),
             allVariables
+          )
+          solver.mkExists(
+            (localVariables - generateDeltaVariablePrime(deltaVariable)).map(pair => createVar(pair)),
+            invariant
           )
         }
 
@@ -300,7 +308,7 @@ object BoundChecking {
           )
         }
 
-        (globalInvariant, accumulationInvariantDoublePrime, counterInvariant)
+        (globalInvariant, accumulationInvariant, counterInvariant)
     })
 
     if (invariants.isEmpty) logger.fatal(s"No invariant was inferred by ICRA!")
@@ -318,7 +326,7 @@ object BoundChecking {
                   counterMinusOne,
                   solver.mkIntVal(0)
                 ),
-                solver.mkIntVar(generateDeltaVariableDoublePrime(deltaCounterPair.delta))
+                solver.mkIntVar(generateDeltaVariablePrime(deltaCounterPair.delta))
               )
             )
         }).toSeq
@@ -379,6 +387,9 @@ object BoundChecking {
     val resourceInvariants = globalInvariants.resourceInvariants
     val deltaInvariants = globalInvariants.deltaInvariants
     val counterInvariants = globalInvariants.counterInvariants
+    logger.info(s"Resource invariants: $resourceInvariants")
+    logger.info(s"Delta invariants: $deltaInvariants")
+    logger.info(s"Counter invariants: $counterInvariants")
 
     // Sanity check: We assume the generated constraints won't contradict with each other
     val checks = List[(AST, String)](
@@ -488,11 +499,6 @@ object BoundChecking {
     assert(assertions.size == 1, s"Please verify exactly 1 bound expression. Instead, we have `${assertions.size}` bound expression(s)")
     val boundExpression = assertions.head.asInstanceOf[ExpressionStatementTree].getExpression.asInstanceOf[MethodInvocationTree].getArguments.get(0)
     TreeUtils.translatePureExpressionToZ3AST(solver, boundExpression, typeContext)
-  }
-
-  private def generateDeltaVariableDoublePrime(identifier: String): String = {
-    assert(GhostVariableUtils.isGhostVariable(identifier, Delta))
-    s"$identifier\'\'"
   }
 
   def extractBoundAndCheck(decompositionResult: DecompositionResult, commandLineArguments: CommandLineArguments): Unit = {

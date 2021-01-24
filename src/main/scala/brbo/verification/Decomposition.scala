@@ -148,7 +148,8 @@ class Decomposition(inputMethod: TargetMethod, commandLineArguments: CommandLine
     }) match {
       case Some(subprogram) =>
         val pair = deltaCounterPairs(subprogram)
-        s"${pair.delta} = 0; ${pair.counter} = ${pair.counter} + 1;"
+        val deltaPrime = GhostVariableUtils.generateDeltaVariablePrime(pair.delta)
+        s"$deltaPrime = ($deltaPrime > ${pair.delta}) ? $deltaPrime: ${pair.delta}; ${pair.delta} = 0; ${pair.counter} = ${pair.counter} + 1;"
       case None => ""
     }
 
@@ -208,7 +209,7 @@ class Decomposition(inputMethod: TargetMethod, commandLineArguments: CommandLine
     val newMethodBody = {
       val ghostVariableDeclaration = {
         val ghostVariables = deltaCounterPairs.values.foldLeft(new HashMap[String, BrboType])({
-          (acc, pair) => acc + (pair.delta -> INT) + (pair.counter -> INT)
+          (acc, pair) => acc + (pair.delta -> INT) + (GhostVariableUtils.generateDeltaVariablePrime(pair.delta) -> INT) + (pair.counter -> INT)
         })
         val spaces = " " * 4
         val declarations = ghostVariables

@@ -35,11 +35,12 @@ class BoundCheckingUnitTest extends AnyFlatSpec {
 }
 
 object BoundCheckingUnitTest {
-  val test01: String = // A loop with a nesting depth of 1
+  private val test01: String = // A loop with a nesting depth of 1
     """class Test01 {
       |  void f(int n)
       |  {
       |    int D100 = 0;
+      |    int D100p = 0;
       |    int C1 = 0;
       |    int R = 0;
       |    int i = 0;
@@ -47,6 +48,7 @@ object BoundCheckingUnitTest {
       |    {
       |      i++;
       |      C1 = C1 + 1;
+      |      D100p = (D100 > D100p) ? D100 : D100p;
       |      D100 = 0;
       |      D100 = D100 + 1;
       |      R = R + 1;
@@ -54,17 +56,19 @@ object BoundCheckingUnitTest {
       |  }
       |}""".stripMargin
 
-  val test02: String = // A loop with a nesting depth of 2
+  private val test02: String = // A loop with a nesting depth of 2
     """class Test02 {
       |  void f(int n, int m, int l)
       |  {
       |    int R = 0;
       |    int C1 = 0;
-      |    int D100 = 0;
+      |    int D100p = 0;
+      |    int D101 = 0;
       |    int i = 0;
       |    while (i < n) {
       |      int j = 0;
       |      C1 = C1 + 1;
+      |      D100p = (D100 > D100p) ? D100 : D100p;
       |      D100 = 0;
       |      while (j < m) {
       |        j++;
@@ -76,7 +80,7 @@ object BoundCheckingUnitTest {
       |  }
       |}""".stripMargin
 
-  val test03: String = // The resource is updated at 2 places
+  private val test03: String = // The resource is updated at 2 places
     """class Test03 {
       |  void f(int n)
       |  {
@@ -96,7 +100,7 @@ object BoundCheckingUnitTest {
       |  }
       |}""".stripMargin
 
-  val test04: String = // The resource increases and decreases
+  private val test04: String = // The resource increases and decreases
     """class Test04 {
       |  void f(int n)
       |  {
@@ -115,7 +119,7 @@ object BoundCheckingUnitTest {
       |  }
       |}""".stripMargin
 
-  val test05: String = // A loop with a nesting depth of 2
+  private val test05: String = // A loop with a nesting depth of 2
     """class Test05 {
       |  void f(int n, int m, int l)
       |  {
