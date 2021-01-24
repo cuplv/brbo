@@ -5,7 +5,7 @@ import brbo.benchmarks.Common;
 public abstract class LitesqlGenCpp1 extends Common {
   void writeObjRelationHandles(int handles) {
     int R = 0;
-    assert (handles < 0 || R <= (1));
+    boundAssertion (handles < 0 || R <= (1));
 
     int iterator = handles;
     while (iterator > 0) {

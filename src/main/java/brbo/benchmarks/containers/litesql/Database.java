@@ -5,7 +5,7 @@ import brbo.benchmarks.Common;
 public abstract class Database extends Common {
   void upgradeTable(int oldFields, int newFields) {
     int R = 0;
-    assert ((oldFields < 0 || newFields < 0) || R <= (oldFields + newFields));
+    boundAssertion ((oldFields < 0 || newFields < 0) || R <= (oldFields + newFields));
 
     int toAdd = 0;
     toAdd += newFields;

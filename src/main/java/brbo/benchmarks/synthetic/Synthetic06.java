@@ -7,7 +7,7 @@ public abstract class Synthetic06 extends Common {
     int R = 0;
     int i = 0;
     assume(n >= 0 && m >= 0 && l >= 0);
-    assert (R <= l * m * n);
+    boundAssertion (R <= l * m * n);
     while (i < n) {
       int j = 0;
       while (j < m) {

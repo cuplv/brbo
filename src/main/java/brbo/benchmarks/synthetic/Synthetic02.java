@@ -6,7 +6,7 @@ public abstract class Synthetic02 extends Common {
   void f(int n, int m) {
     int R = 0;
     int i = 0;
-    assert (!(n >= 0 && m >= 0) || (R <= 2 * m * n));
+    boundAssertion (!(n >= 0 && m >= 0) || (R <= 2 * m * n));
     while (i < n) {
       int j = 0;
       while (j < m) {

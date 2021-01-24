@@ -5,7 +5,7 @@ import brbo.benchmarks.Common;
 public abstract class TemplateEngine extends Common {
   void replaceTagsBuilder(int text) {
     int R = 0;
-    assert (text < 0 || R <= text);
+    boundAssertion (text < 0 || R <= text);
 
     int linePointer = 0;
     int startTagLocation = 0;

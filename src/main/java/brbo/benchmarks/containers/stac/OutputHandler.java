@@ -5,7 +5,7 @@ import brbo.benchmarks.Common;
 public abstract class OutputHandler extends Common {
   void addResultHelper(int map) {
     int R = 0;
-    assert (map < 0 || R <= map);
+    boundAssertion (map < 0 || R <= map);
 
     int iterator = map;
     while (iterator > 0) {
@@ -16,9 +16,9 @@ public abstract class OutputHandler extends Common {
         list++; // Initial: The loop
         R = R + 1;
       } else {
-        int list2 = 0;
-        list2++; // Initial: The loop
-        R = R + 1;
+        // int list2 = 0;
+        // list2++; // Initial: The loop
+        // R = R + 1;
       }
     }
     // Yes; Yes; Yes

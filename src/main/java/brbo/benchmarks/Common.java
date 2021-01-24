@@ -33,4 +33,6 @@ public abstract class Common {
    *             elements inside containers
    */
   public abstract void reach(int x, int... args);
+
+  public abstract void boundAssertion(boolean e);
 }
