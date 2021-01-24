@@ -25,6 +25,7 @@ class InvariantInference(targetMethod: TargetMethod) {
                      freeVariables: Map[String, BrboType]): BoolExpr = {
     logger.info(s"Infer invariants in method `${methodTree.getName}` `${locations.beforeOrAfter}` specified nodes in CFG")
     val cProgram = translateToCAndInsertAssertions(locations, whichVariable)
+    // println(cProgram)
     Icra.run(cProgram) match {
       case Some(parsedInvariants) =>
         val existentiallyQuantifiedInvariants = {
@@ -69,7 +70,7 @@ class InvariantInference(targetMethod: TargetMethod) {
    */
   private def translateToCAndInsertAssertions(locations: Locations, whichVariable: String): String = {
     val indent = 2
-    val ASSERT_TRUE = s"assert($whichVariable == $whichVariable)"
+    val ASSERT_TRUE = s"assert($whichVariable >= 0)"
 
     val newMethodBody = InstrumentUtils.instrumentStatementTrees(
       targetMethod,

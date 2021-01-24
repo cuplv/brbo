@@ -234,7 +234,7 @@ object Z3Solver {
           }
           false
         case Status.SATISFIABLE => true
-        case Status.UNKNOWN => throw Z3TimeoutException("Status.UNKNOWN: Z3 decidability or timeout issue")
+        case Status.UNKNOWN => throw Z3TimeoutException(s"Status.UNKNOWN: Z3 decidability or timeout issue (${solver.getReasonUnknown})")
       }
     }
     val end = System.nanoTime()

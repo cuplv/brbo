@@ -116,11 +116,9 @@ object BoundChecking {
     assert(methodBody != null)
 
     val inputVariables: Map[String, BrboType] = decompositionResult.outputMethod.inputVariables
-    val localVariables: Map[String, BrboType] = decompositionResult.outputMethod.localVariables
-    val allVariables: Map[String, BrboType] = inputVariables ++ localVariables
 
     val resourceVariable: (String, BrboType) = {
-      val resourceVariables = localVariables.filter({ case (identifier, _) => GhostVariableUtils.isGhostVariable(identifier, Resource) })
+      val resourceVariables = decompositionResult.outputMethod.localVariables.filter({ case (identifier, _) => GhostVariableUtils.isGhostVariable(identifier, Resource) })
       assert(resourceVariables.size == 1, s"There must be exactly 1 resource variable. Instead we have `$resourceVariables`")
       resourceVariables.head
     }
@@ -134,11 +132,8 @@ object BoundChecking {
       CounterAxiomGenerator.generateCounterMap(methodBody).values.foldLeft(new HashMap[String, BrboType])({
         (acc, counter) => acc + (counter -> INT)
       })
-    /*val z3GlobalScopeVariables: Map[String, BrboType] = {
-      val variables: Map[String, BrboType] = deltaVariables ++ counterVariables + (resourceVariable._1 -> INT) // Resource variable
-      variables ++ inputVariables
-    }
-    logger.trace(s"For Z3, we declare these variables in the global scope: `$z3GlobalScopeVariables`")*/
+    val localVariables: Map[String, BrboType] = decompositionResult.outputMethod.localVariables ++ counterVariables ++ deltaVariables
+    val allVariables: Map[String, BrboType] = inputVariables ++ localVariables
 
     // val newCommandLineArguments = CommandLineArguments(SELECTIVE_AMORTIZE, commandLineArguments.debugMode, commandLineArguments.directoryToAnalyze)
     val lastTree = decompositionResult.outputMethod.methodTree.getBody.getStatements.asScala.last
@@ -154,7 +149,7 @@ object BoundChecking {
             solver,
             Locations(
               {
-                case expressionStatementTree: ExpressionStatementTree =>
+                /*case expressionStatementTree: ExpressionStatementTree =>
                   val isUpdate = GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Delta) match {
                     case Some(update) => update.identifier == deltaVariable
                     case None => false
@@ -166,7 +161,9 @@ object BoundChecking {
                   isUpdate || isReset
                 case variableTree: VariableTree =>
                   if (variableTree.getName.toString == deltaVariable) true
-                  else false
+                  else false*/
+                case _: VariableTree => false // To ensure `D` is declared before each `assert(D==D)`
+                case tree if TreeUtils.isCommand(tree) => true
                 case _ => false
               },
               AFTER
@@ -176,7 +173,7 @@ object BoundChecking {
           )
           solver.mkExists(
             (localVariables - deltaVariable).map(pair => createVar(pair)),
-            solver.mkOr(invariant, solver.mkEq(solver.mkIntVar(deltaVariable), solver.mkIntVal(0)))
+            invariant
           )
         }
 
@@ -273,17 +270,10 @@ object BoundChecking {
         // Delta variables' double primed version represents the maximum amount of accumulation per execution of subprograms
         val accumulationInvariantDoublePrime = {
           val accumulationConstraint = solver.mkExists(
-            localVariables.map(pair => createVar(pair)),
-            /*accumulationInvariant.substitute(
+            (localVariables - deltaVariable).map(pair => createVar(pair)),
+            accumulationInvariant.substitute(
               solver.mkIntVar(deltaVariable),
               solver.mkIntVar(generateDeltaVariableDoublePrime(deltaVariable))
-            )*/
-            solver.mkAnd(
-              accumulationInvariant,
-              solver.mkEq(
-                solver.mkIntVar(deltaVariable),
-                solver.mkIntVar(generateDeltaVariableDoublePrime(deltaVariable))
-              )
             )
           )
           /*val maxConstraint = solver.mkForall(
@@ -478,14 +468,32 @@ object BoundChecking {
     solver.pop()
   }
 
+  def ensureNoAssertion(methodTree: MethodTree): Unit = {
+    collectCommands(methodTree.getBody).foreach({
+      case assertTree: AssertTree => throw new Exception(s"Please do not use `assert` in the source code: `$assertTree`")
+      case _ =>
+    })
+  }
+
   def extractBoundExpression(solver: Z3Solver, methodTree: MethodTree, typeContext: Map[String, BrboType]): AST = {
     val methodBody = methodTree.getBody
     if (methodBody == null)
       throw new Exception(s"There is no method body to extract bound expression from in $methodTree")
     val commands = collectCommands(methodTree.getBody)
-    val assertions = commands.filter(tree => tree.isInstanceOf[AssertTree])
-    assert(assertions.size == 1, "Please use exact 1 assertion as the bound expression to be verified")
-    TreeUtils.translatePureExpressionToZ3AST(solver, assertions.head.asInstanceOf[AssertTree].getCondition, typeContext)
+    val assertions = commands.filter({
+      case expressionStatementTree: ExpressionStatementTree =>
+        expressionStatementTree.getExpression match {
+          case methodInvocationTree: MethodInvocationTree =>
+            val methodSelect = methodInvocationTree.getMethodSelect.toString
+            if (methodSelect == "boundAssertion") true
+            else false
+          case _ => false
+        }
+      case _ => false
+    })
+    assert(assertions.size == 1, "Please use exact 1 bound expression to be verified")
+    val boundExpression = assertions.head.asInstanceOf[ExpressionStatementTree].getExpression.asInstanceOf[MethodInvocationTree].getArguments.get(0)
+    TreeUtils.translatePureExpressionToZ3AST(solver, boundExpression, typeContext)
   }
 
   private def generateDeltaVariablePrime(identifier: String): String = {
@@ -501,6 +509,7 @@ object BoundChecking {
   def extractBoundAndCheck(decompositionResult: DecompositionResult, commandLineArguments: CommandLineArguments): Unit = {
     val inputMethod = decompositionResult.inputMethod
     val solver: Z3Solver = new Z3Solver
+    BoundChecking.ensureNoAssertion(inputMethod.methodTree)
     val boundExpression: AST = BoundChecking.extractBoundExpression(solver, inputMethod.methodTree, inputMethod.inputVariables ++ inputMethod.localVariables)
     logger.info(s"Extracted bound expression is `$boundExpression`")
     checkBound(solver, decompositionResult, boundExpression, commandLineArguments)
