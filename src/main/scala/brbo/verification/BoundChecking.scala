@@ -6,7 +6,7 @@ import brbo.common.InstrumentUtils.StatementTreeInstrumentation
 import brbo.common.TreeUtils.collectCommands
 import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT, VOID}
 import brbo.common.{Locations, _}
-import brbo.verification.AmortizationMode.SELECTIVE_AMORTIZE
+import brbo.verification.AmortizationMode.{SELECTIVE_AMORTIZE, NO_AMORTIZE, FULL_AMORTIZE, ALL_AMORTIZE, UNKNOWN}
 import brbo.verification.Decomposition.{DecompositionResult, DeltaCounterPair}
 import com.microsoft.z3.{AST, Expr}
 import com.sun.source.tree._
@@ -149,7 +149,7 @@ object BoundChecking {
             solver,
             Locations(
               {
-                case expressionStatementTree: ExpressionStatementTree =>
+                /*case expressionStatementTree: ExpressionStatementTree =>
                   val isUpdate = GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Delta) match {
                     case Some(update) => update.identifier == deltaVariable
                     case None => false
@@ -159,11 +159,11 @@ object BoundChecking {
                     case None => false
                   }
                   isUpdate || isReset
-                /*case variableTree: VariableTree =>
+                case variableTree: VariableTree =>
                   if (variableTree.getName.toString == deltaVariable) true
-                  else false
+                  else false*/
                 case _: VariableTree => false // To ensure `D` is declared before each `assert(D==D)`
-                case tree if TreeUtils.isCommand(tree) => true*/
+                case tree if TreeUtils.isCommand(tree) => true
                 case _ => false
               },
               AFTER
@@ -177,7 +177,8 @@ object BoundChecking {
           )
         }
 
-        /*logger.info(s"Infer invariant for the accumulation of delta variable `$deltaVariable` (per visit to its subprogram)")
+        /* TODO: It seems that ICRA cannot infer strong invariants right before `D=0`
+        logger.info(s"Infer invariant for the accumulation of delta variable `$deltaVariable` (per visit to its subprogram)")
         val accumulationInvariantFuture = Future {
           invariantInference.inferInvariant(
             solver,
@@ -271,7 +272,7 @@ object BoundChecking {
         val accumulationInvariantDoublePrime = {
           val accumulationConstraint = solver.mkExists(
             (localVariables - deltaVariable).map(pair => createVar(pair)),
-            peakInvariant.substitute( // TODO: It seems that ICRA cannot infer strong invariants right before `D=0`
+            peakInvariant.substitute(
               solver.mkIntVar(deltaVariable),
               solver.mkIntVar(generateDeltaVariableDoublePrime(deltaVariable))
             )
@@ -334,7 +335,8 @@ object BoundChecking {
                   counterMinusOne,
                   solver.mkIntVal(0)
                 ),
-                solver.mkIntVar(generateDeltaVariableDoublePrime(deltaCounterPair.delta)))
+                solver.mkIntVar(generateDeltaVariableDoublePrime(deltaCounterPair.delta))
+              )
             )
         }).toSeq
         solver.mkEq(
@@ -353,7 +355,12 @@ object BoundChecking {
     }
 
     val counterInvariants = {
-      val counterAxioms: AST = CounterAxiomGenerator.generateCounterAxioms(solver, methodBody)
+      val counterAxioms: AST = {
+        arguments.amortizationMode match {
+          case SELECTIVE_AMORTIZE => CounterAxiomGenerator.generateCounterAxioms(solver, methodBody)
+          case _ => solver.mkTrue()
+        }
+      }
       logger.trace(s"Counter axioms:\n$counterAxioms")
 
       val counterConstraints: AST = {
@@ -412,7 +419,7 @@ object BoundChecking {
         logger.info(s"Discharge bound check query to Z3")
         val result = !solver.checkSAT(printUnsatCore = false)
         if (!result) {
-          if (arguments.debugMode || decompositionResult.amortizationMode == SELECTIVE_AMORTIZE) {
+          if (arguments.debugMode || decompositionResult.amortizationMode == SELECTIVE_AMORTIZE || arguments.printCounterExample) {
             // solver.printAssertions()
             solver.printModel()
           }

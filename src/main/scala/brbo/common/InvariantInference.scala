@@ -70,7 +70,8 @@ class InvariantInference(targetMethod: TargetMethod) {
    */
   private def translateToCAndInsertAssertions(locations: Locations, whichVariable: String): String = {
     val indent = 2
-    val ASSERT_TRUE = s"assert($whichVariable >= 0)"
+    // If this assertion was too easy (e.g., `true` or `x>=0`), then it seems ICRA doesn't infer strong invariants!
+    val ASSERT_TRUE = s"assert($whichVariable >= 101)"
 
     val newMethodBody = InstrumentUtils.instrumentStatementTrees(
       targetMethod,

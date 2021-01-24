@@ -17,11 +17,11 @@ public abstract class OutputHandler extends Common {
         list++; // Initial: The loop
         R = R + 1;
       } else {
-        // int list2 = 0;
-        // list2++; // Initial: The loop
-        // R = R + 1;
+        int list2 = 0;
+        list2++; // Initial: The loop
+        R = R + 1;
       }
     }
-    // Yes; Yes; Yes
+    // No (There is a relation between the two updates); Yes; Yes
   }
 }

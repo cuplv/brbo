@@ -13,12 +13,16 @@ class CommandLineArgumentsReflect {
   private var amortizationMode: String = "selective"
 
   @Option(name = "--debug", aliases = Array("-g"), required = false,
-    usage = "Turn on the debug mode")
+    usage = "Turn on the debug mode.")
   private var debugMode: Boolean = false
 
   @Option(name = "--skip-sanity-check", aliases = Array("-s"), required = false,
-    usage = "Skip the sanity check")
+    usage = "Skip the sanity check.")
   private var skipSanityCheck: Boolean = false
+
+  @Option(name = "--print-counter-example", aliases = Array("-p"), required = false,
+    usage = "Print a counter example that violates the bound.")
+  private var printCounterExample: Boolean = false
 
   @Option(name = "--directory", aliases = Array("-d"), required = true,
     usage = "The directory to analyze.")
@@ -38,6 +42,8 @@ class CommandLineArgumentsReflect {
   def getDirectoryToAnalyze: String = directoryToAnalyze
 
   def getSkipSanityCheck: Boolean = skipSanityCheck
+
+  def getPrintCounterExample: Boolean = printCounterExample
 }
 
 object CommandLineArgumentsReflect {
@@ -54,6 +60,7 @@ object CommandLineArgumentsReflect {
         parser.printUsage(System.out)
         System.exit(1)
     }
-    CommandLineArguments(arguments.getAmortizationMode, arguments.debugMode, arguments.directoryToAnalyze, arguments.skipSanityCheck)
+    CommandLineArguments(arguments.getAmortizationMode, arguments.debugMode,
+      arguments.directoryToAnalyze, arguments.skipSanityCheck, arguments.printCounterExample)
   }
 }
