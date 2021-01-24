@@ -101,7 +101,7 @@ object BoundChecking {
     else throw new Exception("Unreachable")
   }
 
-  def inferInvariantsForResource(solver: Z3Solver, decompositionResult: DecompositionResult, commandLineArguments: CommandLineArguments): GlobalInvariants = {
+  def inferInvariantsForResource(solver: Z3Solver, decompositionResult: DecompositionResult, arguments: CommandLineArguments): GlobalInvariants = {
     def createVar(pair: (String, BrboType)): Expr = {
       pair._2 match {
         case INT => solver.mkIntVar(pair._1)
@@ -295,12 +295,14 @@ object BoundChecking {
           )
           solver.mkAnd(accumulationConstraint, maxConstraint)
         }
-        logger.info(s"Sanity check - The total accumulation should be no larger than the peak accumulation")
+
+        // sanityCheck(solver, accumulationInvariantDoublePrime, expect = true, allowFail = false, s"Sanity check - There must exist a max total accumulation", arguments.skipSanityCheck)
+
         sanityCheck(
           solver,
-          solver.mkNot(
-            solver.mkImplies(
-              accumulationInvariantDoublePrime,
+          solver.mkAnd(
+            accumulationInvariantDoublePrime,
+            solver.mkNot(
               solver.mkExists(
                 List(solver.mkIntVar(deltaVariable)),
                 solver.mkAnd(
@@ -314,7 +316,9 @@ object BoundChecking {
             )
           ),
           expect = false,
-          allowFail = true
+          allowFail = true,
+          s"Sanity check - The total accumulation should be no larger than the peak accumulation",
+          skip = arguments.skipSanityCheck
         )
 
         (peakInvariant, accumulationInvariantDoublePrime, counterInvariant)
@@ -374,20 +378,16 @@ object BoundChecking {
 
     {
       // Sanity check: We assume the generated constraints won't contradict with each other
-      logger.info(s"Sanity check - Invariants about resource variables should SAT")
-      sanityCheck(solver, resourceInvariants, expect = true)
-      logger.info(s"Sanity check - Invariants about delta variables should SAT")
-      sanityCheck(solver, deltaInvariants, expect = true)
-      logger.info(s"Sanity check - Invariants about counter variables should SAT")
-      sanityCheck(solver, counterInvariants, expect = true)
-      logger.info(s"Sanity check - Invariants about resource and delta variables should SAT")
-      sanityCheck(solver, solver.mkAnd(resourceInvariants, deltaInvariants), expect = true)
-      logger.info(s"Sanity check - Invariants about resource and counter variables should SAT")
-      sanityCheck(solver, solver.mkAnd(resourceInvariants, counterInvariants), expect = true)
-      logger.info(s"Sanity check - Invariants about delta and counter variables should SAT")
-      sanityCheck(solver, solver.mkAnd(deltaInvariants, counterInvariants), expect = true)
-      logger.info(s"Sanity check - Invariants about resource, delta, and counter variables should SAT")
-      sanityCheck(solver, solver.mkAnd(resourceInvariants, deltaInvariants, counterInvariants), expect = true)
+      val checks = List[(AST, String)](
+        (resourceInvariants, s"Sanity check - Invariants about resource variables should SAT"),
+        (deltaInvariants, s"Sanity check - Invariants about delta variables should SAT"),
+        (counterInvariants, s"Sanity check - Invariants about counter variables should SAT"),
+        (solver.mkAnd(resourceInvariants, deltaInvariants), s"Sanity check - Invariants about resource and delta variables should SAT"),
+        (solver.mkAnd(resourceInvariants, counterInvariants), s"Sanity check - Invariants about resource and counter variables should SAT"),
+        (solver.mkAnd(deltaInvariants, counterInvariants), s"Sanity check - Invariants about delta and counter variables should SAT"),
+        (solver.mkAnd(resourceInvariants, deltaInvariants, counterInvariants), s"Sanity check - Invariants about resource, delta, and counter variables should SAT"),
+      )
+      sanityCheck(solver, checks, expect = true, allowFail = false, arguments.skipSanityCheck)
       logger.info(s"Sanity check finished")
     }
 
@@ -397,7 +397,7 @@ object BoundChecking {
   def checkBound(solver: Z3Solver,
                  decompositionResult: DecompositionResult,
                  boundExpression: AST,
-                 commandLineArguments: CommandLineArguments): Boolean = {
+                 arguments: CommandLineArguments): Boolean = {
     logger.info("")
     logger.info("")
     logger.info(s"Check bound (Mode: `${decompositionResult.amortizationMode}`)")
@@ -405,10 +405,9 @@ object BoundChecking {
     val targetMethod = decompositionResult.outputMethod
     logger.info(s"Verify bound `$boundExpression` in method `${targetMethod.methodTree.getName}` of class `${targetMethod.fullQualifiedClassName}`")
 
-    logger.info(s"Sanity check - The bound expression should SAT")
-    sanityCheck(solver, solver.mkNot(boundExpression), expect = true)
+    sanityCheck(solver, solver.mkNot(boundExpression), expect = true, allowFail = false, s"Sanity check - The bound expression should SAT", arguments.skipSanityCheck)
 
-    val globalInvariants = inferInvariantsForResource(solver, decompositionResult, commandLineArguments)
+    val globalInvariants = inferInvariantsForResource(solver, decompositionResult, arguments)
     solver.mkAssert(globalInvariants.resourceInvariants)
     solver.mkAssert(globalInvariants.deltaInvariants)
     solver.mkAssert(globalInvariants.counterInvariants)
@@ -418,7 +417,7 @@ object BoundChecking {
         logger.info(s"Discharge bound check query to Z3")
         val result = !solver.checkSAT(printUnsatCore = false)
         if (!result) {
-          if (commandLineArguments.debugMode || decompositionResult.amortizationMode == SELECTIVE_AMORTIZE) {
+          if (arguments.debugMode || decompositionResult.amortizationMode == SELECTIVE_AMORTIZE) {
             // solver.printAssertions()
             solver.printModel()
           }
@@ -439,11 +438,20 @@ object BoundChecking {
     result
   }
 
-  private def sanityCheck(solver: Z3Solver, asts: Iterable[AST], expect: Boolean, allowFail: Boolean = false): Unit = {
-    ???
+  private def sanityCheck(solver: Z3Solver, asts: Iterable[(AST, String)], expect: Boolean, allowFail: Boolean, skip: Boolean): Unit = {
+    val futures = Future.traverse(asts)({
+      case (ast: AST, message: String) =>
+        Future {
+          sanityCheck(solver, ast, expect, allowFail, message, skip)
+        }
+    })
+    Await.result(futures, Duration.Inf)
   }
 
-  private def sanityCheck(solver: Z3Solver, ast: AST, expect: Boolean, allowFail: Boolean = false): Unit = {
+  private def sanityCheck(solver: Z3Solver, ast: AST, expect: Boolean, allowFail: Boolean, message: String, skip: Boolean): Unit = {
+    if (skip) return
+
+    logger.info(message)
     solver.push()
     solver.mkAssert(ast)
     try {

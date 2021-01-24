@@ -8,7 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 
 class DecompositionUnitTest extends AnyFlatSpec {
   private val logger = LogManager.getLogger(classOf[DecompositionUnitTest])
-  private val commandLineArguments = CommandLineArguments(UNKNOWN, debugMode = false, "")
+  private val commandLineArguments = CommandLineArguments(UNKNOWN, debugMode = false, "", skipSanityCheck = false)
 
   "Initializing subprograms" should "be correct" in {
     DecompositionUnitTest.initializeSubprogramsUnitTest.foreach({

@@ -16,6 +16,10 @@ class CommandLineArgumentsReflect {
     usage = "Turn on the debug mode")
   private var debugMode: Boolean = false
 
+  @Option(name = "--skip-sanity-check", aliases = Array("-s"), required = false,
+    usage = "Skip the sanity check")
+  private var skipSanityCheck: Boolean = false
+
   @Option(name = "--directory", aliases = Array("-d"), required = true,
     usage = "The directory to analyze.")
   private var directoryToAnalyze: String = "."
@@ -32,14 +36,16 @@ class CommandLineArgumentsReflect {
   def getDebugMode: Boolean = debugMode
 
   def getDirectoryToAnalyze: String = directoryToAnalyze
+
+  def getSkipSanityCheck: Boolean = skipSanityCheck
 }
 
 object CommandLineArgumentsReflect {
   private val logger = LogManager.getLogger("brbo.common.CommandLineArguments")
 
   def parseArguments(args: Array[String]): CommandLineArguments = {
-    val commandLineArguments = new CommandLineArgumentsReflect
-    val parser = new CmdLineParser(commandLineArguments)
+    val arguments = new CommandLineArgumentsReflect
+    val parser = new CmdLineParser(arguments)
     try {
       parser.parseArgument(args.toList.asJava)
     } catch {
@@ -48,6 +54,6 @@ object CommandLineArgumentsReflect {
         parser.printUsage(System.out)
         System.exit(1)
     }
-    CommandLineArguments(commandLineArguments.getAmortizationMode, commandLineArguments.debugMode, commandLineArguments.directoryToAnalyze)
+    CommandLineArguments(arguments.getAmortizationMode, arguments.debugMode, arguments.directoryToAnalyze, arguments.skipSanityCheck)
   }
 }
