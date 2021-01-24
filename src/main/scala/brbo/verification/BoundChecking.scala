@@ -149,7 +149,7 @@ object BoundChecking {
             solver,
             Locations(
               {
-                /*case expressionStatementTree: ExpressionStatementTree =>
+                case expressionStatementTree: ExpressionStatementTree =>
                   val isUpdate = GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Delta) match {
                     case Some(update) => update.identifier == deltaVariable
                     case None => false
@@ -159,11 +159,11 @@ object BoundChecking {
                     case None => false
                   }
                   isUpdate || isReset
-                case variableTree: VariableTree =>
+                /*case variableTree: VariableTree =>
                   if (variableTree.getName.toString == deltaVariable) true
-                  else false*/
+                  else false
                 case _: VariableTree => false // To ensure `D` is declared before each `assert(D==D)`
-                case tree if TreeUtils.isCommand(tree) => true
+                case tree if TreeUtils.isCommand(tree) => true*/
                 case _ => false
               },
               AFTER
@@ -177,7 +177,7 @@ object BoundChecking {
           )
         }
 
-        logger.info(s"Infer invariant for the accumulation of delta variable `$deltaVariable` (per visit to its subprogram)")
+        /*logger.info(s"Infer invariant for the accumulation of delta variable `$deltaVariable` (per visit to its subprogram)")
         val accumulationInvariantFuture = Future {
           invariantInference.inferInvariant(
             solver,
@@ -195,7 +195,7 @@ object BoundChecking {
             deltaVariable,
             allVariables
           )
-        }
+        }*/
 
         /*val isCounterUpdateInLoop: Boolean = {
           decompositionResult.outputMethod.commands.find({
@@ -264,14 +264,14 @@ object BoundChecking {
         }
 
         val peakInvariant = Await.result(peakInvariantFuture, Duration.Inf)
-        val accumulationInvariant = Await.result(accumulationInvariantFuture, Duration.Inf)
+        // val accumulationInvariant = Await.result(accumulationInvariantFuture, Duration.Inf)
         val counterInvariant = Await.result(counterInvariantFuture, Duration.Inf)
 
         // Delta variables' double primed version represents the maximum amount of accumulation per execution of subprograms
         val accumulationInvariantDoublePrime = {
           val accumulationConstraint = solver.mkExists(
             (localVariables - deltaVariable).map(pair => createVar(pair)),
-            accumulationInvariant.substitute(
+            peakInvariant.substitute( // TODO: It seems that ICRA cannot infer strong invariants right before `D=0`
               solver.mkIntVar(deltaVariable),
               solver.mkIntVar(generateDeltaVariableDoublePrime(deltaVariable))
             )
@@ -293,9 +293,7 @@ object BoundChecking {
           accumulationConstraint
         }
 
-        // sanityCheck(solver, accumulationInvariantDoublePrime, expect = true, allowFail = false, s"Sanity check - There must exist a max total accumulation", arguments.skipSanityCheck)
-
-        sanityCheck(
+        /*sanityCheck(
           solver,
           solver.mkAnd(
             accumulationInvariantDoublePrime,
@@ -316,7 +314,7 @@ object BoundChecking {
           allowFail = true,
           s"Sanity check - The total accumulation should be no larger than the peak accumulation",
           skip = arguments.skipSanityCheck
-        )
+        )*/
 
         (peakInvariant, accumulationInvariantDoublePrime, counterInvariant)
     })
@@ -494,11 +492,6 @@ object BoundChecking {
     assert(assertions.size == 1, "Please use exact 1 bound expression to be verified")
     val boundExpression = assertions.head.asInstanceOf[ExpressionStatementTree].getExpression.asInstanceOf[MethodInvocationTree].getArguments.get(0)
     TreeUtils.translatePureExpressionToZ3AST(solver, boundExpression, typeContext)
-  }
-
-  private def generateDeltaVariablePrime(identifier: String): String = {
-    assert(GhostVariableUtils.isGhostVariable(identifier, Delta))
-    s"$identifier\'"
   }
 
   private def generateDeltaVariableDoublePrime(identifier: String): String = {

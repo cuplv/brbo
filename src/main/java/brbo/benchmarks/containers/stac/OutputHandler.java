@@ -5,7 +5,8 @@ import brbo.benchmarks.Common;
 public abstract class OutputHandler extends Common {
   void addResultHelper(int map) {
     int R = 0;
-    boundAssertion (map < 0 || R <= map);
+    assume(map >= 0);
+    boundAssertion (R <= map);
 
     int iterator = map;
     while (iterator > 0) {
