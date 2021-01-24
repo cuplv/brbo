@@ -6,7 +6,7 @@ import brbo.common.InstrumentUtils.StatementTreeInstrumentation
 import brbo.common.TreeUtils.collectCommands
 import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT, VOID}
 import brbo.common.{Locations, _}
-import brbo.verification.AmortizationMode.{SELECTIVE_AMORTIZE, NO_AMORTIZE, FULL_AMORTIZE, ALL_AMORTIZE, UNKNOWN}
+import brbo.verification.AmortizationMode.SELECTIVE_AMORTIZE
 import brbo.verification.Decomposition.{DecompositionResult, DeltaCounterPair}
 import com.microsoft.z3.{AST, Expr}
 import com.sun.source.tree._
@@ -135,7 +135,6 @@ object BoundChecking {
     val localVariables: Map[String, BrboType] = decompositionResult.outputMethod.localVariables ++ counterVariables ++ deltaVariables
     val allVariables: Map[String, BrboType] = inputVariables ++ localVariables
 
-    // val newCommandLineArguments = CommandLineArguments(SELECTIVE_AMORTIZE, commandLineArguments.debugMode, commandLineArguments.directoryToAnalyze)
     val lastTree = decompositionResult.outputMethod.methodTree.getBody.getStatements.asScala.last
     val invariantInference = new InvariantInference(decompositionResult.outputMethod)
     val invariants: Set[(AST, AST, AST)] = deltaCounterPairs.map({
@@ -144,7 +143,7 @@ object BoundChecking {
         val counterVariable = deltaCounterPair.counter
 
         logger.info(s"Infer invariant for the peak value of delta variable `$deltaVariable`")
-        val peakInvariantFuture = Future {
+        val globalInvariantFuture = Future {
           val invariant = invariantInference.inferInvariant(
             solver,
             Locations(
@@ -177,7 +176,7 @@ object BoundChecking {
           )
         }
 
-        /* TODO: It seems that ICRA cannot infer strong invariants right before `D=0`
+        // TODO: It seems that ICRA cannot infer strong invariants right before `D=0`
         logger.info(s"Infer invariant for the accumulation of delta variable `$deltaVariable` (per visit to its subprogram)")
         val accumulationInvariantFuture = Future {
           invariantInference.inferInvariant(
@@ -196,7 +195,7 @@ object BoundChecking {
             deltaVariable,
             allVariables
           )
-        }*/
+        }
 
         /*val isCounterUpdateInLoop: Boolean = {
           decompositionResult.outputMethod.commands.find({
@@ -264,15 +263,15 @@ object BoundChecking {
           //}
         }
 
-        val peakInvariant = Await.result(peakInvariantFuture, Duration.Inf)
-        // val accumulationInvariant = Await.result(accumulationInvariantFuture, Duration.Inf)
+        val globalInvariant = Await.result(globalInvariantFuture, Duration.Inf)
+        val accumulationInvariant = Await.result(accumulationInvariantFuture, Duration.Inf)
         val counterInvariant = Await.result(counterInvariantFuture, Duration.Inf)
 
         // Delta variables' double primed version represents the maximum amount of accumulation per execution of subprograms
         val accumulationInvariantDoublePrime = {
           val accumulationConstraint = solver.mkExists(
             (localVariables - deltaVariable).map(pair => createVar(pair)),
-            peakInvariant.substitute(
+            accumulationInvariant.substitute(
               solver.mkIntVar(deltaVariable),
               solver.mkIntVar(generateDeltaVariableDoublePrime(deltaVariable))
             )
@@ -291,33 +290,17 @@ object BoundChecking {
             )
           )
           solver.mkAnd(accumulationConstraint, maxConstraint)*/
-          accumulationConstraint
+          solver.mkAnd(
+            accumulationConstraint,
+            // Ensure the total accumulation should satisfy global invariants
+            globalInvariant.substitute(
+              solver.mkIntVar(deltaVariable),
+              solver.mkIntVar(generateDeltaVariableDoublePrime(deltaVariable))
+            )
+          )
         }
 
-        /*sanityCheck(
-          solver,
-          solver.mkAnd(
-            accumulationInvariantDoublePrime,
-            solver.mkNot(
-              solver.mkExists(
-                List(solver.mkIntVar(deltaVariable)),
-                solver.mkAnd(
-                  peakInvariant,
-                  solver.mkGe(
-                    solver.mkIntVar(deltaVariable),
-                    solver.mkIntVar(generateDeltaVariableDoublePrime(deltaVariable))
-                  )
-                )
-              )
-            )
-          ),
-          expect = false,
-          allowFail = true,
-          s"Sanity check - The total accumulation should be no larger than the peak accumulation",
-          skip = arguments.skipSanityCheck
-        )*/
-
-        (peakInvariant, accumulationInvariantDoublePrime, counterInvariant)
+        (globalInvariant, accumulationInvariantDoublePrime, counterInvariant)
     })
 
     if (invariants.isEmpty) logger.fatal(s"No invariant was inferred by ICRA!")
@@ -427,11 +410,11 @@ object BoundChecking {
         result
       }
       catch {
-        case e: Z3TimeoutException =>
-          logger.fatal(s"Exception when running Z3: ${e.message}")
+        case e: Z3UnknownException =>
+          logger.fatal(s"Bound check - Z3 returns UNKNOWN: ${e.message}")
           false
         case e: Exception =>
-          logger.fatal(s"Unknown exception when running Z3: ${e.getMessage}")
+          logger.fatal(s"Bound check - Unknown exception when running Z3: ${e.getMessage}")
           false
       }
     }
@@ -462,13 +445,15 @@ object BoundChecking {
       else assert(!result, solver.printModel())
     }
     catch {
-      case e: Z3TimeoutException =>
-        logger.fatal(s"Exception when running Z3: ${e.message}")
+      case e: Z3UnknownException =>
+        logger.fatal(s"Sanity Check - Z3 returns UNKNOWN: ${e.message}")
       case e: AssertionError =>
         if (!allowFail) throw e
         else {
           logger.fatal(s"Sanity check failed!")
         }
+      case e: Exception =>
+        logger.fatal(s"Bound check - Unknown exception when running Z3: ${e.getMessage}")
     }
     solver.pop()
   }

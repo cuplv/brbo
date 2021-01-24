@@ -1,6 +1,6 @@
 package brbo.common
 
-import brbo.TestCase
+import brbo.{StringCompare, TestCase}
 import brbo.common.TypeUtils.BrboType._
 import brbo.common.icra.{Icra, IcraLexer, IcraParser}
 import org.apache.logging.log4j.LogManager
@@ -34,7 +34,7 @@ class IcraUnitTest extends AnyFlatSpec {
       testCase =>
         val expression = IcraParser.parseBoolExpression(testCase.input)
         logger.debug(expression)
-        assert(expression.toString == testCase.expectedOutput)
+        assert(StringCompare.ignoreWhitespaces(expression.toString, testCase.expectedOutput, s"${testCase.name} failed!"))
     })
   }
 
@@ -45,7 +45,7 @@ class IcraUnitTest extends AnyFlatSpec {
         val invariants = parser.extractRawInvariants
         logger.debug(invariants.mkString("\n"))
         assert(invariants.size == 1)
-        assert(invariants.head.toString == testCase.expectedOutput)
+        assert(StringCompare.ignoreWhitespaces(invariants.head.toString, testCase.expectedOutput, s"${testCase.name} failed!"))
     })
   }
 
@@ -172,9 +172,9 @@ object IcraUnitTest {
 
   val parseIcraOutputRawInvariant: HashSet[TestCase] = {
     HashSet[TestCase](
-      TestCase("Test01", test01, "RawInvariant(D100 := 0 i := (i':93 + 1) j := j':96 n := param0:12 m := param1:15,((!((0 <= K:91 /\\ K:91 <= 0)) \\/ D100':92 = 0)         /\\ (!(1 <= K:91) \\/ D100':92 = 0) /\\ (!(0 <= K:91) \\/ i':93 = K:91)         /\\ ((K:91 = 0 /\\ j:2 = j':94 /\\ 0 = i':93 /\\ 0 = D100':92)               \\/ (1 <= K:91 /\\ 0 <= (-1 + param0:12) /\\ D100':92 = 0                     /\\ 0 <= (-i':93 + param0:12)                     /\\ 0 <= (j':94 + -param1:15) /\\ 0 <= j':94                     /\\ 0 <= (-1 + i':93))) /\\ 0 <= K:91 /\\ D100':92 = 0         /\\ 0 <= i':93 /\\ D100':92 = 0 /\\ i':93 < param0:12         /\\ (!(0 <= K:95) \\/ j':96 = K:95)         /\\ (!((0 <= K:95 /\\ K:95 <= 0)) \\/ D100':97 = (D100':92 + K:95))         /\\ (!(1 <= K:95) \\/ D100':97 = K:95)         /\\ ((K:95 = 0 /\\ 0 = j':96 /\\ D100':92 = D100':97)               \\/ (1 <= K:95 /\\ D100':92 = 0 /\\ 0 <= (-1 + param1:15)                     /\\ (-D100':97 + j':96) = 0                     /\\ 0 <= (-D100':97 + param1:15) /\\ 0 <= (-1 + D100':97)))         /\\ 0 <= K:95 /\\ 0 <= D100':97 /\\ 0 <= j':96         /\\ (-j':96 + D100':97) = 0 /\\ param1:15 <= j':96))"),
-      TestCase("Test02", test02, "RawInvariant(D100 := 0 i := i':92 j := j':94 n := param0:12 m := param1:15,((!(0 <= K:91) \\/ i':92 = K:91)         /\\ (!((0 <= K:91 /\\ K:91 <= 0)) \\/ (D100':93 + -j':94) = -j:2)         /\\ (!(1 <= K:91) \\/ (D100':93 + -j':94) = 0)         /\\ ((K:91 = 0 /\\ j:2 = j':94 /\\ 0 = i':92 /\\ 0 = D100':93)               \\/ (1 <= K:91 /\\ 0 <= (-1 + param0:12)                     /\\ (-j':94 + D100':93) = 0 /\\ 0 <= (-i':92 + param0:12)                     /\\ 0 <= (-1 + i':92) /\\ 0 <= (j':94 + -param1:15)                     /\\ 0 <= j':94)) /\\ 0 <= K:91 /\\ 0 <= D100':93         /\\ 0 <= i':92 /\\ i':92 < param0:12))"),
-      TestCase("Test03", test03, "RawInvariant(D100 := 0 i := 0 j := 0 n := param0:15 m := param1:18 l := param2:21,((!((0 <= K:97 /\\ K:97 <= 0)) \\/ (D100':98 + -j':99) = -j:2)         /\\ (!(1 <= K:97) \\/ (D100':98 + -j':99) = 0)         /\\ ((K:97 = 0 /\\ j:2 = j':99 /\\ 0 = D100':98)               \\/ (1 <= K:97 /\\ 0 <= (-1 + param0:15)                     /\\ (-j':99 + D100':98) = 0 /\\ 0 <= (-1 + param0:15)                     /\\ 0 <= (j':99 + -param1:18) /\\ 0 <= j':99))         /\\ 0 <= K:97 /\\ 0 <= D100':98 /\\ 0 < param0:15))")
+      TestCase("Test01", test01, "RawInvariant(D100 := 0 i := (i':93 + 1) j := j':96 n := param0:12 m := param1:15 ,((!((0 <= K:91 /\\ K:91 <= 0)) \\/ D100':92 = 0)         /\\ (!(1 <= K:91) \\/ D100':92 = 0) /\\ (!(0 <= K:91) \\/ i':93 = K:91)         /\\ ((K:91 = 0 /\\ j:2 = j':94 /\\ 0 = i':93 /\\ 0 = D100':92)               \\/ (1 <= K:91 /\\ 0 <= (-1 + param0:12) /\\ D100':92 = 0                     /\\ 0 <= (-i':93 + param0:12)                     /\\ 0 <= (j':94 + -param1:15) /\\ 0 <= j':94                     /\\ 0 <= (-1 + i':93))) /\\ 0 <= K:91 /\\ D100':92 = 0         /\\ 0 <= i':93 /\\ D100':92 = 0 /\\ i':93 < param0:12         /\\ (!(0 <= K:95) \\/ j':96 = K:95)         /\\ (!((0 <= K:95 /\\ K:95 <= 0)) \\/ D100':97 = (D100':92 + K:95))         /\\ (!(1 <= K:95) \\/ D100':97 = K:95)         /\\ ((K:95 = 0 /\\ 0 = j':96 /\\ D100':92 = D100':97)               \\/ (1 <= K:95 /\\ D100':92 = 0 /\\ 0 <= (-1 + param1:15)                     /\\ (-D100':97 + j':96) = 0                     /\\ 0 <= (-D100':97 + param1:15) /\\ 0 <= (-1 + D100':97)))         /\\ 0 <= K:95 /\\ 0 <= D100':97 /\\ 0 <= j':96         /\\ (-j':96 + D100':97) = 0 /\\ param1:15 <= j':96))"),
+      TestCase("Test02", test02, "RawInvariant(D100 := 0 i := i':92 j := j':94 n := param0:12 m := param1:15 ,((!(0 <= K:91) \\/ i':92 = K:91)         /\\ (!((0 <= K:91 /\\ K:91 <= 0)) \\/ (D100':93 + -j':94) = -j:2)         /\\ (!(1 <= K:91) \\/ (D100':93 + -j':94) = 0)         /\\ ((K:91 = 0 /\\ j:2 = j':94 /\\ 0 = i':92 /\\ 0 = D100':93)               \\/ (1 <= K:91 /\\ 0 <= (-1 + param0:12)                     /\\ (-j':94 + D100':93) = 0 /\\ 0 <= (-i':92 + param0:12)                     /\\ 0 <= (-1 + i':92) /\\ 0 <= (j':94 + -param1:15)                     /\\ 0 <= j':94)) /\\ 0 <= K:91 /\\ 0 <= D100':93         /\\ 0 <= i':92 /\\ i':92 < param0:12))"),
+      TestCase("Test03", test03, "RawInvariant(D100 := 0 i := 0 j := 0 n := param0:15 m := param1:18 l := param2:21 ,((!((0 <= K:97 /\\ K:97 <= 0)) \\/ (D100':98 + -j':99) = -j:2)         /\\ (!(1 <= K:97) \\/ (D100':98 + -j':99) = 0)         /\\ ((K:97 = 0 /\\ j:2 = j':99 /\\ 0 = D100':98)               \\/ (1 <= K:97 /\\ 0 <= (-1 + param0:15)                     /\\ (-j':99 + D100':98) = 0 /\\ 0 <= (-1 + param0:15)                     /\\ 0 <= (j':99 + -param1:18) /\\ 0 <= j':99))         /\\ 0 <= K:97 /\\ 0 <= D100':98 /\\ 0 < param0:15))")
     )
   }
 

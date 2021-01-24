@@ -27,7 +27,7 @@ class BoundCheckingUnitTest extends AnyFlatSpec {
           solver,
           decompositionResult,
           boundExpression,
-          CommandLineArguments(UNKNOWN, debugMode = false, "", skipSanityCheck = false, printCounterExample = true)
+          CommandLineArguments(UNKNOWN, debugMode = false, "", skipSanityCheck = false, testCase.expectedOutput == "true")
         )
         assert(StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput, s"Test case ${testCase.className} failed"))
     })
@@ -367,7 +367,7 @@ object BoundCheckingUnitTest {
       val n = solver2.mkIntVar("n")
       solver2.mkITE(
         solver2.mkGe(n, solver2.mkIntVal(0)),
-        solver2.mkLe(R, solver2.mkSub(n, solver2.mkIntVal(1))),
+        solver2.mkLe(R, solver2.mkSub(n, solver2.mkIntVal(10))),
         solver2.mkFalse()
       )
     }

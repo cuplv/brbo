@@ -234,7 +234,7 @@ object Z3Solver {
           }
           false
         case Status.SATISFIABLE => true
-        case Status.UNKNOWN => throw Z3TimeoutException(s"`${Status.UNKNOWN}` - Reason: `${solver.getReasonUnknown}`")
+        case Status.UNKNOWN => throw Z3UnknownException(s"`${Status.UNKNOWN}` - Reason: `${solver.getReasonUnknown}`")
       }
     }
     val end = System.nanoTime()
