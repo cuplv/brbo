@@ -29,7 +29,7 @@ class BoundCheckingUnitTest extends AnyFlatSpec {
           boundExpression,
           CommandLineArguments(UNKNOWN, debugMode = false, "", skipSanityCheck = false, testCase.expectedOutput == "true")
         )
-        assert(StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput, s"Test case ${testCase.className} failed"))
+        StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput, s"Test case ${testCase.className} failed")
     })
   }
 }
@@ -39,6 +39,7 @@ object BoundCheckingUnitTest {
     """class Test01 {
       |  void f(int n)
       |  {
+      |    if (n <= 0) return;
       |    int D100 = 0;
       |    int D100p = 0;
       |    int C1 = 0;
@@ -58,12 +59,13 @@ object BoundCheckingUnitTest {
 
   private val test02: String = // A loop with a nesting depth of 2
     """class Test02 {
-      |  void f(int n, int m, int l)
+      |  void f(int n, int m)
       |  {
+      |    if (n <= 0 || m <= 0) return;
       |    int R = 0;
       |    int C1 = 0;
       |    int D100p = 0;
-      |    int D101 = 0;
+      |    int D100 = 0;
       |    int i = 0;
       |    while (i < n) {
       |      int j = 0;
@@ -84,6 +86,7 @@ object BoundCheckingUnitTest {
     """class Test03 {
       |  void f(int n)
       |  {
+      |    if (n <= 0) return;
       |    int R = 0;
       |    int C1 = 0;
       |    int D100 = 0;
@@ -104,6 +107,7 @@ object BoundCheckingUnitTest {
     """class Test04 {
       |  void f(int n)
       |  {
+      |    if (n <= 0) return;
       |    int R = 0;
       |    int C1 = 0;
       |    int D100 = 0;
@@ -121,8 +125,9 @@ object BoundCheckingUnitTest {
 
   private val test05: String = // A loop with a nesting depth of 2
     """class Test05 {
-      |  void f(int n, int m, int l)
+      |  void f(int n)
       |  {
+      |    if (n <= 0) return;
       |    int R = 0;
       |    int C1 = 0;
       |    int D100 = 0;

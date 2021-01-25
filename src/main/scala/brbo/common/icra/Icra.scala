@@ -65,6 +65,7 @@ object Icra {
       }
       else {
         logger.fatal(s"Error when running ICRA. Exit code: `$result`")
+        logger.error(s"stderr:\n$stderr")
         None
       }
     }

@@ -36,7 +36,7 @@ class BoundInferenceUnitTest extends AnyFlatSpec {
             },
             AFTER
           ),
-          "R"
+          "R",
         )
         assert(StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput, s"${testCase.className} failed"))
     })
@@ -86,7 +86,7 @@ object BoundInferenceUnitTest {
         |  {
         |    int R = 0;
         |    int i = 0;
-        |    if (n >= 0 && m >= 0) {
+        |    if (n > 0 && m > 0) {
         |     while (i < n) {
         |       int j = 0;
         |       while (j < m) {
@@ -99,31 +99,7 @@ object BoundInferenceUnitTest {
         |  }
         |}""".stripMargin
     val test02Expected =
-      """(let ((a!1 (* 100 (* (* (* 1 m) m) m)))
-        |      (a!2 (* 100 (* (* (* 1 n) n) m)))
-        |      (a!3 (* 100 (* (* (* 1 n) n) n)))
-        |      (a!4 (* 100 (* (* (* 1 n) m) m)))
-        |      (a!5 (* 100 (* (* (* 1 m) m) m) m))
-        |      (a!6 (* 100 (* (* (* 1 n) n) m) m))
-        |      (a!7 (* 100 (* (* (* 1 n) n) n) n))
-        |      (a!8 (* 100 (* (* (* 1 n) n) n) m))
-        |      (a!9 (* 100 (* (* (* 1 n) m) m) m)))
-        |  (+ 0
-        |     (* 100 1)
-        |     (* 100 (* 1 m))
-        |     (* 100 (* 1 n))
-        |     (* 100 (* (* 1 m) m))
-        |     (* 100 (* (* 1 n) n))
-        |     (* 100 (* (* 1 n) m))
-        |     a!1
-        |     a!2
-        |     a!3
-        |     a!4
-        |     a!5
-        |     a!6
-        |     a!7
-        |     a!8
-        |     a!9))""".stripMargin
+      """(+ 0 (* 1 1) (* 1 1 n m))""".stripMargin
 
     List[TestCaseJavaProgram](
       TestCaseJavaProgram("Test01", test01, test01Expected),

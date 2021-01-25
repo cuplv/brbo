@@ -11,7 +11,7 @@ import scala.collection.immutable.HashSet
 class BoundInference(targetMethod: TargetMethod) {
   private val logger = BoundInference.logger
   private val MAX_DEGREE = 4
-  private val MAX_COEFFICIENT = 100
+  private val MAX_COEFFICIENT = 16
 
   def inferBound(solver: Z3Solver, locations: Locations, whichVariable: String): Expr = {
     val maxPolynomial = {
@@ -48,7 +48,7 @@ class BoundInference(targetMethod: TargetMethod) {
       degree = degree - 1
     }
     val bound = result.toExpr(solver)
-    logger.error(s"Infer bound $bound for variable $whichVariable")
+    logger.error(s"Infer bound `$bound` for variable `$whichVariable`")
     bound
   }
 

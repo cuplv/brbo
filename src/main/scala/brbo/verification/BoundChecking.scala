@@ -150,7 +150,7 @@ object BoundChecking {
             solver,
             Locations(
               {
-                /*case expressionStatementTree: ExpressionStatementTree =>
+                case expressionStatementTree: ExpressionStatementTree =>
                   val isUpdate = GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Delta) match {
                     case Some(update) => update.identifier == deltaVariable
                     case None => false
@@ -162,9 +162,7 @@ object BoundChecking {
                   isUpdate || isReset
                 case variableTree: VariableTree =>
                   if (variableTree.getName.toString == deltaVariable) true
-                  else false*/
-                case _: VariableTree => false // To ensure `D` is declared before each `assert(D==D)`
-                case tree if TreeUtils.isCommand(tree) => true
+                  else false
                 case _ => false
               },
               AFTER
@@ -185,14 +183,11 @@ object BoundChecking {
             solver,
             Locations(
               {
-                /*case expressionStatementTree: ExpressionStatementTree =>
+                case expressionStatementTree: ExpressionStatementTree =>
                   GhostVariableUtils.extractDeltaPrime(expressionStatementTree.getExpression) match {
                     case Some(identifier) => identifier == generateDeltaVariablePrime(deltaVariable)
                     case None => false
                   }
-                case _ => false*/
-                case _: VariableTree => false // To ensure `D` is declared before each `assert(D==D)`
-                case tree if TreeUtils.isCommand(tree) => true
                 case _ => false
               },
               AFTER
@@ -277,7 +272,7 @@ object BoundChecking {
         val counterInvariant = Await.result(counterInvariantFuture, Duration.Inf)
 
         // Delta variables' double primed version represents the maximum amount of accumulation per execution of subprograms
-        val accumulationInvariantDoublePrime = {
+        /*val accumulationInvariantDoublePrime = {
           val accumulationConstraint = solver.mkExists(
             (localVariables - deltaVariable).map(pair => createVar(pair)),
             accumulationInvariant.substitute(
@@ -307,7 +302,7 @@ object BoundChecking {
               solver.mkIntVar(generateDeltaVariableDoublePrime(deltaVariable))
             )
           )
-        }
+        }*/
 
         (globalInvariant, accumulationInvariant, counterInvariant)
     })
@@ -409,6 +404,14 @@ object BoundChecking {
     sanityCheck(solver, checks, expect = true, allowFail = true, arguments.skipSanityCheck)
     logger.info(s"Sanity check finished")
 
+    logger.info(s"Assert all int-typed input variables are positive")
+    decompositionResult.outputMethod.inputVariables.foreach({
+      case (identifier, typ) =>
+        if (typ == INT) {
+          val nonNegative = solver.mkGt(solver.mkIntVar(identifier), solver.mkIntVal(0))
+          solver.mkAssert(nonNegative)
+        }
+    })
     solver.mkAssert(resourceInvariants)
     solver.mkAssert(deltaInvariants)
     solver.mkAssert(counterInvariants)
