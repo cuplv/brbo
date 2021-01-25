@@ -4,9 +4,11 @@ import brbo.benchmarks.Common;
 
 abstract class Test03 extends Common {
   void f(int n, int m) {
+    if (n <= 0 || m <= 0)
+      return;
     int R = 0;
     int i = 0;
-    boundAssertion (!(n >= 0 && m >= 0) || (R <= m * n));
+    boundAssertion (R <= m * n);
     while (i < n) {
       int j = 0;
       while (j < m) {

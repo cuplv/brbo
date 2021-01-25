@@ -4,9 +4,10 @@ import brbo.benchmarks.Common;
 
 public abstract class Synthetic05 extends Common {
   void f(int n, int m, int l, int o) {
+    if (n <= 0 || m <= 0 || l <= 0 || o <= 0)
+      return;
     int R = 0;
     int i = 0;
-    assume(n >= 0 && m >= 0 && l >= 0 && o >= 0);
     boundAssertion (R <= l * m * n * o);
     while (i < n) {
       int j = 0;

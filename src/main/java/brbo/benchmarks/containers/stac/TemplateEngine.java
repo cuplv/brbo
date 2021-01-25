@@ -4,8 +4,10 @@ import brbo.benchmarks.Common;
 
 public abstract class TemplateEngine extends Common {
   void replaceTagsBuilder(int text) {
+    if (text < 0)
+      return;
     int R = 0;
-    boundAssertion (text < 0 || R <= text);
+    boundAssertion (R <= text);
 
     int linePointer = 0;
     int startTagLocation = 0;
