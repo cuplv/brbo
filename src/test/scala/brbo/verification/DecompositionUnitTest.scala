@@ -8,7 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 
 class DecompositionUnitTest extends AnyFlatSpec {
   private val logger = LogManager.getLogger(classOf[DecompositionUnitTest])
-  private val commandLineArguments = CommandLineArguments(UNKNOWN, debugMode = false, "", skipSanityCheck = false, printCounterExample = false)
+  private val commandLineArguments = CommandLineArguments(UNKNOWN, debugMode = false, "", skipSanityCheck = false, printCounterExample = false, printIcraInputs = false)
 
   "Initializing subprograms" should "be correct" in {
     DecompositionUnitTest.initializeSubprogramsUnitTest.foreach({
@@ -68,7 +68,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.taintSetTests.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val result = Decomposition.computeTaintSet(targetMethod, commandLineArguments.debugMode)
+        val result = Decomposition.computeTaintSetControlAndData(targetMethod, commandLineArguments.debugMode)
         assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
     })
   }
@@ -168,7 +168,7 @@ object DecompositionUnitTest {
         |  }
         |}""".stripMargin
     val test02ExpectedOutput =
-      """""".stripMargin
+      """n""".stripMargin
 
     val test03: String =
       """class Test03 {
@@ -192,7 +192,7 @@ object DecompositionUnitTest {
         |  }
         |}""".stripMargin
     val test03ExpectedOutput =
-      """""".stripMargin
+      """n""".stripMargin
 
     val test04: String =
       """class Test04 {

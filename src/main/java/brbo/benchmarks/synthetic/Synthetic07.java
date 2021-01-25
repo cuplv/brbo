@@ -10,7 +10,7 @@ public abstract class Synthetic07 extends Common {
     int i = 0;
     int j = 0;
     int k = 0;
-    boundAssertion (R <= 2 * l * m * n);
+    boundAssertion (R <= l * m * n);
     while (i < n) {
       j = 0;
       while (j < m) {
@@ -30,7 +30,7 @@ public abstract class Synthetic07 extends Common {
       while (j < m) {
         k = 0;
         while (k < l) {
-          R = R + 1;
+          R = R + (-1);
           k++;
         }
         j++;

@@ -26,7 +26,7 @@ class ControlDependencyUnitTest extends AnyFlatSpec {
         // 2. Run `dot -Tpdf X.dot -o X.pdf`
         // import brbo.common.CFGUtils
         // CFGUtils.printPDF(targetMethod.cfg)
-        assert(StringCompare.ignoreWhitespaces(resultString, testCase.expectedOutput, testCase.className))
+        StringCompare.ignoreWhitespaces(resultString, testCase.expectedOutput, testCase.className)
     })
   }
 }
@@ -43,10 +43,12 @@ object ControlDependencyUnitTest {
         |    R = R + a;
         |  }
         |}""".stripMargin
-    val test01ExpectedOutput =
-      """191 -> List()
-        |193 -> List()
-        |194 -> List()""".stripMargin
+    val test01ExpectedOutput = {
+      val start = 243
+      s"""$start -> List()
+         |${start + 2} -> List()
+         |${start + 3} -> List()""".stripMargin
+    }
 
     val test02: String =
       """class Test02 {
@@ -58,12 +60,14 @@ object ControlDependencyUnitTest {
         |      R = R + a;
         |  }
         |}""".stripMargin
-    val test02ExpectedOutput =
-      """196 -> List()
-        |198 -> List()
-        |199 -> List()
-        |200 -> List()
-        |204 -> List(200)""".stripMargin
+    val test02ExpectedOutput = {
+      val start = 248
+      s"""$start -> List()
+         |${start + 2} -> List()
+         |${start + 3} -> List()
+         |${start + 4} -> List()
+         |${start + 8} -> List(${start + 4})""".stripMargin
+    }
 
     val test03: String =
       """class Test03 {
@@ -86,19 +90,21 @@ object ControlDependencyUnitTest {
         |    }
         |  }
         |}""".stripMargin
-    val test03ExpectedOutput =
-      """208 -> List()
-        |210 -> List()
-        |211 -> List()
-        |212 -> List(213)
-        |213 -> List()
-        |217 -> List(213)
-        |218 -> List(213)
-        |222 -> List(218)
-        |223 -> List(218, 224)
-        |224 -> List(218)
-        |228 -> List(224)
-        |230 -> List(218)""".stripMargin
+    val test03ExpectedOutput = {
+      val start = 260
+      s"""$start -> List()
+         |${start + 2} -> List()
+         |${start + 3} -> List()
+         |${start + 4} -> List(${start + 5})
+         |${start + 5} -> List()
+         |${start + 9} -> List(${start + 5})
+         |${start + 10} -> List(${start + 5})
+         |${start + 14} -> List(${start + 10})
+         |${start + 15} -> List(${start + 10}, ${start + 16})
+         |${start + 16} -> List(${start + 10})
+         |${start + 20} -> List(${start + 16})
+         |${start + 22} -> List(${start + 10})""".stripMargin
+    }
 
     List[TestCaseJavaProgram](
       TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),

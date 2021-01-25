@@ -138,7 +138,7 @@ object BoundChecking {
 
     val lastTree = decompositionResult.outputMethod.methodTree.getBody.getStatements.asScala.last
     val invariantInference = new InvariantInference(decompositionResult.outputMethod)
-    val boundInference = new BoundInference(decompositionResult.outputMethod)
+    val boundInference = new BoundInference(decompositionResult.outputMethod, arguments.printIcraInputs)
     val invariants: Set[(AST, AST, AST)] = deltaCounterPairs.map({
       deltaCounterPair =>
         val deltaVariable = deltaCounterPair.delta

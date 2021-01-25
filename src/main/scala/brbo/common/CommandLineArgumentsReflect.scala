@@ -20,9 +20,13 @@ class CommandLineArgumentsReflect {
     usage = "Skip the sanity check.")
   private var skipSanityCheck: Boolean = false
 
-  @Option(name = "--print-counter-example", aliases = Array("-p"), required = false,
+  @Option(name = "--print-counter-example", aliases = Array("-c"), required = false,
     usage = "Print a counter example that violates the bound.")
   private var printCounterExample: Boolean = false
+
+  @Option(name = "--print-icra-inputs", aliases = Array("-i"), required = false,
+    usage = "Print input programs to ICRA.")
+  private var printIcraInputs: Boolean = false
 
   @Option(name = "--directory", aliases = Array("-d"), required = true,
     usage = "The directory to analyze.")
@@ -44,6 +48,8 @@ class CommandLineArgumentsReflect {
   def getSkipSanityCheck: Boolean = skipSanityCheck
 
   def getPrintCounterExample: Boolean = printCounterExample
+
+  def getPrintIcraInputs: Boolean = printIcraInputs
 }
 
 object CommandLineArgumentsReflect {
@@ -61,6 +67,6 @@ object CommandLineArgumentsReflect {
         System.exit(1)
     }
     CommandLineArguments(arguments.getAmortizationMode, arguments.debugMode,
-      arguments.directoryToAnalyze, arguments.skipSanityCheck, arguments.printCounterExample)
+      arguments.directoryToAnalyze, arguments.skipSanityCheck, arguments.printCounterExample, arguments.printIcraInputs)
   }
 }

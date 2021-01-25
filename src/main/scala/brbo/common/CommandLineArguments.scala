@@ -6,4 +6,5 @@ case class CommandLineArguments(amortizationMode: AmortizationMode,
                                 debugMode: Boolean,
                                 directoryToAnalyze: String,
                                 skipSanityCheck: Boolean,
-                                printCounterExample: Boolean)
+                                printCounterExample: Boolean,
+                                printIcraInputs: Boolean)

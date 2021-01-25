@@ -434,7 +434,7 @@ class Decomposition(inputMethod: TargetMethod, commandLineArguments: CommandLine
     val modifiedSet = environmentModifiedSet(subprogram, subprograms)
     traceOrError(s"Environment modified set: `$modifiedSet`")
 
-    val taintSet = Decomposition.computeTaintSet(subprogram.targetMethod, debug)
+    val taintSet = Decomposition.computeTaintSetControlAndData(subprogram.targetMethod, debug)
     traceOrError(s"Taint set `$taintSet` of subprogram\n$subprogram")
 
     modifiedSet.intersect(taintSet).nonEmpty
@@ -520,7 +520,7 @@ class Decomposition(inputMethod: TargetMethod, commandLineArguments: CommandLine
     }
 
     val modifiedSet1 = Decomposition.computeModifiedSet(subprogram1.targetMethod)
-    val taintSet2 = Decomposition.computeTaintSet(subprogram2.targetMethod, debug)
+    val taintSet2 = Decomposition.computeTaintSetControlAndData(subprogram2.targetMethod, debug)
     traceOrError(s"Subprogram 1 modified set: $modifiedSet1")
     traceOrError(s"Subprogram 1:\n$subprogram1")
     traceOrError(s"Subprogram 2 taint set: $taintSet2")
@@ -756,7 +756,7 @@ object Decomposition {
     val usedVariables: Set[String] = node match {
       case assignmentNode: AssignmentNode => CFGUtils.getUsedVariables(assignmentNode.getExpression)
       case _: VariableDeclarationNode => new HashSet[String]
-      case _ => throw new Exception(s"Expecting assignment or method invocation node `$node` (Type: `${node.getClass}`)")
+      case _ => throw new Exception(s"Expecting assignment or variable declaration node `$node` (Type: `${node.getClass}`)")
     }
     traceOrError(s"Used variables: $usedVariables", debug)
 
@@ -787,33 +787,7 @@ object Decomposition {
       case Some(blocks) =>
         blocks.flatMap({
           block =>
-            assert(block.isInstanceOf[ConditionalBlock], s"Block ${node.getBlock.getUid} control depends on block ${block.getUid}")
-            val predecessors = block.getPredecessors.asScala
-            assert(predecessors.size == 1)
-
-            val predecessor = predecessors.head
-            val condition: Option[Node] = {
-              val condition = predecessor.getLastNode
-              if (condition == null) {
-                traceOrError(s"${node.getBlock}'s predecessor block does not have a condition: `$predecessor`", debug)
-                if (predecessor.getType == BlockType.EXCEPTION_BLOCK) {
-                  traceOrError(s"${node.getBlock}'s predecessor block is an exception block: `$predecessor`", debug)
-                  val predecessors2 = predecessor.getPredecessors.asScala
-                  assert(predecessors2.size == 1)
-                  traceOrError(s"The last node in the exception block is: `${predecessors2.head.getLastNode}`", debug)
-                  val predecessors3 = predecessors2.head.getPredecessors.asScala
-                  assert(predecessors3.size == 1)
-                  traceOrError(s"The last node is: `${predecessors3.head.getLastNode}`", debug)
-                  val predecessors4 = predecessors3.head.getPredecessors.asScala
-                  assert(predecessors4.size == 1)
-                  traceOrError(s"The last node is: `${predecessors4.head.getLastNode}`", debug)
-                  Some(predecessors4.head.getLastNode)
-                }
-                else None
-              }
-              else Some(condition)
-            }
-            condition match {
+            getCondition(node, block, debug) match {
               case Some(condition2) => computeTransitiveControlDependency(condition2, controlDependency, visited + node, debug) + condition2
               case None => new HashSet[Node]
             }
@@ -822,8 +796,41 @@ object Decomposition {
     }
   }
 
-  @deprecated
-  def computeTaintSetControlAndData(targetMethod: TargetMethod): Set[String] = {
+  /**
+   *
+   * @param node  A node
+   * @param block A block that controls the enclosing block of the input node
+   * @param debug Print debug information
+   * @return The condition node that the block is control-dependent on
+   */
+  private def getCondition(node: Node, block: Block, debug: Boolean): Option[Node] = {
+    assert(block.isInstanceOf[ConditionalBlock], s"Block ${node.getBlock.getUid} control depends on block ${block.getUid}")
+    val predecessors = block.getPredecessors.asScala
+    assert(predecessors.size == 1)
+
+    val predecessor = predecessors.head
+    val condition = predecessor.getLastNode
+    if (condition == null) {
+      traceOrError(s"${node.getBlock}'s predecessor block does not have a condition: `$predecessor`", debug)
+      if (predecessor.getType == BlockType.EXCEPTION_BLOCK) {
+        traceOrError(s"${node.getBlock}'s predecessor block is an exception block: `$predecessor`", debug)
+        val predecessors2 = predecessor.getPredecessors.asScala
+        assert(predecessors2.size == 1)
+        traceOrError(s"The last node in the exception block is: `${predecessors2.head.getLastNode}`", debug)
+        val predecessors3 = predecessors2.head.getPredecessors.asScala
+        assert(predecessors3.size == 1)
+        traceOrError(s"The last node is: `${predecessors3.head.getLastNode}`", debug)
+        val predecessors4 = predecessors3.head.getPredecessors.asScala
+        assert(predecessors4.size == 1)
+        traceOrError(s"The last node is: `${predecessors4.head.getLastNode}`", debug)
+        Some(predecessors4.head.getLastNode)
+      }
+      else None
+    }
+    else Some(condition)
+  }
+
+  def computeTaintSetControlAndData(targetMethod: TargetMethod, debug: Boolean): Set[String] = {
     val dataDependency = DataDependency.computeDataDependency(targetMethod)
     val controlDependency = {
       val controlDependency = ControlDependency.computeControlDependency(targetMethod)
@@ -832,97 +839,60 @@ object Decomposition {
     targetMethod.cfg.getAllNodes.asScala
       .filter({ node => GhostVariableUtils.extractUpdate(node, Resource).isDefined })
       .flatMap({ node =>
-        logger.debug(s"Compute taint set for $node")
-        computeTaintSetDataHelper(node, dataDependency, controlDependency, new HashSet[Node])
+        traceOrError(s"Compute taint set for $node", debug)
+        computeTaintSetControlAndDataHelper(node, isExpression = false, dataDependency, controlDependency, new HashSet[Node], debug)
       })
       .toSet
   }
 
-  @deprecated
-  private def computeTaintSetDataHelper(node: Node,
-                                        dataDependency: Map[Node, Set[ReachingValue]],
-                                        controlDependency: Map[Block, Set[Block]],
-                                        visited: Set[Node]): Set[String] = {
-    if (visited.contains(node)) return new HashSet[String]
+  private def computeTaintSetControlAndDataHelper(inputNode: Node,
+                                                  isExpression: Boolean,
+                                                  dataDependency: Map[Node, Set[ReachingValue]],
+                                                  controlDependency: Map[Block, Set[Block]],
+                                                  visited: Set[Node],
+                                                  debug: Boolean): Set[String] = {
+    if (visited.contains(inputNode)) return new HashSet[String]
 
-    val assignmentExpression = node match {
-      case assignmentNode: AssignmentNode => assignmentNode.getExpression
-      case _ => throw new Exception(s"Compute taint set - Expecting assignment node $node (Type: ${node.getClass})")
-    }
-
-    val set1: Set[String] = dataDependency.get(node) match {
-      case Some(definitions) =>
-        val usedVariables = CFGUtils.getUsedVariables(assignmentExpression)
-        val newDefinitions = definitions.filter(definition => usedVariables.contains(definition.variable))
-        usedVariables ++ computeTaintSetHelper(newDefinitions, dataDependency, controlDependency, visited + node)
-      case None => new HashSet[String]
-    }
-
-    val set2: Set[String] = controlDependency.get(node.getBlock) match {
-      case Some(blocks) =>
-        blocks.flatMap({
-          block =>
-            assert(block.isInstanceOf[ConditionalBlock], s"Block ${node.getBlock.getUid} control depends on block ${block.getUid}")
-            val predecessors = block.getPredecessors.asScala
-            assert(predecessors.size == 1)
-
-            val condition = predecessors.head.getLastNode
-            logger.debug(s"Compute taint set for conditional node $node")
-            computeTaintSetControlHelper(condition, dataDependency, controlDependency, visited + node)
-        })
-      case None => new HashSet[String]
-    }
-
-    set1 ++ set2
-  }
-
-  @deprecated
-  private def computeTaintSetControlHelper(node: Node,
-                                           dataDependency: Map[Node, Set[ReachingValue]],
-                                           controlDependency: Map[Block, Set[Block]],
-                                           visited: Set[Node]): Set[String] = {
-    if (visited.contains(node)) return new HashSet[String]
-
-    val usedVariables = CFGUtils.getUsedVariables(node)
-
-    val set1 = dataDependency.get(node) match {
-      case Some(definitions) =>
-        val newDefinitions = definitions.filter(definition => usedVariables.contains(definition.variable))
-        usedVariables ++ computeTaintSetHelper(newDefinitions, dataDependency, controlDependency, visited + node)
-      case None => new HashSet[String]
-    }
-
-    val set2 = controlDependency.get(node.getBlock) match {
-      case Some(blocks) =>
-        blocks.flatMap({
-          block =>
-            assert(block.isInstanceOf[ConditionalBlock], s"Block ${node.getBlock.getUid} control depends on block ${block.getUid}")
-            val predecessors = block.getPredecessors.asScala
-            assert(predecessors.size == 1)
-
-            val condition = predecessors.head.getLastNode
-            computeTaintSetControlHelper(condition, dataDependency, controlDependency, visited + node)
-        })
-      case None => new HashSet[String]
-    }
-
-    set1 ++ set2
-  }
-
-  @deprecated
-  private def computeTaintSetHelper(definitions: Iterable[ReachingValue],
-                                    dataDependency: Map[Node, Set[ReachingValue]],
-                                    controlDependency: Map[Block, Set[Block]],
-                                    visited: Set[Node]): Set[String] = {
-    definitions.flatMap({
-      definition =>
-        definition.node match {
-          case Some(n) =>
-            logger.debug(s"Compute taint set - Recursive call to $n")
-            computeTaintSetDataHelper(n, dataDependency, controlDependency, visited)
-          case None => HashSet[String](definition.variable) // This definition comes from an input variable
+    val usedVariables: Set[String] = {
+      if (isExpression) CFGUtils.getUsedVariables(inputNode)
+      else {
+        inputNode match {
+          case assignmentNode: AssignmentNode => CFGUtils.getUsedVariables(assignmentNode.getExpression)
+          case _: VariableDeclarationNode => new HashSet[String]
+          case _ => throw new Exception(s"Expect assignment or variable declaration node `$inputNode` (Type: `${inputNode.getClass}`)")
         }
-    }).toSet
+      }
+    }
+    traceOrError(s"Used variables: $usedVariables", debug)
+
+    val set1: Set[String] = dataDependency.get(inputNode) match {
+      case Some(definitions) =>
+        val newDefinitions = definitions.filter(definition => usedVariables.contains(definition.variable))
+        traceOrError(s"Reaching definitions (that are used): $newDefinitions", debug)
+        newDefinitions.flatMap({
+          definition =>
+            definition.node match {
+              case Some(node) => computeTaintSetControlAndDataHelper(node, isExpression = false, dataDependency, controlDependency, visited + inputNode, debug)
+              case None => HashSet[String](definition.variable) // This definition comes from an input variable
+            }
+        })
+      case None => new HashSet[String]
+    }
+
+    val set2: Set[String] = controlDependency.get(inputNode.getBlock) match {
+      case Some(blocks) =>
+        blocks.flatMap({
+          block =>
+            traceOrError(s"Compute taint set for conditional node $inputNode", debug)
+            getCondition(inputNode, block, debug) match {
+              case Some(condition) => computeTaintSetControlAndDataHelper(condition, isExpression = true, dataDependency, controlDependency, visited + inputNode, debug)
+              case None => new HashSet[String]
+            }
+        })
+      case None => new HashSet[String]
+    }
+
+    set1 ++ set2
   }
 
   case class DeltaCounterPair(delta: String, counter: String) {

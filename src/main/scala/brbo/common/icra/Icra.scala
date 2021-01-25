@@ -11,12 +11,13 @@ import org.apache.logging.log4j.LogManager
 import scala.collection.immutable.HashSet
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
+import scala.concurrent.duration.{Duration, SECONDS}
 import scala.sys.process._
 
 object Icra {
   private val logger = LogManager.getLogger("brbo.common.icra.Icra")
   private val ICRA_PATH = s"${System.getProperty("user.home")}/Documents/workspace/icra/icra"
-  private val TIMEOUT = 15 // Unit: Seconds
+  private val TIMEOUT = 60 // Unit: Seconds
 
   def runAndParseInvariant(sourceCode: String): Option[List[ParsedInvariant]] = {
     runAndGetStdOutput(sourceCode) match {
@@ -48,9 +49,11 @@ object Icra {
       // Set a timeout
       // val status = cmd ! ProcessLogger(stdout append _, stderr append _)
       val process = cmd.run(ProcessLogger(stdout append _, stderr append _))
-      val future = Future(blocking(process.exitValue())) // wrap in Future
+      // val future = Future(blocking(process.exitValue())) // wrap in Future
+      val future = Future(process.exitValue())
       val result = try {
-        Await.result(future, duration.Duration(TIMEOUT, "sec"))
+        Await.result(future, Duration(TIMEOUT, SECONDS))
+        // Await.result(future, Duration.Inf)
       } catch {
         case _: TimeoutException =>
           logger.fatal(s"ICRA timed out after `$TIMEOUT` seconds!")
