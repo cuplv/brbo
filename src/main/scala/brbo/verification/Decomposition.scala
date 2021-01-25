@@ -631,7 +631,7 @@ object Decomposition {
             val updateNode = CFGUtils.getNodesCorrespondingToExpressionStatementTree(statement, targetMethod.cfg)
 
             updateTree.increment match {
-              case literalTree: LiteralTree =>
+              /*case literalTree: LiteralTree =>
                 assert(literalTree.getKind == Kind.INT_LITERAL)
                 // The initial subprogram is the minimal enclosing loop when `R` is updated by a constant
                 val subprogram: StatementTree = {
@@ -647,7 +647,7 @@ object Decomposition {
                   case None => updateNode
                 }
                 logger.trace(s"Resource update `$statement`'s initial subprogram is `$subprogram`. Entry node is `$entryNode`")
-                Some(subprogram, entryNode)
+                Some(subprogram, entryNode)*/
               case _ => Some(statement, updateNode)
             }
           case None => None

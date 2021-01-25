@@ -1,8 +1,10 @@
 package brbo.common
 
 import brbo.common.BeforeOrAfterOrThis.{AFTER, BEFORE}
+import brbo.common.CommandLineArguments.DEFAULT_ARGUMENTS
 import brbo.common.GhostVariableUtils.GhostVariable.Delta
 import brbo.common.TypeUtils.BrboType.{BrboType, INT}
+import brbo.verification.AmortizationMode.UNKNOWN
 import brbo.verification.{BasicProcessor, BoundCheckingUnitTest}
 import brbo.{StringCompare, TestCaseJavaProgram}
 import com.sun.source.tree.{ExpressionStatementTree, Tree, VariableTree}
@@ -40,7 +42,8 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
             AFTER
           ),
           whichVariable = "D100",
-          allVariables
+          allVariables,
+          DEFAULT_ARGUMENTS
         )
         logger.debug(result)
         solver.mkAssert(solver.mkExists(List(solver.mkIntVar("C1"), solver.mkIntVar("R"), solver.mkIntVar("i"), solver.mkIntVar("j")), result))
@@ -79,7 +82,8 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
             BEFORE
           ),
           whichVariable = "D100",
-          allVariables
+          allVariables,
+          DEFAULT_ARGUMENTS
         )
         logger.debug(result)
         solver.mkAssert(solver.mkExists(List(solver.mkIntVar("C1"), solver.mkIntVar("R"), solver.mkIntVar("i"), solver.mkIntVar("j")), result))
@@ -118,7 +122,8 @@ class InvariantInferenceUnitTest extends AnyFlatSpec {
             AFTER
           ),
           whichVariable = "C1",
-          allVariables
+          allVariables,
+          DEFAULT_ARGUMENTS
         )
         logger.debug(result)
         solver.mkAssert(solver.mkExists(List(solver.mkIntVar("D100"), solver.mkIntVar("R"), solver.mkIntVar("i"), solver.mkIntVar("j")), result))

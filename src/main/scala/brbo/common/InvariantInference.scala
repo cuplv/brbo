@@ -20,7 +20,8 @@ class InvariantInference(targetMethod: TargetMethod) {
   def inferInvariant(solver: Z3Solver,
                      locations: Locations,
                      whichVariable: String,
-                     freeVariables: Map[String, BrboType]): BoolExpr = {
+                     freeVariables: Map[String, BrboType],
+                     arguments: CommandLineArguments): BoolExpr = {
     logger.info(s"Infer invariants in method `${targetMethod.methodTree.getName}` `${locations.beforeOrAfter}` specified nodes in CFG")
     // If this assertion was too easy (e.g., `true` or `x>=0`), then it seems ICRA doesn't infer strong invariants!
     // Do not use `assert(x>0)`, because if the first assertion fails, then the invariants at the following assertion locations will be simply `false`
@@ -28,7 +29,7 @@ class InvariantInference(targetMethod: TargetMethod) {
     // s"assert($whichVariable >= 101)"
     val cProgram = InvariantInference.translateToCAndInsertAssertions(targetMethod, locations, "true")
     // println(cProgram)
-    Icra.runAndParseInvariant(cProgram) match {
+    Icra.runAndParseInvariant(cProgram, arguments.icraTimeout) match {
       case Some(parsedInvariants) =>
         val existentiallyQuantifiedInvariants = {
           parsedInvariants.map {

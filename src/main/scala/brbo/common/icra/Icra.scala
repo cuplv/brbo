@@ -17,23 +17,22 @@ import scala.sys.process._
 object Icra {
   private val logger = LogManager.getLogger("brbo.common.icra.Icra")
   private val ICRA_PATH = s"${System.getProperty("user.home")}/Documents/workspace/icra/icra"
-  private val TIMEOUT = 60 // Unit: Seconds
 
-  def runAndParseInvariant(sourceCode: String): Option[List[ParsedInvariant]] = {
-    runAndGetStdOutput(sourceCode) match {
+  def runAndParseInvariant(sourceCode: String, timeout: Int): Option[List[ParsedInvariant]] = {
+    runAndGetStdOutput(sourceCode, timeout) match {
       case Some(icraOutput) => Some(parseInvariants(icraOutput))
       case None => None
     }
   }
 
-  def runAndParseAssertionChecks(sourceCode: String): Option[List[Boolean]] = {
-    runAndGetStdOutput(sourceCode) match {
+  def runAndParseAssertionChecks(sourceCode: String, timeout: Int): Option[List[Boolean]] = {
+    runAndGetStdOutput(sourceCode, timeout) match {
       case Some(icraOutput) => Some(parseAssertionChecks(icraOutput))
       case None => None
     }
   }
 
-  private def runAndGetStdOutput(sourceCode: String): Option[String] = {
+  private def runAndGetStdOutput(sourceCode: String, timeout: Int): Option[String] = {
     val stdout = new StringBuilder
     val stderr = new StringBuilder
 
@@ -49,14 +48,16 @@ object Icra {
       // Set a timeout
       // val status = cmd ! ProcessLogger(stdout append _, stderr append _)
       val process = cmd.run(ProcessLogger(stdout append _, stderr append _))
-      // val future = Future(blocking(process.exitValue())) // wrap in Future
-      val future = Future(process.exitValue())
+      val future = Future(blocking(process.exitValue())) // wrap in Future
+      val actualTimeout = {
+        if (timeout >= 0) Duration(timeout, SECONDS)
+        else Duration.Inf
+      }
       val result = try {
-        Await.result(future, Duration(TIMEOUT, SECONDS))
-        // Await.result(future, Duration.Inf)
+        Await.result(future, actualTimeout)
       } catch {
         case _: TimeoutException =>
-          logger.fatal(s"ICRA timed out after `$TIMEOUT` seconds!")
+          logger.fatal(s"ICRA timed out after `$actualTimeout`!")
           process.destroy()
           process.exitValue()
       }

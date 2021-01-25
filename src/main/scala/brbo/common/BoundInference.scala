@@ -8,21 +8,21 @@ import org.apache.logging.log4j.LogManager
 
 import scala.collection.immutable.HashSet
 
-class BoundInference(targetMethod: TargetMethod, printIcraInputs: Boolean = false) {
+class BoundInference(targetMethod: TargetMethod, arguments: CommandLineArguments) {
   private val logger = BoundInference.logger
-  private val MAX_DEGREE = 3
   private val MAX_COEFFICIENT = 8
 
-  def inferBound(solver: Z3Solver, locations: Locations, whichVariable: String): BoolExpr = {
+  def inferBound(solver: Z3Solver, locations: Locations, whichVariable: String, maxDegree: Int): BoolExpr = {
+    logger.info(s"Infer bounds with a max degree of `$maxDegree` and a max coefficient of `$MAX_COEFFICIENT`")
     val maxPolynomial = {
       val integerTyped = targetMethod.inputVariables.filter(pair => pair._2 == INT)
-      BoundInference.generateTemplateInvariant(MAX_DEGREE, MAX_COEFFICIENT, integerTyped.keySet.toList)
+      BoundInference.generateTemplateInvariant(maxDegree, MAX_COEFFICIENT, integerTyped.keySet.toList)
     }
     var result = maxPolynomial
 
     val existsUpperBound = checkAGuess(locations, maxPolynomial, whichVariable)
 
-    var degree = MAX_DEGREE
+    var degree = maxDegree
     while (degree >= 0) {
       logger.trace(s"Binary search coefficients for degree $degree")
 
@@ -56,10 +56,10 @@ class BoundInference(targetMethod: TargetMethod, printIcraInputs: Boolean = fals
 
   def checkAGuess(locations: Locations, polynomial: Polynomial, whichVariable: String): Boolean = {
     val cProgram = InvariantInference.translateToCAndInsertAssertions(targetMethod, locations, s"$whichVariable <= ${polynomial.toString}")
-    if (printIcraInputs) {
+    if (arguments.printIcraInputs) {
       logger.error(s"ICRA input:\n$cProgram")
     }
-    Icra.runAndParseAssertionChecks(cProgram) match {
+    Icra.runAndParseAssertionChecks(cProgram, arguments.icraTimeout) match {
       case Some(checks) => checks.forall(b => b)
       case None => false
     }

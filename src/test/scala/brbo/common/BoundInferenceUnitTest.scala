@@ -1,7 +1,9 @@
 package brbo.common
 
 import brbo.common.BeforeOrAfterOrThis.AFTER
+import brbo.common.CommandLineArguments.DEFAULT_ARGUMENTS
 import brbo.common.GhostVariableUtils.GhostVariable.Resource
+import brbo.verification.AmortizationMode.UNKNOWN
 import brbo.verification.BasicProcessor
 import brbo.{StringCompare, TestCase, TestCaseJavaProgram}
 import com.sun.source.tree.ExpressionStatementTree
@@ -21,7 +23,7 @@ class BoundInferenceUnitTest extends AnyFlatSpec {
     BoundInferenceUnitTest.inferBoundUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val boundInference = new BoundInference(targetMethod)
+        val boundInference = new BoundInference(targetMethod, DEFAULT_ARGUMENTS)
         val solver = new Z3Solver
         val result = boundInference.inferBound(
           solver,
@@ -37,6 +39,7 @@ class BoundInferenceUnitTest extends AnyFlatSpec {
             AFTER
           ),
           "R",
+          maxDegree = 2
         )
         assert(StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput, s"${testCase.className} failed"))
     })

@@ -32,6 +32,10 @@ class CommandLineArgumentsReflect {
     usage = "The directory to analyze.")
   private var directoryToAnalyze: String = "."
 
+  @Option(name = "--icra-timeout", aliases = Array("-t"),
+    usage = "The amount of timeout (unit: seconds) allowed for each invocation to ICRA. `-1` means no timeout will be set.")
+  private var icraTimeout: Int = CommandLineArguments.DEFAULT_ICRA_TIME_OUT
+
   def getAmortizationMode: AmortizationMode = {
     amortizationMode.toLowerCase() match {
       case "no" => NO_AMORTIZE
@@ -50,6 +54,8 @@ class CommandLineArgumentsReflect {
   def getPrintCounterExample: Boolean = printCounterExample
 
   def getPrintIcraInputs: Boolean = printIcraInputs
+
+  def getIcraTimeout: Int = icraTimeout
 }
 
 object CommandLineArgumentsReflect {
@@ -67,6 +73,9 @@ object CommandLineArgumentsReflect {
         System.exit(1)
     }
     CommandLineArguments(arguments.getAmortizationMode, arguments.debugMode,
-      arguments.directoryToAnalyze, arguments.skipSanityCheck, arguments.printCounterExample, arguments.printIcraInputs)
+      arguments.directoryToAnalyze, arguments.skipSanityCheck,
+      arguments.printCounterExample, arguments.printIcraInputs,
+      arguments.icraTimeout
+    )
   }
 }

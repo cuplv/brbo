@@ -21,6 +21,8 @@ import scala.concurrent.duration._
 
 object BoundChecking {
   private val logger = LogManager.getLogger("brbo.verification.BoundChecking")
+  private val MAX_DEGREE_DELTA = 1
+  private val MAX_DEGREE_COUNTER = 3
 
   def treatCounterAsResourceInstrumentation(counterVariable: String, resourceVariable: String): StatementTreeInstrumentation = {
     StatementTreeInstrumentation(
@@ -138,7 +140,7 @@ object BoundChecking {
 
     val lastTree = decompositionResult.outputMethod.methodTree.getBody.getStatements.asScala.last
     val invariantInference = new InvariantInference(decompositionResult.outputMethod)
-    val boundInference = new BoundInference(decompositionResult.outputMethod, arguments.printIcraInputs)
+    val boundInference = new BoundInference(decompositionResult.outputMethod, arguments)
     val invariants: Set[(AST, AST, AST)] = deltaCounterPairs.map({
       deltaCounterPair =>
         val deltaVariable = deltaCounterPair.delta
@@ -165,6 +167,7 @@ object BoundChecking {
               AFTER
             ),
             deltaVariable,
+            MAX_DEGREE_DELTA
             // allVariables
           )
         }
@@ -191,6 +194,7 @@ object BoundChecking {
               AFTER
             ),
             generateDeltaVariablePrime(deltaVariable),
+            MAX_DEGREE_DELTA
             // deltaVariable,
             // allVariables
           )
@@ -253,6 +257,7 @@ object BoundChecking {
               AFTER
             ),
             counterVariable,
+            MAX_DEGREE_COUNTER
             // allVariables
           )
           //}
