@@ -138,6 +138,7 @@ object BoundChecking {
 
     val lastTree = decompositionResult.outputMethod.methodTree.getBody.getStatements.asScala.last
     val invariantInference = new InvariantInference(decompositionResult.outputMethod)
+    val boundInference = new BoundInference(decompositionResult.outputMethod)
     val invariants: Set[(AST, AST, AST)] = deltaCounterPairs.map({
       deltaCounterPair =>
         val deltaVariable = deltaCounterPair.delta
@@ -145,7 +146,7 @@ object BoundChecking {
 
         logger.info(s"Infer invariant for the peak value of delta variable `$deltaVariable`")
         val globalInvariantFuture = Future {
-          val invariant = invariantInference.inferInvariant(
+          val invariant = boundInference.inferBound(
             solver,
             Locations(
               {
@@ -169,18 +170,18 @@ object BoundChecking {
               AFTER
             ),
             deltaVariable,
-            allVariables
+            // allVariables
           )
           solver.mkExists(
             (localVariables - deltaVariable).map(pair => createVar(pair)),
-            invariant
+            solver.mkLe(solver.mkIntVar(deltaVariable), invariant)
           )
         }
 
         // TODO: It seems that ICRA cannot infer strong invariants right before `D=0`
         logger.info(s"Infer invariant for the accumulation of delta variable `$deltaVariable` (per visit to its subprogram)")
         val accumulationInvariantFuture = Future {
-          val invariant = invariantInference.inferInvariant(
+          val invariant = boundInference.inferBound(
             solver,
             Locations(
               {
@@ -197,11 +198,11 @@ object BoundChecking {
               AFTER
             ),
             generateDeltaVariablePrime(deltaVariable),
-            allVariables
+            // allVariables
           )
           solver.mkExists(
             (localVariables - generateDeltaVariablePrime(deltaVariable)).map(pair => createVar(pair)),
-            invariant
+            solver.mkLe(solver.mkIntVar(generateDeltaVariablePrime(deltaVariable)), invariant)
           )
         }
 
@@ -253,7 +254,7 @@ object BoundChecking {
           }
           else {*/
           logger.info(s"Infer invariants for AST counter `$counterVariable` with ICRA")
-          val invariant = invariantInference.inferInvariant(
+          val invariant = boundInference.inferBound(
             solver,
             Locations(
               {
@@ -262,11 +263,11 @@ object BoundChecking {
               AFTER
             ),
             counterVariable,
-            allVariables
+            // allVariables
           )
           solver.mkExists(
             (localVariables - counterVariable).map(pair => createVar(pair)),
-            invariant
+            solver.mkLe(solver.mkIntVar(counterVariable), invariant)
           )
           //}
         }
@@ -387,9 +388,9 @@ object BoundChecking {
     val resourceInvariants = globalInvariants.resourceInvariants
     val deltaInvariants = globalInvariants.deltaInvariants
     val counterInvariants = globalInvariants.counterInvariants
-    logger.info(s"Resource invariants: $resourceInvariants")
-    logger.info(s"Delta invariants: $deltaInvariants")
-    logger.info(s"Counter invariants: $counterInvariants")
+    logger.debug(s"Resource invariants: $resourceInvariants")
+    logger.debug(s"Delta invariants: $deltaInvariants")
+    logger.debug(s"Counter invariants: $counterInvariants")
 
     // Sanity check: We assume the generated constraints won't contradict with each other
     val checks = List[(AST, String)](

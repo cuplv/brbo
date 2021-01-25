@@ -9,16 +9,30 @@ import com.microsoft.z3.AST
 import org.apache.logging.log4j.LogManager
 
 import scala.collection.immutable.HashSet
-import scala.concurrent.{Await, Future, TimeoutException, blocking, duration}
-import scala.sys.process._
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent._
+import scala.sys.process._
 
 object Icra {
   private val logger = LogManager.getLogger("brbo.common.icra.Icra")
   private val icraPath = s"${System.getProperty("user.home")}/Documents/workspace/icra/icra"
   private val TIMEOUT = 30 // Unit: Seconds
 
-  def run(sourceCode: String): Option[List[ParsedInvariant]] = {
+  def runAndParseInvariant(sourceCode: String): Option[List[ParsedInvariant]] = {
+    runAndGetStdOutput(sourceCode) match {
+      case Some(icraOutput) => Some(parseInvariants(icraOutput))
+      case None => None
+    }
+  }
+
+  def runAndParseAssertionChecks(sourceCode: String): Option[List[Boolean]] = {
+    runAndGetStdOutput(sourceCode) match {
+      case Some(icraOutput) => Some(parseAssertionChecks(icraOutput))
+      case None => None
+    }
+  }
+
+  private def runAndGetStdOutput(sourceCode: String): Option[String] = {
     val stdout = new StringBuilder
     val stderr = new StringBuilder
 
@@ -29,8 +43,6 @@ object Icra {
     }
 
     val cmd = s"$icraPath -cra-split-loops -cra-prsd ${file.toAbsolutePath}"
-
-    var parsedInvariants: Option[List[ParsedInvariant]] = None
 
     try {
       // Set a timeout
@@ -47,12 +59,13 @@ object Icra {
       }
       if (result == 0) {
         logger.trace(s"ICRA stdout:\n$stdout")
-        parsedInvariants = Some(parseInvariants(stdout.toString()))
         val removeFile = s"rm $file"
         removeFile.!!
+        Some(stdout.toString())
       }
       else {
         logger.fatal(s"Error when running ICRA. Exit code: `$result`")
+        None
       }
     }
     catch {
@@ -62,8 +75,6 @@ object Icra {
         logger.error(s"stderr:\n$stderr")
         throw new RuntimeException("Error when running ICRA")
     }
-
-    parsedInvariants
   }
 
   def parseInvariants(icraOutput: String): List[ParsedInvariant] = {
@@ -71,6 +82,24 @@ object Icra {
     parser.extractRawInvariants.map({
       rawInvariant => parser.parseRawInvariant(rawInvariant)
     })
+  }
+
+  def parseAssertionChecks(icraOutput: String): List[Boolean] = {
+    val lines = icraOutput.split("\n")
+    val result = lines.foldLeft(List[Boolean]())({
+      (acc, line) =>
+        if (line.contains("(Assertion on line")) {
+          if (line.contains("FAILED")) {
+            false :: acc
+          }
+          else if (line.contains("PASSED")) {
+            true :: acc
+          }
+          else throw new Exception(s"Unexpected ICRA output: $line")
+        }
+        else acc
+    })
+    result.reverse
   }
 
   def translateToZ3(icraAST: IcraAST, typ: BrboType, solver: Z3Solver): AST = translateToZ3AndCollectVariables(icraAST, typ, solver)._1

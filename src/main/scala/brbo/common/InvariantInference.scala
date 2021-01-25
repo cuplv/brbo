@@ -5,27 +5,30 @@ import brbo.common.InstrumentUtils.{NewMethodInformation, StatementTreeInstrumen
 import brbo.common.InvariantInference.logger
 import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT}
 import brbo.common.icra.{Assignment, Icra}
-import com.microsoft.z3.{AST, BoolExpr, Expr}
+import com.microsoft.z3.{AST, BoolExpr}
 import org.apache.logging.log4j.LogManager
 
 class InvariantInference(targetMethod: TargetMethod) {
-  private val methodTree = targetMethod.methodTree
-
   /**
    *
-   * @param solver                The solver that is used to construct Z3 ASTs that represent the inferred invariants
-   * @param locations             The locations before or after which we wish to infer invariants
-   * @param freeVariables         The inferred invariants must only contain free variables that appear in this set
+   * @param solver        The solver that is used to construct Z3 ASTs that represent the inferred invariants
+   * @param locations     The locations before or after which we wish to infer invariants
+   * @param freeVariables The inferred invariants must only contain free variables that appear in this set
    * @return The conjunction of local invariants that are existentially quantified by some variables
    */
+  @deprecated
   def inferInvariant(solver: Z3Solver,
                      locations: Locations,
                      whichVariable: String,
                      freeVariables: Map[String, BrboType]): BoolExpr = {
-    logger.info(s"Infer invariants in method `${methodTree.getName}` `${locations.beforeOrAfter}` specified nodes in CFG")
-    val cProgram = translateToCAndInsertAssertions(locations, whichVariable)
+    logger.info(s"Infer invariants in method `${targetMethod.methodTree.getName}` `${locations.beforeOrAfter}` specified nodes in CFG")
+    // If this assertion was too easy (e.g., `true` or `x>=0`), then it seems ICRA doesn't infer strong invariants!
+    // Do not use `assert(x>0)`, because if the first assertion fails, then the invariants at the following assertion locations will be simply `false`
+    // s"assert($whichVariable == $whichVariable)"
+    // s"assert($whichVariable >= 101)"
+    val cProgram = InvariantInference.translateToCAndInsertAssertions(targetMethod, locations, "true")
     // println(cProgram)
-    Icra.run(cProgram) match {
+    Icra.runAndParseInvariant(cProgram) match {
       case Some(parsedInvariants) =>
         val existentiallyQuantifiedInvariants = {
           parsedInvariants.map {
@@ -66,21 +69,23 @@ class InvariantInference(targetMethod: TargetMethod) {
         solver.mkTrue()
     }
   }
+}
+
+object InvariantInference {
+  private val logger = LogManager.getLogger("brbo.common.InvariantInference")
 
   /**
    *
    * @param locations The locations before or after which we insert `assert(1)`
    * @return The C program that is translated from the input Java program, and is asserted with `assert(1)`
    */
-  private def translateToCAndInsertAssertions(locations: Locations, whichVariable: String): String = {
+  def translateToCAndInsertAssertions(targetMethod: TargetMethod, locations: Locations, assertion: String): String = {
     val indent = 2
-    // If this assertion was too easy (e.g., `true` or `x>=0`), then it seems ICRA doesn't infer strong invariants!
-    // Do not use `assert(x>0)`, because if the first assertion fails, then the invariants at the following assertion locations will be simply `false`
-    val ASSERT_TRUE = s"assert(true)" // s"assert($whichVariable == $whichVariable)" // s"assert($whichVariable >= 101)"
+    val ASSERT = s"assert($assertion)"
 
     val newMethodBody = InstrumentUtils.instrumentStatementTrees(
       targetMethod,
-      StatementTreeInstrumentation(locations, _ => s"$ASSERT_TRUE;"),
+      StatementTreeInstrumentation(locations, _ => s"$ASSERT;"),
       indent
     )
     InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(
@@ -90,8 +95,4 @@ class InvariantInference(targetMethod: TargetMethod) {
       indent
     )
   }
-}
-
-object InvariantInference {
-  private val logger = LogManager.getLogger("brbo.common.InvariantInference")
 }
