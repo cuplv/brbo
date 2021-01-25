@@ -172,7 +172,7 @@ object BoundChecking {
           )
           solver.mkExists(
             (localVariables - deltaVariable).map(pair => createVar(pair)),
-            solver.mkLe(solver.mkIntVar(deltaVariable), invariant)
+            invariant
           )
         }
 
@@ -197,7 +197,7 @@ object BoundChecking {
           )
           solver.mkExists(
             (localVariables - generateDeltaVariablePrime(deltaVariable)).map(pair => createVar(pair)),
-            solver.mkLe(solver.mkIntVar(generateDeltaVariablePrime(deltaVariable)), invariant)
+            invariant
           )
         }
 
@@ -262,7 +262,7 @@ object BoundChecking {
           )
           solver.mkExists(
             (localVariables - counterVariable).map(pair => createVar(pair)),
-            solver.mkLe(solver.mkIntVar(counterVariable), invariant)
+            invariant
           )
           //}
         }
@@ -383,9 +383,9 @@ object BoundChecking {
     val resourceInvariants = globalInvariants.resourceInvariants
     val deltaInvariants = globalInvariants.deltaInvariants
     val counterInvariants = globalInvariants.counterInvariants
-    logger.debug(s"Resource invariants: $resourceInvariants")
-    logger.debug(s"Delta invariants: $deltaInvariants")
-    logger.debug(s"Counter invariants: $counterInvariants")
+    logger.trace(s"Resource invariants: $resourceInvariants")
+    logger.trace(s"Delta invariants: $deltaInvariants")
+    logger.trace(s"Counter invariants: $counterInvariants")
 
     // Sanity check: We assume the generated constraints won't contradict with each other
     val checks = List[(AST, String)](
@@ -397,9 +397,6 @@ object BoundChecking {
       (solver.mkAnd(deltaInvariants, counterInvariants), s"Sanity check - Invariants about delta and counter variables should SAT"),
       (solver.mkAnd(resourceInvariants, deltaInvariants, counterInvariants), s"Sanity check - Invariants about resource, delta, and counter variables should SAT"),
       (boundExpression, s"Sanity check - The bound expression should SAT"),
-      (solver.mkAnd(resourceInvariants, deltaInvariants, boundExpression), "1"),
-      (solver.mkAnd(resourceInvariants, counterInvariants, boundExpression), "2"),
-      (solver.mkAnd(deltaInvariants, counterInvariants, boundExpression), "3")
     )
     sanityCheck(solver, checks, expect = true, allowFail = true, arguments.skipSanityCheck)
     logger.info(s"Sanity check finished")

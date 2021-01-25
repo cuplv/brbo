@@ -78,7 +78,7 @@ object BoundInferenceUnitTest {
         |  }
         |}""".stripMargin
     val test01Expected =
-      """(+ 0 (* 1 1 n))""".stripMargin
+      """(<= R (+ 0 (* 1 1 n)))""".stripMargin
 
     val test02: String = // A loop with a nesting depth of 2
       """class Test02 {
@@ -99,7 +99,7 @@ object BoundInferenceUnitTest {
         |  }
         |}""".stripMargin
     val test02Expected =
-      """(+ 0 (* 1 1) (* 1 1 n m))""".stripMargin
+      """(<= R (+ 0 (* 1 1) (* 1 1 n m)))""".stripMargin
 
     List[TestCaseJavaProgram](
       TestCaseJavaProgram("Test01", test01, test01Expected),

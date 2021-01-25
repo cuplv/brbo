@@ -3,7 +3,7 @@ package brbo.common
 import brbo.common.BoundInference.Polynomial
 import brbo.common.TypeUtils.BrboType.INT
 import brbo.common.icra.Icra
-import com.microsoft.z3.Expr
+import com.microsoft.z3.{BoolExpr, Expr}
 import org.apache.logging.log4j.LogManager
 
 import scala.collection.immutable.HashSet
@@ -13,7 +13,7 @@ class BoundInference(targetMethod: TargetMethod) {
   private val MAX_DEGREE = 4
   private val MAX_COEFFICIENT = 16
 
-  def inferBound(solver: Z3Solver, locations: Locations, whichVariable: String): Expr = {
+  def inferBound(solver: Z3Solver, locations: Locations, whichVariable: String): BoolExpr = {
     val maxPolynomial = {
       val integerTyped = targetMethod.inputVariables.filter(pair => pair._2 == INT)
       BoundInference.generateTemplateInvariant(MAX_DEGREE, MAX_COEFFICIENT, integerTyped.keySet.toList)
@@ -24,32 +24,34 @@ class BoundInference(targetMethod: TargetMethod) {
 
     var degree = MAX_DEGREE
     while (degree >= 0) {
-      logger.debug(s"Binary search coefficients for degree $degree")
+      logger.trace(s"Binary search coefficients for degree $degree")
 
       maxPolynomial.monomials(degree).zipWithIndex.foreach({
         case (_, index) =>
           if (existsUpperBound) {
             val newPolynomial = result.updateCoefficient(degree, index, 0)
             if (checkAGuess(locations, newPolynomial, whichVariable)) {
-              logger.debug(s"We can eliminate polynomial ${result.monomials(degree)(index)}")
+              logger.trace(s"We can eliminate polynomial ${result.monomials(degree)(index)}")
               result = newPolynomial
             }
             else {
-              logger.debug(s"We cannot eliminate polynomial ${result.monomials(degree)(index)}")
+              logger.trace(s"We cannot eliminate polynomial ${result.monomials(degree)(index)}")
               binarySearchUpperBound(locations, degree, index, 1, MAX_COEFFICIENT, MAX_COEFFICIENT, maxPolynomial, whichVariable) match {
                 case Some(value) => result = result.updateCoefficient(degree, index, value)
                 case None => result = result.updateCoefficient(degree, index, MAX_COEFFICIENT)
               }
             }
-            logger.debug(s"Infer coefficient `($degree, $index)` for `${result.monomials(degree)(index)}` as `${result.coefficients(degree)(index)}`")
+            logger.trace(s"Infer coefficient `($degree, $index)` for `${result.monomials(degree)(index)}` as `${result.coefficients(degree)(index)}`")
           }
       })
 
       degree = degree - 1
     }
-    val bound = result.toExpr(solver)
-    logger.error(s"Infer bound `$bound` for variable `$whichVariable`")
-    bound
+    val boundExpression =
+      if (existsUpperBound) solver.mkLe(solver.mkIntVar(whichVariable), result.toExpr(solver))
+      else solver.mkTrue()
+    logger.error(s"Infer bound `$boundExpression` for variable `$whichVariable`")
+    boundExpression
   }
 
   def checkAGuess(locations: Locations, polynomial: Polynomial, whichVariable: String): Boolean = {
@@ -62,13 +64,13 @@ class BoundInference(targetMethod: TargetMethod) {
 
   def binarySearchUpperBound(locations: Locations, degree: Int, index: Int, start: Int, end: Int, maxCoefficient: Int, polynomial: Polynomial, whichVariable: String): Option[Int] = {
     if (start < 1 || end > maxCoefficient || start > end) {
-      logger.debug("1")
+      logger.trace("1")
       return None
     }
 
     if (start == end) {
       val newPolynomial = polynomial.updateCoefficient(degree, index, start)
-      logger.debug("2")
+      logger.trace("2")
       val result =
         if (checkAGuess(locations, newPolynomial, whichVariable)) Some(start)
         else None
@@ -77,7 +79,7 @@ class BoundInference(targetMethod: TargetMethod) {
 
     {
       val newPolynomial = polynomial.updateCoefficient(degree, index, start)
-      logger.debug("3")
+      logger.trace("3")
       if (checkAGuess(locations, newPolynomial, whichVariable)) {
         return Some(start)
       }
@@ -85,7 +87,7 @@ class BoundInference(targetMethod: TargetMethod) {
 
     {
       val newPolynomial = polynomial.updateCoefficient(degree, index, end)
-      logger.debug("4")
+      logger.trace("4")
       if (checkAGuess(locations, newPolynomial, whichVariable)) {
         return None
       }

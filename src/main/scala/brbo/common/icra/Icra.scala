@@ -15,8 +15,8 @@ import scala.sys.process._
 
 object Icra {
   private val logger = LogManager.getLogger("brbo.common.icra.Icra")
-  private val icraPath = s"${System.getProperty("user.home")}/Documents/workspace/icra/icra"
-  private val TIMEOUT = 30 // Unit: Seconds
+  private val ICRA_PATH = s"${System.getProperty("user.home")}/Documents/workspace/icra/icra"
+  private val TIMEOUT = 15 // Unit: Seconds
 
   def runAndParseInvariant(sourceCode: String): Option[List[ParsedInvariant]] = {
     runAndGetStdOutput(sourceCode) match {
@@ -42,7 +42,7 @@ object Icra {
       close()
     }
 
-    val cmd = s"$icraPath -cra-split-loops -cra-prsd ${file.toAbsolutePath}"
+    val cmd = s"$ICRA_PATH -cra-split-loops -cra-prsd ${file.toAbsolutePath}"
 
     try {
       // Set a timeout
