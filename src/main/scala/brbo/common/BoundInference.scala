@@ -10,8 +10,8 @@ import scala.collection.immutable.HashSet
 
 class BoundInference(targetMethod: TargetMethod) {
   private val logger = BoundInference.logger
-  private val MAX_DEGREE = 4
-  private val MAX_COEFFICIENT = 16
+  private val MAX_DEGREE = 3
+  private val MAX_COEFFICIENT = 8
 
   def inferBound(solver: Z3Solver, locations: Locations, whichVariable: String): BoolExpr = {
     val maxPolynomial = {
@@ -56,6 +56,7 @@ class BoundInference(targetMethod: TargetMethod) {
 
   def checkAGuess(locations: Locations, polynomial: Polynomial, whichVariable: String): Boolean = {
     val cProgram = InvariantInference.translateToCAndInsertAssertions(targetMethod, locations, s"$whichVariable <= ${polynomial.toString}")
+    // logger.debug(cProgram)
     Icra.runAndParseAssertionChecks(cProgram) match {
       case Some(checks) => checks.forall(b => b)
       case None => false

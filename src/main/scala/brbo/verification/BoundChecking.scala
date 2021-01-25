@@ -2,7 +2,7 @@ package brbo.verification
 
 import brbo.common.BeforeOrAfterOrThis.{AFTER, BEFORE, THIS}
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, Resource}
-import brbo.common.GhostVariableUtils.{generateDeltaVariableDoublePrime, generateDeltaVariablePrime}
+import brbo.common.GhostVariableUtils.generateDeltaVariablePrime
 import brbo.common.InstrumentUtils.StatementTreeInstrumentation
 import brbo.common.TreeUtils.collectCommands
 import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT, VOID}
@@ -146,7 +146,7 @@ object BoundChecking {
 
         logger.info(s"Infer invariant for the peak value of delta variable `$deltaVariable`")
         val globalInvariantFuture = Future {
-          val invariant = boundInference.inferBound(
+          boundInference.inferBound(
             solver,
             Locations(
               {
@@ -155,14 +155,11 @@ object BoundChecking {
                     case Some(update) => update.identifier == deltaVariable
                     case None => false
                   }
-                  val isReset = GhostVariableUtils.extractReset(expressionStatementTree.getExpression, Delta) match {
+                  /*val isReset = GhostVariableUtils.extractReset(expressionStatementTree.getExpression, Delta) match {
                     case Some(identifier) => identifier == deltaVariable
                     case None => false
-                  }
-                  isUpdate || isReset
-                case variableTree: VariableTree =>
-                  if (variableTree.getName.toString == deltaVariable) true
-                  else false
+                  }*/
+                  isUpdate // || isReset
                 case _ => false
               },
               AFTER
@@ -170,16 +167,12 @@ object BoundChecking {
             deltaVariable,
             // allVariables
           )
-          solver.mkExists(
-            (localVariables - deltaVariable).map(pair => createVar(pair)),
-            invariant
-          )
         }
 
         // TODO: It seems that ICRA cannot infer strong invariants right before `D=0`
         logger.info(s"Infer invariant for the accumulation of delta variable `$deltaVariable` (per visit to its subprogram)")
         val accumulationInvariantFuture = Future {
-          val invariant = boundInference.inferBound(
+          boundInference.inferBound(
             solver,
             Locations(
               {
@@ -188,16 +181,18 @@ object BoundChecking {
                     case Some(identifier) => identifier == generateDeltaVariablePrime(deltaVariable)
                     case None => false
                   }
+                /*case expressionStatementTree: ExpressionStatementTree =>
+                  GhostVariableUtils.extractReset(expressionStatementTree.getExpression, Delta) match {
+                    case Some(identifier) => identifier == deltaVariable
+                    case None => false
+                  }*/
                 case _ => false
               },
               AFTER
             ),
             generateDeltaVariablePrime(deltaVariable),
+            // deltaVariable,
             // allVariables
-          )
-          solver.mkExists(
-            (localVariables - generateDeltaVariablePrime(deltaVariable)).map(pair => createVar(pair)),
-            invariant
           )
         }
 
@@ -249,7 +244,7 @@ object BoundChecking {
           }
           else {*/
           logger.info(s"Infer invariants for AST counter `$counterVariable` with ICRA")
-          val invariant = boundInference.inferBound(
+          boundInference.inferBound(
             solver,
             Locations(
               {
@@ -260,16 +255,39 @@ object BoundChecking {
             counterVariable,
             // allVariables
           )
+          //}
+        }
+
+        val globalInvariant = {
+          val invariant = Await.result(globalInvariantFuture, Duration.Inf)
+          solver.mkExists(
+            (localVariables - deltaVariable).map(pair => createVar(pair)),
+            solver.mkOr(invariant, solver.mkEq(solver.mkIntVar(deltaVariable), solver.mkIntVal(0)))
+          )
+        }
+        val accumulationInvariant = {
+          val invariant = Await.result(accumulationInvariantFuture, Duration.Inf)
+          solver.mkExists(
+            (localVariables - generateDeltaVariablePrime(deltaVariable)).map(pair => createVar(pair)),
+            if (invariant == solver.mkTrue()) {
+              // Sometimes ICRA cannot infer strong invariants
+              logger.error(s"Weak bound for variable `${generateDeltaVariablePrime(deltaVariable)}`. Substitute it with the bound of `$deltaVariable`")
+              globalInvariant.substitute(
+                solver.mkIntVar(deltaVariable),
+                solver.mkIntVar(generateDeltaVariablePrime(deltaVariable))
+              )
+            }
+            else invariant
+            // invariant.substitute(solver.mkIntVar(deltaVariable), solver.mkIntVar(generateDeltaVariablePrime(deltaVariable)))
+          )
+        }
+        val counterInvariant = {
+          val invariant = Await.result(counterInvariantFuture, Duration.Inf)
           solver.mkExists(
             (localVariables - counterVariable).map(pair => createVar(pair)),
             invariant
           )
-          //}
         }
-
-        val globalInvariant = Await.result(globalInvariantFuture, Duration.Inf)
-        val accumulationInvariant = Await.result(accumulationInvariantFuture, Duration.Inf)
-        val counterInvariant = Await.result(counterInvariantFuture, Duration.Inf)
 
         // Delta variables' double primed version represents the maximum amount of accumulation per execution of subprograms
         /*val accumulationInvariantDoublePrime = {
