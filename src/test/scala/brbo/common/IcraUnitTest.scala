@@ -16,7 +16,7 @@ class IcraUnitTest extends AnyFlatSpec {
       testCase =>
         val expression = IcraParser.parseBoolExpression(testCase.input)
         logger.debug(expression)
-        assert(expression.toString == testCase.expectedOutput)
+        assert(StringCompare.ignoreWhitespaces(expression.toString, testCase.expectedOutput, s"${testCase.name} failed"))
     })
   }
 
@@ -25,7 +25,7 @@ class IcraUnitTest extends AnyFlatSpec {
       testCase =>
         val expression = IcraParser.parseArithmeticExpression(testCase.input)
         logger.debug(expression)
-        assert(expression.toString == testCase.expectedOutput)
+        assert(StringCompare.ignoreWhitespaces(expression.toString, testCase.expectedOutput, s"${testCase.name} failed"))
     })
   }
 
@@ -60,7 +60,7 @@ class IcraUnitTest extends AnyFlatSpec {
         logger.debug(declarations)
         val invariant = IcraLexer.parse(rawInvariant.invariant)
         logger.debug(invariant)
-        assert(s"$declarations\n$invariant" == testCase.expectedOutput)
+        assert(StringCompare.ignoreWhitespaces(s"$declarations\n$invariant", testCase.expectedOutput, s"${testCase.name} failed"))
     })
   }
 
@@ -75,7 +75,7 @@ class IcraUnitTest extends AnyFlatSpec {
         logger.debug(declarations)
         val invariant = IcraParser.parseInvariant(rawInvariant.invariant)
         logger.debug(invariant)
-        assert(s"$declarations\n$invariant" == testCase.expectedOutput)
+        assert(StringCompare.ignoreWhitespaces(s"$declarations\n$invariant", testCase.expectedOutput, s"${testCase.name} failed"))
     })
   }
 
@@ -86,7 +86,7 @@ class IcraUnitTest extends AnyFlatSpec {
         val solver = new Z3Solver
         val z3Ast = Icra.translateToZ3(expression, INT, solver)
         logger.debug(z3Ast)
-        assert(z3Ast.toString == testCase.expectedOutput)
+        assert(StringCompare.ignoreWhitespaces(z3Ast.toString, testCase.expectedOutput, s"${testCase.name} failed"))
     })
   }
 
@@ -97,7 +97,7 @@ class IcraUnitTest extends AnyFlatSpec {
         val solver = new Z3Solver
         val z3Ast = Icra.translateToZ3(expression, BOOL, solver)
         logger.debug(z3Ast)
-        assert(z3Ast.toString == testCase.expectedOutput)
+        assert(StringCompare.ignoreWhitespaces(z3Ast.toString, testCase.expectedOutput, s"${testCase.name} failed"))
     })
   }
 
