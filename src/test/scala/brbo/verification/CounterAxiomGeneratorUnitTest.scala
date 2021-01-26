@@ -29,6 +29,7 @@ class CounterAxiomGeneratorUnitTest extends AnyFlatSpec {
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val methodTree: MethodTree = targetMethod.methodTree
+        logger.trace(CounterAxiomGenerator.generateCounterMap(methodTree.getBody))
         val solver = new Z3Solver
         val result = CounterAxiomGenerator.generateCounterAxioms(solver, methodTree.getBody)
         assert(StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput, testCase.className))

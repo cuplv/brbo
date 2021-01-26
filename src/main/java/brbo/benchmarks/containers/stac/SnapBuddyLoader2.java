@@ -45,6 +45,6 @@ public abstract class SnapBuddyLoader2 extends Common {
         friendIdList++;
       }
     }
-    // No (Imprecise due to interference); No (Same as ICRA); No (Cannot verify complex invariants inside loops)
+    // No (Imprecise due to interference); No (Imprecise due to interference); No (Cannot verify complex invariants inside loops)
   }
 }

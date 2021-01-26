@@ -1,6 +1,6 @@
 package brbo.verification
 
-import brbo.common.BeforeOrAfterOrThis.{AFTER, BEFORE, THIS}
+import brbo.common.BeforeOrAfterOrThis.{AFTER, THIS}
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, Resource}
 import brbo.common.GhostVariableUtils.generateDeltaVariablePrime
 import brbo.common.InstrumentUtils.StatementTreeInstrumentation
@@ -265,33 +265,31 @@ object BoundChecking {
 
         val globalInvariant = {
           val invariant = Await.result(globalInvariantFuture, Duration.Inf)
-          solver.mkExists(
-            (localVariables - deltaVariable).map(pair => createVar(pair)),
-            solver.mkOr(invariant, solver.mkEq(solver.mkIntVar(deltaVariable), solver.mkIntVal(0)))
-          )
+          // solver.mkExists(
+          // (localVariables - deltaVariable).map(pair => createVar(pair)),
+          solver.mkOr(invariant, solver.mkEq(solver.mkIntVar(deltaVariable), solver.mkIntVal(0)))
+          // )
         }
         val accumulationInvariant = {
           val invariant = Await.result(accumulationInvariantFuture, Duration.Inf)
           solver.mkExists(
             (localVariables - generateDeltaVariablePrime(deltaVariable)).map(pair => createVar(pair)),
-            if (invariant == solver.mkTrue()) {
-              // Sometimes ICRA cannot infer strong invariants
-              logger.error(s"Weak bound for variable `${generateDeltaVariablePrime(deltaVariable)}`. Substitute it with the bound of `$deltaVariable`")
+            solver.mkAnd(
+              invariant, // Sometimes ICRA cannot infer strong invariants. Hence we use the global invariant.
               globalInvariant.substitute(
                 solver.mkIntVar(deltaVariable),
                 solver.mkIntVar(generateDeltaVariablePrime(deltaVariable))
               )
-            }
-            else invariant
+            )
             // invariant.substitute(solver.mkIntVar(deltaVariable), solver.mkIntVar(generateDeltaVariablePrime(deltaVariable)))
           )
         }
         val counterInvariant = {
           val invariant = Await.result(counterInvariantFuture, Duration.Inf)
-          solver.mkExists(
-            (localVariables - counterVariable).map(pair => createVar(pair)),
-            invariant
-          )
+          // solver.mkExists(
+          // (localVariables - counterVariable).map(pair => createVar(pair)),
+          invariant
+          // )
         }
 
         // Delta variables' double primed version represents the maximum amount of accumulation per execution of subprograms
@@ -381,6 +379,8 @@ object BoundChecking {
           solver.mkAnd(nonNegativeCounters: _*)
         )
       }
+
+      // TODO: Infer bounds on all loop counters so that bounds on all counters are known if combined with counter axioms
 
       solver.mkAnd(
         counterAxioms,

@@ -16,7 +16,7 @@ case class CommandLineArguments(amortizationMode: AmortizationMode,
     val skipSanityCheckString = s"Skip sanity check? `$skipSanityCheck`"
     val printCounterExampleString = s"Print counter examples if cannot verify the bound? `$printCounterExample`"
     val printIcraInputsString = s"Print inputs to ICRA? `$printIcraInputs`"
-    val icraTimeoutString = s"ICRA's time out: `$icraTimeout`"
+    val icraTimeoutString = s"ICRA's time out: `$icraTimeout` seconds"
     s"$directoryToAnalyzeString\n$amortizationModeString\n$debugModeString\n$skipSanityCheckString\n$printCounterExampleString\n$printIcraInputsString\n$icraTimeoutString"
   }
 }
