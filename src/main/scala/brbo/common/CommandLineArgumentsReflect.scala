@@ -1,6 +1,6 @@
 package brbo.common
 
-import brbo.verification.AmortizationMode.{AmortizationMode, FULL_AMORTIZE, NO_AMORTIZE, SELECTIVE_AMORTIZE, ALL_AMORTIZE}
+import brbo.verification.AmortizationMode._
 import org.apache.logging.log4j.LogManager
 import org.kohsuke.args4j.{CmdLineException, CmdLineParser, Option}
 
@@ -72,7 +72,8 @@ object CommandLineArgumentsReflect {
         parser.printUsage(System.out)
         System.exit(1)
     }
-    CommandLineArguments(arguments.getAmortizationMode, arguments.debugMode,
+    CommandLineArguments(
+      arguments.getAmortizationMode, arguments.debugMode,
       arguments.directoryToAnalyze, arguments.skipSanityCheck,
       arguments.printCounterExample, arguments.printIcraInputs,
       arguments.icraTimeout

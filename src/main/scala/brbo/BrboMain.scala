@@ -19,10 +19,8 @@ object BrboMain {
     logger.info("Brbo has started.")
 
     val commandLineArguments = CommandLineArgumentsReflect.parseArguments(args)
-    logger.info(s"Infer resource usage upper bounds for each method in each file `*.java` under directory `${commandLineArguments.directoryToAnalyze}`")
+    logger.info(s"Command line arguments:\n$commandLineArguments")
     logger.warn(s"We assume each class contains exactly one method")
-    logger.info(s"Amortization mode: `${commandLineArguments.amortizationMode}`")
-    logger.info(s"Debug mode? `${commandLineArguments.debugMode}`")
 
     val sourceFiles: Map[File, String] = {
       val file = new java.io.File(commandLineArguments.directoryToAnalyze)

@@ -13,7 +13,7 @@ class BoundInference(targetMethod: TargetMethod, arguments: CommandLineArguments
   private val MAX_COEFFICIENT = 8
 
   def inferBound(solver: Z3Solver, locations: Locations, whichVariable: String, maxDegree: Int): BoolExpr = {
-    logger.info(s"Infer bounds with a max degree of `$maxDegree` and a max coefficient of `$MAX_COEFFICIENT`")
+    logger.info(s"Max degree: `$maxDegree`; Max coefficient: `$MAX_COEFFICIENT`")
     val maxPolynomial = {
       val integerTyped = targetMethod.inputVariables.filter(pair => pair._2 == INT)
       BoundInference.generateTemplateInvariant(maxDegree, MAX_COEFFICIENT, integerTyped.keySet.toList)
