@@ -11,7 +11,6 @@ import brbo.verification.AmortizationMode.{AmortizationMode, FULL_AMORTIZE, NO_A
 import brbo.verification.Decomposition.{DecompositionResult, DeltaCounterPair}
 import brbo.verification.dependency.reachdef.ReachingValue
 import brbo.verification.dependency.{ControlDependency, DataDependency}
-import com.sun.source.tree.Tree.Kind
 import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.block.Block.BlockType
@@ -21,8 +20,8 @@ import org.checkerframework.dataflow.cfg.node._
 import scala.collection.JavaConverters._
 import scala.collection.immutable.{HashMap, HashSet}
 
-class Decomposition(inputMethod: TargetMethod, commandLineArguments: CommandLineArguments) {
-  private val debug = commandLineArguments.debugMode
+class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) {
+  private val debug = arguments.debugMode
   private val logger = LogManager.getLogger(classOf[Decomposition])
 
   private val commands = inputMethod.commands
@@ -235,7 +234,7 @@ class Decomposition(inputMethod: TargetMethod, commandLineArguments: CommandLine
       indent = 2
     )
     val result = DecompositionResult(newSourceFile, deltaCounterPairs.values.toSet, amortizationMode, inputMethod)
-    if (debug) CFGUtils.printPDF(result.outputMethod.cfg)
+    if (debug || arguments.printCFG) CFGUtils.printPDF(result.outputMethod.cfg, Some("decomposed-"))
     result
   }
 
@@ -808,6 +807,7 @@ object Decomposition {
       val body = blocks.map(block => s"${block.getUid}: $block").mkString("\n")
       s"====\n$body\n===="
     }
+
     assert(block.isInstanceOf[ConditionalBlock], s"Block ${node.getBlock.getUid} control depends on block ${block.getUid}")
     val predecessors = block.getPredecessors.asScala
     assert(predecessors.size == 1)
@@ -818,16 +818,20 @@ object Decomposition {
       traceOrError(s"${node.getBlock}'s predecessor block does not have a condition: `$predecessor`", debug)
       if (predecessor.getType == BlockType.EXCEPTION_BLOCK) {
         traceOrError(s"${node.getBlock}'s predecessor block is an exception block: `$predecessor`", debug)
+
         val predecessors2 = predecessor.getPredecessors.asScala
         assert(predecessors2.size == 1, s"\n${blocksToString(predecessors2)}")
-        traceOrError(s"The last node in the exception block is: `${predecessors2.head.getLastNode}`", debug)
-        val predecessors3 = predecessors2.head.getPredecessors.asScala
-        assert(predecessors3.size == 1, s"\n${blocksToString(predecessors2)}\n${blocksToString(predecessors3)}")
-        traceOrError(s"The last node is: `${predecessors3.head.getLastNode}`", debug)
-        val predecessors4 = predecessors3.head.getPredecessors.asScala
-        assert(predecessors4.size == 1, s"\n${blocksToString(predecessors2)}\n${blocksToString(predecessors3)}\n${blocksToString(predecessors4)}")
-        traceOrError(s"The last node is: `${predecessors4.head.getLastNode}`", debug)
-        Some(predecessors4.head.getLastNode)
+        traceOrError(s"The last node (predecessor^2) in the exception block is: `${predecessors2.head.getLastNode}`", debug)
+
+        // val predecessors3 = predecessors2.head.getPredecessors.asScala
+        // assert(predecessors3.size == 1, s"\n${blocksToString(predecessors2)}\n${blocksToString(predecessors3)}")
+        // traceOrError(s"The last node (predecessor^3) is: `${predecessors3.head.getLastNode}`", debug)
+
+        // val predecessors4 = predecessors3.head.getPredecessors.asScala
+        // assert(predecessors4.size == 1, s"\n${blocksToString(predecessors2)}\n${blocksToString(predecessors3)}\n${blocksToString(predecessors4)}")
+        // traceOrError(s"The last node (predecessor^4) is: `${predecessors4.head.getLastNode}`", debug)
+
+        Some(predecessors2.head.getLastNode)
       }
       else None
     }

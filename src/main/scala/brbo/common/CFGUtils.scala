@@ -20,7 +20,7 @@ object CFGUtils {
   private val logger = LogManager.getLogger("brbo.common.CFGUtils")
   val OUTPUT_DIRECTORY: String = "./output/cfg"
 
-  def printPDF(cfg: ControlFlowGraph): Unit = {
+  def printPDF(cfg: ControlFlowGraph, prependToFileName: Option[String]): Unit = {
     val visualizer = new DOTCFGVisualizer
     val args = new java.util.HashMap[java.lang.String, Object]
     args.put("outdir", OUTPUT_DIRECTORY.asInstanceOf[Object])
@@ -31,9 +31,15 @@ object CFGUtils {
 
     if (res != null) {
       assert(res.get("dotFileName") != null, "@AssumeAssertion(nullness): specification")
-      val file = res.get("dotFileName").asInstanceOf[String]
+      val dotFileName = res.get("dotFileName").asInstanceOf[String]
       try {
-        val command = "dot -Tpdf \"" + file + "\" -o \"" + file + ".pdf\""
+        val pdfFileName = {
+          prependToFileName match {
+            case Some(value) => value + dotFileName
+            case None => dotFileName
+          }
+        }
+        val command = "dot -Tpdf \"" + dotFileName + "\" -o \"" + pdfFileName + ".pdf\""
         val child = Runtime.getRuntime.exec(Array[String]("/bin/sh", "-c", command))
         child.waitFor
       } catch {
@@ -79,6 +85,9 @@ object CFGUtils {
         logger.trace(s"Used variables in method invocation node `$methodInvocationNode` are `$usedVariables`")
         usedVariables
       case typeCastNode: TypeCastNode => getUsedVariables(typeCastNode.getOperand)
+      case methodAccessNode: MethodAccessNode =>
+        logger.trace(s"Used variables in method access node `$methodAccessNode` are empty")
+        new HashSet[String]
       case _ => throw new Exception(s"Get used variables - Node `$n` (type: `${n.getClass}`) is not yet supported")
     }
   }

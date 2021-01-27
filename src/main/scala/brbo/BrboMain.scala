@@ -71,7 +71,8 @@ object BrboMain {
       val targetMethod: TargetMethod = BasicProcessor.getTargetMethod(className, sourceFileContents)
       if (arguments.printCFG) {
         logger.info(s"Print CFG to `${CFGUtils.OUTPUT_DIRECTORY}`...")
-        CFGUtils.printPDF(targetMethod.cfg)
+        CFGUtils.printPDF(targetMethod.cfg, None)
+        logger.info(s"${targetMethod.cfg.toString}")
       }
       val decomposition: Decomposition = new Decomposition(targetMethod, arguments)
       Some(decomposition.decompose(arguments))
