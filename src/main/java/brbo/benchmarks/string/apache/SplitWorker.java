@@ -21,7 +21,8 @@ abstract public class SplitWorker extends Common {
           match = false;
           lastMatch = true;
         }
-        start = ++i;
+        ++i;
+        start = i;
         continue;
       }
       lastMatch = false;
