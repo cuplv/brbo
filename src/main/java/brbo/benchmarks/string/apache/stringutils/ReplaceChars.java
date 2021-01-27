@@ -1,4 +1,4 @@
-package brbo.benchmarks.string.apache;
+package brbo.benchmarks.string.apache.stringutils;
 
 import brbo.benchmarks.Common;
 

@@ -1,0 +1,10 @@
+public static List<Field> getAllDeclaredFields(Class<?> cls) {
+    final List<Field> fields = new ArrayList<>();
+    while (cls != null) {
+        fields.addAll(Arrays.asList(cls.getDeclaredFields()));
+        cls = cls.getSuperclass();
+    }
+    return fields;
+}
+
+log4j-plugins\src\main\java\org\apache\logging\log4j\plugins\util\TypeUtil.java
