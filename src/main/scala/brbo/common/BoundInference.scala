@@ -50,7 +50,10 @@ class BoundInference(targetMethod: TargetMethod, arguments: CommandLineArguments
     val boundExpression =
       if (existsUpperBound) solver.mkLe(solver.mkIntVar(whichVariable), result.toExpr(solver))
       else solver.mkTrue()
-    logger.error(s"Infer bound `$boundExpression` for variable `$whichVariable`")
+    val boundExpressionString = this.synchronized {
+      boundExpression.toString
+    }
+    logger.error(s"Infer bound `$boundExpressionString` for variable `$whichVariable`")
     boundExpression
   }
 
