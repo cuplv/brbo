@@ -804,6 +804,10 @@ object Decomposition {
    * @return The condition node that the block is control-dependent on
    */
   private def getCondition(node: Node, block: Block, debug: Boolean): Option[Node] = {
+    def blocksToString(blocks: Iterable[Block]): String = {
+      val body = blocks.map(block => s"${block.getUid}: $block").mkString("\n")
+      s"====\n$body\n===="
+    }
     assert(block.isInstanceOf[ConditionalBlock], s"Block ${node.getBlock.getUid} control depends on block ${block.getUid}")
     val predecessors = block.getPredecessors.asScala
     assert(predecessors.size == 1)
@@ -815,13 +819,13 @@ object Decomposition {
       if (predecessor.getType == BlockType.EXCEPTION_BLOCK) {
         traceOrError(s"${node.getBlock}'s predecessor block is an exception block: `$predecessor`", debug)
         val predecessors2 = predecessor.getPredecessors.asScala
-        assert(predecessors2.size == 1)
+        assert(predecessors2.size == 1, s"\n${blocksToString(predecessors2)}")
         traceOrError(s"The last node in the exception block is: `${predecessors2.head.getLastNode}`", debug)
         val predecessors3 = predecessors2.head.getPredecessors.asScala
-        assert(predecessors3.size == 1)
+        assert(predecessors3.size == 1, s"\n${blocksToString(predecessors2)}\n${blocksToString(predecessors3)}")
         traceOrError(s"The last node is: `${predecessors3.head.getLastNode}`", debug)
         val predecessors4 = predecessors3.head.getPredecessors.asScala
-        assert(predecessors4.size == 1)
+        assert(predecessors4.size == 1, s"\n${blocksToString(predecessors2)}\n${blocksToString(predecessors3)}\n${blocksToString(predecessors4)}")
         traceOrError(s"The last node is: `${predecessors4.head.getLastNode}`", debug)
         Some(predecessors4.head.getLastNode)
       }

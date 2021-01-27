@@ -1,8 +1,5 @@
 package brbo.common
 
-import java.io.IOException
-import java.util
-
 import brbo.verification.dependency.BrboNode
 import com.ibm.wala.util.graph.NumberedGraph
 import com.ibm.wala.util.graph.dominators.Dominators
@@ -14,16 +11,19 @@ import org.checkerframework.dataflow.cfg.block.Block
 import org.checkerframework.dataflow.cfg.node._
 import org.checkerframework.dataflow.cfg.visualize.DOTCFGVisualizer
 
+import java.io.IOException
+import java.util
 import scala.collection.JavaConverters._
 import scala.collection.immutable.{HashMap, HashSet}
 
 object CFGUtils {
   private val logger = LogManager.getLogger("brbo.common.CFGUtils")
+  val OUTPUT_DIRECTORY: String = "./output/cfg"
 
   def printPDF(cfg: ControlFlowGraph): Unit = {
     val visualizer = new DOTCFGVisualizer
     val args = new java.util.HashMap[java.lang.String, Object]
-    args.put("outdir", "./output/cfg".asInstanceOf[Object])
+    args.put("outdir", OUTPUT_DIRECTORY.asInstanceOf[Object])
     // args.put("verbose", "true".asInstanceOf[Object])
     visualizer.init(args)
     val res = visualizer.visualize(cfg, cfg.getEntryBlock, null)

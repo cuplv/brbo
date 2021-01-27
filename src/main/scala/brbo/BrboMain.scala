@@ -1,6 +1,6 @@
 package brbo
 
-import brbo.common.{CommandLineArguments, CommandLineArgumentsReflect, TargetMethod, Z3Solver}
+import brbo.common.{CFGUtils, CommandLineArguments, CommandLineArgumentsReflect, JavacUtils, TargetMethod, Z3Solver}
 import brbo.verification.AmortizationMode.ALL_AMORTIZE
 import brbo.verification.BoundChecking.GlobalInvariants
 import brbo.verification.Decomposition.DecompositionResult
@@ -46,10 +46,10 @@ object BrboMain {
    *
    * @param sourceFilePath Used to extract class name
    * @param sourceFileContents
-   * @param commandLineArguments
+   * @param arguments
    * @return
    */
-  def decompose(sourceFilePath: String, sourceFileContents: String, commandLineArguments: CommandLineArguments): Option[List[DecompositionResult]] = {
+  def decompose(sourceFilePath: String, sourceFileContents: String, arguments: CommandLineArguments): Option[List[DecompositionResult]] = {
     logger.info(s"Infer invariants for the resource variable in file `$sourceFilePath`")
 
     val className: String = {
@@ -69,8 +69,12 @@ object BrboMain {
     if (className != "brbo.benchmarks.Common") {
       logger.info(s"Parsing...")
       val targetMethod: TargetMethod = BasicProcessor.getTargetMethod(className, sourceFileContents)
-      val decomposition: Decomposition = new Decomposition(targetMethod, commandLineArguments)
-      Some(decomposition.decompose(commandLineArguments))
+      if (arguments.printCFG) {
+        logger.info(s"Print CFG to `${CFGUtils.OUTPUT_DIRECTORY}`...")
+        CFGUtils.printPDF(targetMethod.cfg)
+      }
+      val decomposition: Decomposition = new Decomposition(targetMethod, arguments)
+      Some(decomposition.decompose(arguments))
     }
     else {
       logger.info(s"Skipping bound checking for file `$sourceFilePath`")

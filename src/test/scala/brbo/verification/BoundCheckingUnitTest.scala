@@ -27,7 +27,8 @@ class BoundCheckingUnitTest extends AnyFlatSpec {
           solver,
           decompositionResult,
           boundExpression,
-          CommandLineArguments(UNKNOWN, debugMode = false, "", skipSanityCheck = false, testCase.expectedOutput == "true", printIcraInputs = false, icraTimeout = 20)
+          CommandLineArguments(UNKNOWN, debugMode = false, "", skipSanityCheck = false,
+            testCase.expectedOutput == "true", printIcraInputs = false, icraTimeout = 20, printCFG = false)
         )
         StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput, s"Test case ${testCase.className} failed")
     })

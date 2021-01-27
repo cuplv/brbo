@@ -36,6 +36,10 @@ class CommandLineArgumentsReflect {
     usage = "The amount of timeout (unit: seconds) allowed for each invocation to ICRA. `-1` means no timeout will be set.")
   private var icraTimeout: Int = CommandLineArguments.DEFAULT_ICRA_TIME_OUT
 
+  @Option(name = "--print-cfg", required = false,
+    usage = "Print the control flow graph of the input graph.")
+  private var printCFG: Boolean = false
+
   def getAmortizationMode: AmortizationMode = {
     amortizationMode.toLowerCase() match {
       case "no" => NO_AMORTIZE
@@ -56,6 +60,8 @@ class CommandLineArgumentsReflect {
   def getPrintIcraInputs: Boolean = printIcraInputs
 
   def getIcraTimeout: Int = icraTimeout
+
+  def getPrintCFG: Boolean = printCFG
 }
 
 object CommandLineArgumentsReflect {
@@ -76,7 +82,7 @@ object CommandLineArgumentsReflect {
       arguments.getAmortizationMode, arguments.debugMode,
       arguments.directoryToAnalyze, arguments.skipSanityCheck,
       arguments.printCounterExample, arguments.printIcraInputs,
-      arguments.icraTimeout
+      arguments.icraTimeout, arguments.printCFG
     )
   }
 }
