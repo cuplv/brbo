@@ -1,15 +1,15 @@
 package brbo
 
-import java.io.File
-
 import brbo.common.{CommandLineArguments, CommandLineArgumentsReflect, TargetMethod, Z3Solver}
 import brbo.verification.AmortizationMode.ALL_AMORTIZE
 import brbo.verification.BoundChecking.GlobalInvariants
 import brbo.verification.Decomposition.DecompositionResult
 import brbo.verification.{BasicProcessor, BoundChecking, Decomposition}
-import org.apache.commons.io.FilenameUtils
+import org.apache.commons.io.{FileUtils, FilenameUtils}
 import org.apache.logging.log4j.LogManager
 
+import java.io.File
+import scala.collection.JavaConverters._
 import scala.collection.immutable.HashMap
 
 object BrboMain {
@@ -25,7 +25,7 @@ object BrboMain {
     val sourceFiles: Map[File, String] = {
       val file = new java.io.File(commandLineArguments.directoryToAnalyze)
       val allFiles: Array[File] = {
-        if (file.isDirectory) file.listFiles
+        if (file.isDirectory) FileUtils.listFiles(file, Array("java"), true).asScala.toArray
         else Array(file)
       }
       val allJavaFilePaths = allFiles.filter(_.getName.endsWith(".java"))
