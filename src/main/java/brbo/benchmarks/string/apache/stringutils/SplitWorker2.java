@@ -19,15 +19,17 @@ abstract public class SplitWorker2 extends Common {
         if (ndBool()) {
           if (match || preserveAllTokens) {
             lastMatch = true;
-            if (sizePlus1++ == max) {
+            if (sizePlus1 == max) {
               i = len;
               lastMatch = false;
             }
+            sizePlus1++;
             list += i - start;
             R = R + (i - start);
             match = false;
           }
-          start = ++i;
+          i++;
+          start = i;
           continue;
         }
         lastMatch = false;
@@ -39,15 +41,17 @@ abstract public class SplitWorker2 extends Common {
         if (ndBool()) {
           if (match || preserveAllTokens) {
             lastMatch = true;
-            if (sizePlus1++ == max) {
+            if (sizePlus1 == max) {
               i = len;
               lastMatch = false;
             }
+            sizePlus1++;
             list += i - start;
             R = R + (i - start);
             match = false;
           }
-          start = ++i;
+          i++;
+          start = i;
           continue;
         }
         lastMatch = false;
@@ -59,15 +63,17 @@ abstract public class SplitWorker2 extends Common {
         if (ndBool()) {
           if (match || preserveAllTokens) {
             lastMatch = true;
-            if (sizePlus1++ == max) {
+            if (sizePlus1 == max) {
               i = len;
               lastMatch = false;
             }
+            sizePlus1++;
             list += i - start;
             R = R + (i - start);
             match = false;
           }
-          start = ++i;
+          i++;
+          start = i;
           continue;
         }
         lastMatch = false;
