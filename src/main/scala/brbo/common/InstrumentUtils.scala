@@ -410,6 +410,7 @@ object InstrumentUtils {
       |#define LARGE_INT 1000000
       |#define true 1
       |#define false 0
+      |#define boolean int
       |void __VERIFIER_assert(int cond) {
       |  if (!(cond)) {
       |    ERROR: __VERIFIER_error();

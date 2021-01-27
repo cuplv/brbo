@@ -224,7 +224,8 @@ object BoundInference {
       }).mkString(" * ")
     }
 
-    def toExpr(solver: Z3Solver): Expr = {
+    // To avoid crashing z3
+    def toExpr(solver: Z3Solver): Expr = this.synchronized {
       var result: Expr = solver.mkIntVal(1)
       basesAndPowers.foreach({
         case (base, power) =>
@@ -254,7 +255,8 @@ object BoundInference {
       Polynomial(newCoefficients, monomials)
     }
 
-    def toExpr(solver: Z3Solver): Expr = {
+    // To avoid crashing z3
+    def toExpr(solver: Z3Solver): Expr = this.synchronized {
       var result: Expr = solver.mkIntVal(0)
       coefficients.zip(monomials).foreach({
         case (coefficients2, monomials2) =>

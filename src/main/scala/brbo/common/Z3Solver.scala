@@ -7,7 +7,7 @@ class Z3Solver {
   // Copied from hopper: https://github.com/cuplv/hopper
   // This is a thread safe version
   // Otherwise, inferring invariants in parallel would break, due to concurrently invoking Z3 APIs
-  private val logger = LogManager.getLogger(classOf[Z3Solver])
+  private val logger = Z3Solver.logger
 
   Z3Solver.loadNativeLibraries()
 
@@ -187,12 +187,12 @@ class Z3Solver {
     )
   }
 
-  def printAssertions(): Unit = {
+  def printAssertions(): Unit = this.synchronized {
     logger.error("Assertions are:")
     solver.getAssertions.foreach(expression => println(expression))
   }
 
-  def printModel(): Unit = {
+  def printModel(): Unit = this.synchronized {
     logger.error(s"Model is:\n${solver.getModel.toString}")
   }
 }
@@ -200,15 +200,14 @@ class Z3Solver {
 object Z3Solver {
   private val logger = LogManager.getLogger("brbo.common.Z3Solver")
 
-  private var timeUsage: Double = 0
-  private var numberOfQueries: Int = 0
+  // private var timeUsage: Double = 0
+  // private var numberOfQueries: Int = 0
 
   private val configuration = new java.util.HashMap[String, String]
   configuration.put("model", "true")
 
-  def getTimeUsage: Double = timeUsage
-
-  def getNumberOfQueries: Int = numberOfQueries
+  // def getTimeUsage: Double = timeUsage
+  // def getNumberOfQueries: Int = numberOfQueries
 
   // Run this before creating an instance of Z3Solver
   def loadNativeLibraries(): Unit = {
@@ -231,7 +230,7 @@ object Z3Solver {
   private def createContext: Context = new Context(configuration)
 
   private def solverCheck(solver: Solver, printUnsatCore: Boolean): Boolean = {
-    val start = System.nanoTime()
+    // val start = System.nanoTime()
     val result = {
       solver.check() match {
         case Status.UNSATISFIABLE =>
@@ -245,9 +244,9 @@ object Z3Solver {
         case Status.UNKNOWN => throw Z3UnknownException(s"`${Status.UNKNOWN}` - Reason: `${solver.getReasonUnknown}`")
       }
     }
-    val end = System.nanoTime()
-    Z3Solver.timeUsage += (end - start).toDouble / 1000000000
-    Z3Solver.numberOfQueries += 1
+    // val end = System.nanoTime()
+    // Z3Solver.timeUsage += (end - start).toDouble / 1000000000
+    // Z3Solver.numberOfQueries += 1
     result
   }
 
