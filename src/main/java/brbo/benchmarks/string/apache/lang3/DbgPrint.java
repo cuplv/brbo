@@ -8,7 +8,7 @@ abstract public class DbgPrint extends Common {
       return;
     int sb = 0;
     int R = 0;
-    boundAssertion(R <= sb);
+    boundAssertion(R <= src);
     for (int i = 0; i < src; i++) {
       if (ndBool()) {
         sb++;

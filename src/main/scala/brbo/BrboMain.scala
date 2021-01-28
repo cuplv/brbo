@@ -50,7 +50,7 @@ object BrboMain {
    * @return
    */
   def decompose(sourceFilePath: String, sourceFileContents: String, arguments: CommandLineArguments): Option[List[DecompositionResult]] = {
-    logger.info(s"Infer invariants for the resource variable in file `$sourceFilePath`")
+    logger.info(s"Decompose file `$sourceFilePath`")
 
     val className: String = {
       val prefix = """src/main/java/"""

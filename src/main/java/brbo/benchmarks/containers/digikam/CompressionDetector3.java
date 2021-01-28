@@ -11,6 +11,7 @@ abstract public class CompressionDetector3 extends Common {
     int average_middle = 0;
     int average_bottom = 0;
     int R = 0;
+    boundAssertion(R <= width * height);
     for (int i = 0; i < height; i++) {
       for (int j = 0; j < width; j += 8) {
         sum = 0;
