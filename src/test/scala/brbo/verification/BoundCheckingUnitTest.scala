@@ -29,7 +29,7 @@ class BoundCheckingUnitTest extends AnyFlatSpec {
           boundExpression,
           CommandLineArguments(UNKNOWN, debugMode = false, "", skipSanityCheck = false,
             testCase.expectedOutput == "true", printIcraInputs = false, icraTimeout = 20,
-            printCFG = false, noBoundCheck = false)
+            printCFG = false, decomposeOnly = false)
         )
         StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput, s"Test case ${testCase.className} failed")
     })
