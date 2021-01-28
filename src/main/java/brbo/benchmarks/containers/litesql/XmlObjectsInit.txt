@@ -1,0 +1,72 @@
+void init(DatabasePtr& db,
+          ObjectSequence& objects,
+          Relation::sequence& relations) {
+    map<string, ObjectPtr> objMap;
+    Logger::report("validating XML file\n");
+    sanityCheck(db, objects, relations);
+    Logger::report("linking XML - objects\n");
+    // make string -> Object mapping
+
+    for (ObjectSequence::const_iterator object = objects.begin();
+      object != objects.end();
+      ++object)
+    {
+      objMap[(*object)->name] = (*object);
+    }
+    // make Object's class hierarchy mapping (parent and children)
+
+    for (size_t i = 0; i < objects.size(); ++i)
+      if (objMap.find(objects[i]->inherits) != objMap.end()) {
+            objects[i]->parentObject = objMap[objects[i]->inherits];
+            objects[i]->parentObject->children.push_back(objects[i]);
+      }
+    //for (size_t i = 0; i < objects.size(); i++)
+    //    if (objects[i]->parentObject)
+    //        objects[i]->parentObject->children.push_back(objects[i]);
+
+    // sort objects of relations alphabetically (ascii)
+
+    for (Relation::sequence::const_iterator it_rel=relations.begin();it_rel!=relations.end();++it_rel)
+    {
+        sort((*it_rel)->related.begin(), (*it_rel)->related.end(),Relate::CompareByObjectName());
+    }
+
+    for (Relation::sequence::const_iterator it_rel=relations.begin();it_rel!=relations.end();++it_rel)
+    {
+        Relation::Ptr rel = *it_rel;
+        bool same = rel->sameTypes() > 1;
+
+        for (size_t i2 = 0; i2 < rel->related.size(); i2++) {
+          Relate::Ptr& relate = rel->related[i2];
+            ObjectPtr& obj = objMap[relate->objectName];
+            string num;
+            if (same)
+                num = toString(i2 + 1);
+            relate->fieldTypeName = relate->objectName + num;
+            relate->fieldName = relate->objectName + toString(i2 + 1);
+            if (obj->relations.find(rel) == obj->relations.end())
+              obj->relations[rel] = Relate::sequence();
+
+            // make Object -> Relation mapping
+
+            obj->relations[rel].push_back(relate);
+            if (!relate->handle.empty()) {
+
+                // make Object's relation handles
+
+              RelationHandle::Ptr handle (new RelationHandle(relate->handle, rel,relate,obj));
+                for (size_t i3 = 0; i3 < rel->related.size(); i3++) {
+                    if (i2 != i3) {
+                        ObjectPtr& o = objMap[rel->related[i3]->objectName];
+                        // make RelationHandle -> (Object,Relation) mapping
+                        handle->destObjects.push_back(make_pair(o,rel->related[i3]));
+                    }
+                }
+                obj->handles.push_back(handle);
+            }
+        }
+    }
+
+    initSchema(db, objects, relations);
+
+}

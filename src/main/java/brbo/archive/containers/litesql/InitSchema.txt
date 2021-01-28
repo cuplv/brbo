@@ -1,0 +1,158 @@
+static void initSchema(DatabasePtr& db,
+                ObjectSequence& objects,
+                Relation::sequence& relations) {
+    for (size_t i = 0; i < objects.size(); i++) {
+        Object& o = *objects[i];
+        map<string, Database::DBField::Ptr> fldMap;
+        Database::Table::Ptr tbl(new Database::Table);
+        tbl->name = o.getTable();
+        db->tables.push_back(tbl);
+
+        if (!o.parentObject.get()) {
+          Database::Sequence::Ptr seq(new Database::Sequence);
+          seq->name = o.getSequence();
+          seq->table = o.getTable();
+          db->sequences.push_back(seq);
+        }  else {
+          Database::DBField::Ptr id(new Database::DBField);
+          id->name("id");
+          id->field->type = A_field_type_integer;
+          id->primaryKey = true;
+          tbl->fields.push_back(id);
+        }
+
+        for (size_t i2 = 0; i2 < o.fields.size(); i2++) {
+            Field::Ptr f = o.fields[i2];
+            Database::DBField::Ptr fld(new Database::DBField);
+            fld->name(f->name);
+            fldMap[f->name] = fld;
+            fld->field->type = f->type;
+            fld->primaryKey = (f->name == "id");
+            fld->field->unique =  (f->isUnique())
+                                 ? A_field_unique_true
+                                 : A_field_unique_false;
+
+            fld->field = o.fields[i2];
+            tbl->fields.push_back(fld);
+
+            if (f->isIndexed()) {
+              Database::DBIndex::Ptr idx(new Database::DBIndex);
+                idx->name = makeDBName(tbl->name + fld->name() + "idx");
+                idx->table = tbl->name;
+                idx->fields.push_back(fld);
+                db->indices.push_back(idx);
+            }
+
+        }
+        for (size_t i2 = 0; i2 < o.indices.size(); i2++) {
+            const Index& idx = *o.indices[i2];
+
+            litesql::Split fldNames;
+            Database::DBIndex::Ptr index(new Database::DBIndex);
+            for (size_t i3 = 0; i3 < idx.fields.size(); i3++) {
+                if (fldMap.find(idx.fields[i3].name) == fldMap.end())
+                    throw litesql::Except("Indexfield " + o.name + "." + idx.fields[i3].name + " is invalid.");
+                index->fields.push_back(fldMap[idx.fields[i3].name]);
+                fldNames.push_back(idx.fields[i3].name);
+            }
+
+            index->name = makeDBName(tbl->name + "_" + fldNames.join("_") + "_idx");
+            index->table = tbl->name;
+
+            string unique = "";
+            if (idx.isUnique())
+                index->unique = true;
+            db->indices.push_back(index);
+        }
+    }
+    for (size_t i = 0; i < relations.size(); i++) {
+        Relation& r = *relations[i];
+
+        Database::Table::Ptr tbl(new Database::Table);
+        tbl->name = r.getTable();
+
+        db->tables.push_back(tbl);
+
+        Database::DBField::sequence objFields;
+        map<string, Database::DBField::Ptr> fldMap;
+        for (size_t i2 = 0; i2 < r.related.size(); i2++) {
+            const xml::Relate& relate = *r.related[i2];
+            AT_field_unique unique = A_field_unique_false;
+            if (relate.isUnique())
+            {
+                unique = A_field_unique_true;
+            }
+            else if (r.related.size() == 2) {
+                if (i2 == 0 && r.related[1]->hasLimit()) {
+                    unique = A_field_unique_true;
+                }
+                if (i2 == 1 && r.related[0]->hasLimit()) {
+                    unique = A_field_unique_true;
+                }
+            }
+            Database::DBField::Ptr fld(new Database::DBField);
+            fld->name(relate.fieldName);
+            fld->field->type = A_field_type_integer;
+            fld->field->unique = unique;
+            tbl->fields.push_back(fld);
+            objFields.push_back(fld);
+
+            Database::DBIndex::Ptr idx( new Database::DBIndex);
+            idx->name = makeDBName(tbl->name + fld->name() + "idx");
+            idx->table = tbl->name;
+            idx->fields.push_back(fld);
+            db->indices.push_back(idx);
+
+        }
+        for (size_t i2 = 0; i2 < r.fields.size(); i2++) {
+            Field& f = *r.fields[i2];
+            Database::DBField::Ptr fld(new Database::DBField);
+            fld->name(f.name);
+            fldMap[f.name] = fld;
+            fld->field->type = f.type;
+            fld->primaryKey = false;
+            fld->field->unique = f.isUnique() ? A_field_unique_true : A_field_unique_false;
+            fld->field = r.fields[i2];
+            tbl->fields.push_back(fld);
+
+            if (f.isIndexed()) {
+              Database::DBIndex::Ptr idx( new Database::DBIndex);
+                idx->name = makeDBName(tbl->name + fld->name() + "idx");
+                idx->table = tbl->name;
+                idx->fields.push_back(fld);
+                db->indices.push_back(idx);
+            }
+
+        }
+
+        if (r.related.size() > 1) {
+
+          Database::DBIndex::Ptr idx(new Database::DBIndex);
+            idx->name = makeDBName(tbl->name + "_all_idx");
+            idx->table = tbl->name;
+            for (size_t i2 = 0; i2 < objFields.size(); i2++)
+                idx->fields.push_back(objFields[i2]);
+            db->indices.push_back(idx);
+        }
+        for (size_t i2 = 0; i2 < r.indices.size(); i2++) {
+            const Index& idx = *r.indices[i2];
+
+            litesql::Split fldNames(idx.fields.size());
+            Database::DBIndex::Ptr index(new Database::DBIndex);
+            for (size_t i3 = 0; i3 < idx.fields.size(); i3++) {
+//                Database::DBField* fld = new Database::DBField;
+                if (fldMap.find(idx.fields[i3].name) == fldMap.end())
+                    throw litesql::Except("Indexfield " + r.name + "." + idx.fields[i3].name + " is invalid.");
+                index->fields.push_back(fldMap[idx.fields[i3].name]);
+                fldNames.push_back(idx.fields[i3].name);
+            }
+
+            index->name = makeDBName(tbl->name + "_" + fldNames.join("_") + "_idx");
+            string unique = "";
+            if (idx.isUnique())
+                index->unique = true;
+            db->indices.push_back(index);
+        }
+    }
+
+}

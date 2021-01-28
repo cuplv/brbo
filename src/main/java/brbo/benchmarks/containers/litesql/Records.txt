@@ -1,0 +1,19 @@
+Records MySQL::Result::records() const {
+    if (!res)
+        return Records();
+    Records recs;
+
+    recs.resize(recordNum());
+    mysql_data_seek(res, 0);
+    size_t fieldnum = fieldNum();
+    for (size_t i = 0; i < recordNum(); i++) {
+        MYSQL_ROW row = mysql_fetch_row(res);
+        if (!row)
+            break;
+        recs[i].reserve(fieldnum);
+        for (size_t i2 = 0; i2 < fieldnum; i2++) {
+            recs[i].push_back(row[i2] ? row[i2] : "NULL");
+        }
+    }
+    return recs;
+}

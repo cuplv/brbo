@@ -1,0 +1,63 @@
+void Database::upgradeTable(string name,
+                            string oldSchema, string newSchema) const {
+    ColumnDefinitions oldFields = getFields(oldSchema);
+    ColumnDefinitions newFields = getFields(newSchema);
+
+    ColumnDefinitions toAdd(newFields);
+    ColumnDefinitions::iterator found;
+
+    for (ColumnDefinitions::iterator it = oldFields.begin();it!=oldFields.end();it++)
+    {
+      found = find_if(toAdd.begin(),toAdd.end(),ColumnDefinition::EqualName(it->name));
+      if (found!=toAdd.end())
+      {
+        toAdd.erase(found);
+      }
+    }
+
+    ColumnDefinitions commonFields;
+    for (ColumnDefinitions::iterator it = oldFields.begin();it!=oldFields.end();it++)
+    {
+      found = find_if(newFields.begin(),newFields.end(),ColumnDefinition::EqualName(it->name));
+      if (found!=newFields.end())
+      {
+        commonFields.push_back(*found);
+      }
+    }
+
+    begin();
+    string bkp_name(name+"backup");
+    query(" ALTER TABLE " + name + " RENAME TO " + bkp_name);
+    for (ColumnDefinitions::iterator it = toAdd.begin();it!= toAdd.end();it++)
+    {
+      addColumn(bkp_name,*it);
+    }
+
+    query(newSchema);
+    // oldfields as ...
+    Split cols;
+   Split colNames;
+    string s;
+
+    for (ColumnDefinitions::iterator it = commonFields.begin();it!= commonFields.end();it++)
+    {
+        s = it->name;
+        s.append(" AS ");
+        s.append(it->name);
+        cols.push_back(s);
+      colNames.push_back(it->name);
+    }
+
+    for (ColumnDefinitions::iterator it = toAdd.begin();it!= toAdd.end();it++)
+    {
+        s = it->name;
+        s.append(" AS ");
+        s.append(it->name);
+        cols.push_back(s);
+      colNames.push_back(it->name);
+    }
+
+   query(" INSERT INTO " + name +" ("+colNames.join(",") +") SELECT "+ cols.join(",")+" FROM " + bkp_name);
+    query(" DROP TABLE " + bkp_name);
+    commit();
+}
