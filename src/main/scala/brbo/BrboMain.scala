@@ -1,7 +1,7 @@
 package brbo
 
 import brbo.common._
-import brbo.verification.AmortizationMode.ALL_AMORTIZE
+import brbo.verification.AmortizationMode.{ALL_AMORTIZE, AmortizationMode}
 import brbo.verification.BoundChecking.GlobalInvariants
 import brbo.verification.Decomposition.DecompositionResult
 import brbo.verification.{BasicProcessor, BoundChecking, Decomposition}
@@ -10,11 +10,15 @@ import org.apache.commons.io.{FileUtils, FilenameUtils}
 import org.apache.logging.log4j.LogManager
 
 import java.io.File
+import java.nio.charset.Charset
+import java.text.SimpleDateFormat
+import java.util.Date
 import scala.collection.JavaConverters._
 import scala.collection.immutable.HashMap
 
 object BrboMain {
   private val logger = LogManager.getLogger("brbo.BrboMain")
+  val OUTPUT_DIRECTORY: String = s"${System.getProperty("user.dir")}/output"
 
   def main(args: Array[String]) {
     logger.info("Brbo has started.")
@@ -37,11 +41,21 @@ object BrboMain {
       })
     }
 
-    sourceFiles.foreach({
-      case (sourceFile: File, sourceFileContents: String) =>
-        val decompositionResult = decompose(sourceFile.getAbsolutePath, sourceFileContents, arguments)
-        checkBound(decompositionResult, arguments)
-    })
+    val csvFileContents = {
+      sourceFiles.map({
+        case (sourceFile: File, sourceFileContents: String) =>
+          val decompositionResult = decompose(sourceFile.getAbsolutePath, sourceFileContents, arguments)
+          val results = checkBound(decompositionResult, arguments)
+          results.map(r => r.toCSV).mkString("\n")
+      }).mkString("\n")
+    }
+    val csvFile = {
+      val directoryOrFile = FilenameUtils.getBaseName(arguments.directoryToAnalyze)
+      val date = new SimpleDateFormat("YYYYMMdd-HHmm").format(new Date)
+      new File(s"$OUTPUT_DIRECTORY/$directoryOrFile-$date.csv")
+    }
+    logger.info(s"Write results to file `${csvFile.getAbsolutePath}`")
+    FileUtils.writeStringToFile(csvFile, csvFileContents, Charset.forName("UTF-8"))
   }
 
   /**
@@ -91,12 +105,12 @@ object BrboMain {
    * @param decompositionResult Results from decomposition
    * @param arguments           Command line arguments
    */
-  def checkBound(decompositionResult: Option[List[DecompositionResult]], arguments: CommandLineArguments): Unit = {
+  def checkBound(decompositionResult: Option[List[DecompositionResult]], arguments: CommandLineArguments): List[AnalysisResult] = {
     logger.info(s"Phase 2: Bound check")
 
     decompositionResult match {
       case Some(decompositionResults) =>
-        decompositionResults.zipWithIndex.foreach({
+        decompositionResults.zipWithIndex.map({
           case (result, index) =>
             logger.info("")
             logger.info("")
@@ -108,12 +122,19 @@ object BrboMain {
             val boundExpression: AST = BoundChecking.extractBoundExpression(solver, inputMethod.methodTree, inputMethod.inputVariables ++ inputMethod.localVariables)
             logger.info(s"Extracted bound expression is `$boundExpression`")
 
-            if (arguments.decomposeOnly) logger.info(s"Not perform bound check")
-            else BoundChecking.checkBound(solver, result, boundExpression, arguments)
+            val verified = {
+              if (arguments.decomposeOnly) {
+                logger.info(s"Not perform bound check")
+                false
+              }
+              else BoundChecking.checkBound(solver, result, boundExpression, arguments)
+            }
             val endTime = System.nanoTime()
-            logger.info(s"Time consumption: `${(endTime - startTime).toDouble / 1000000000}` seconds")
+            val timeString = "%.3f" format (endTime - startTime).toDouble / 1000000000
+            logger.info(s"Time consumption: `$timeString` seconds")
+            AnalysisResult(result.inputMethod.className, timeString, verified, result.amortizationMode)
         })
-      case None =>
+      case None => List[AnalysisResult]()
     }
   }
 
@@ -142,4 +163,9 @@ object BrboMain {
     val source = scala.io.Source.fromFile(location)
     try source.mkString finally source.close()
   }
+
+  case class AnalysisResult(name: String, time: String, verified: Boolean, mode: AmortizationMode) {
+    def toCSV: String = s"$name,$time,$verified,$mode"
+  }
+
 }

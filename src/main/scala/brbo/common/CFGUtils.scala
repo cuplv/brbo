@@ -1,5 +1,6 @@
 package brbo.common
 
+import brbo.BrboMain
 import brbo.verification.dependency.BrboNode
 import com.ibm.wala.util.graph.NumberedGraph
 import com.ibm.wala.util.graph.dominators.Dominators
@@ -18,7 +19,7 @@ import scala.collection.immutable.{HashMap, HashSet}
 
 object CFGUtils {
   private val logger = LogManager.getLogger("brbo.common.CFGUtils")
-  val OUTPUT_DIRECTORY: String = "./output/cfg"
+  val OUTPUT_DIRECTORY: String = s"${BrboMain.OUTPUT_DIRECTORY}/cfg"
 
   def printPDF(cfg: ControlFlowGraph, prependToFileName: Option[String]): Unit = {
     val visualizer = new DOTCFGVisualizer
