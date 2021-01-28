@@ -9,7 +9,8 @@ case class CommandLineArguments(amortizationMode: AmortizationMode,
                                 printCounterExample: Boolean,
                                 printIcraInputs: Boolean,
                                 icraTimeout: Int,
-                                printCFG: Boolean) {
+                                printCFG: Boolean,
+                                decomposeOnly: Boolean) {
   override def toString: String = {
     val directoryToAnalyzeString = s"Infer resource usage upper bounds for each method in each file `*.java` under directory `$directoryToAnalyze`"
     val amortizationModeString = s"Amortization mode: `$amortizationMode`"
@@ -19,7 +20,8 @@ case class CommandLineArguments(amortizationMode: AmortizationMode,
     val printIcraInputsString = s"Print inputs to ICRA? `$printIcraInputs`"
     val icraTimeoutString = s"ICRA's time out: `$icraTimeout` seconds"
     val printCFGString = s"Print CFG? `$printCFG`"
-    s"$directoryToAnalyzeString\n$amortizationModeString\n$debugModeString\n$skipSanityCheckString\n$printCounterExampleString\n$printIcraInputsString\n$icraTimeoutString\n$printCFGString"
+    val decomposeOnlyString = s"No bound check? `$decomposeOnly`"
+    s"$directoryToAnalyzeString\n$amortizationModeString\n$debugModeString\n$skipSanityCheckString\n$printCounterExampleString\n$printIcraInputsString\n$icraTimeoutString\n$printCFGString\n$decomposeOnlyString"
   }
 }
 
@@ -28,5 +30,6 @@ object CommandLineArguments {
 
   val DEFAULT_ARGUMENTS: CommandLineArguments =
     CommandLineArguments(UNKNOWN, debugMode = false, "", skipSanityCheck = false,
-      printCounterExample = false, printIcraInputs = false, icraTimeout = 20, printCFG = false)
+      printCounterExample = false, printIcraInputs = false, icraTimeout = 20,
+      printCFG = false, decomposeOnly = false)
 }

@@ -20,7 +20,7 @@ class CommandLineArgumentsReflect {
     usage = "Skip the sanity check.")
   private var skipSanityCheck: Boolean = false
 
-  @Option(name = "--print-counter-example", aliases = Array("-c"), required = false,
+  @Option(name = "--print-counter-example", aliases = Array("--cex"), required = false,
     usage = "Print a counter example that violates the bound.")
   private var printCounterExample: Boolean = false
 
@@ -33,12 +33,14 @@ class CommandLineArgumentsReflect {
   private var directoryToAnalyze: String = "."
 
   @Option(name = "--icra-timeout", aliases = Array("-t"),
-    usage = "The amount of timeout (unit: seconds) allowed for each invocation to ICRA. `-1` means no timeout will be set.")
+    usage = "The amount of timeout (unit: seconds) allowed for each invocation to ICRA. Negative numbers mean no timeout will be set.")
   private var icraTimeout: Int = CommandLineArguments.DEFAULT_ICRA_TIME_OUT
 
-  @Option(name = "--print-cfg", required = false,
-    usage = "Print the control flow graph of the input graph.")
+  @Option(name = "--print-cfg", aliases = Array("--cfg"), required = false, usage = "Print the control flow graph of the input graph.")
   private var printCFG: Boolean = false
+
+  @Option(name = "--decompose-only", aliases = Array("--decompose"), required = false, usage = "Only perform decompose.")
+  private var decomposeOnly: Boolean = false
 
   def getAmortizationMode: AmortizationMode = {
     amortizationMode.toLowerCase() match {
@@ -62,6 +64,8 @@ class CommandLineArgumentsReflect {
   def getIcraTimeout: Int = icraTimeout
 
   def getPrintCFG: Boolean = printCFG
+
+  def getDecomposeOnly: Boolean = decomposeOnly
 }
 
 object CommandLineArgumentsReflect {
@@ -82,7 +86,7 @@ object CommandLineArgumentsReflect {
       arguments.getAmortizationMode, arguments.debugMode,
       arguments.directoryToAnalyze, arguments.skipSanityCheck,
       arguments.printCounterExample, arguments.printIcraInputs,
-      arguments.icraTimeout, arguments.printCFG
+      arguments.icraTimeout, arguments.printCFG, arguments.decomposeOnly
     )
   }
 }

@@ -68,7 +68,10 @@ object CounterAxiomGenerator {
         val updates = tree.getUpdate.asScala
         assert(initializers.size <= 1)
         assert(updates.size <= 1)
-        val (newMap1, newNewId1) = generateCounterMapHelper(initializers.head, newId)
+        val (newMap1, newNewId1) = {
+          if (initializers.isEmpty) (new HashMap[Tree, String], newId)
+          else generateCounterMapHelper(initializers.head, newId)
+        }
         map = map ++ newMap1
         newId = newNewId1
         val (newMap2, newNewId2) = generateCounterMapHelper(tree.getStatement, newId)

@@ -1,6 +1,6 @@
 package brbo
 
-import brbo.common.{CFGUtils, CommandLineArguments, CommandLineArgumentsReflect, JavacUtils, TargetMethod, Z3Solver}
+import brbo.common._
 import brbo.verification.AmortizationMode.ALL_AMORTIZE
 import brbo.verification.BoundChecking.GlobalInvariants
 import brbo.verification.Decomposition.DecompositionResult
@@ -92,7 +92,11 @@ object BrboMain {
   def checkBound(sourceFilePath: String, sourceFileContents: String, commandLineArguments: CommandLineArguments): Unit = {
     decompose(sourceFilePath, sourceFileContents, commandLineArguments) match {
       case Some(decompositionResults) =>
-        decompositionResults.foreach({ result => BoundChecking.extractBoundAndCheck(result, commandLineArguments) })
+        decompositionResults.foreach({
+          result =>
+            if (commandLineArguments.decomposeOnly) logger.info(s"Not perform bound check")
+            else BoundChecking.extractBoundAndCheck(result, commandLineArguments)
+        })
       case None =>
     }
   }
