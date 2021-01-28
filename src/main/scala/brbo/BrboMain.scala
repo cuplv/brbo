@@ -5,6 +5,7 @@ import brbo.verification.AmortizationMode.ALL_AMORTIZE
 import brbo.verification.BoundChecking.GlobalInvariants
 import brbo.verification.Decomposition.DecompositionResult
 import brbo.verification.{BasicProcessor, BoundChecking, Decomposition}
+import com.microsoft.z3.AST
 import org.apache.commons.io.{FileUtils, FilenameUtils}
 import org.apache.logging.log4j.LogManager
 
@@ -18,12 +19,12 @@ object BrboMain {
   def main(args: Array[String]) {
     logger.info("Brbo has started.")
 
-    val commandLineArguments = CommandLineArgumentsReflect.parseArguments(args)
-    logger.info(s"Command line arguments:\n$commandLineArguments")
+    val arguments = CommandLineArgumentsReflect.parseArguments(args)
+    arguments.toString.split("\n").foreach(s => logger.info(s"Command line argument - $s"))
     logger.warn(s"We assume each class contains exactly one method")
 
     val sourceFiles: Map[File, String] = {
-      val file = new java.io.File(commandLineArguments.directoryToAnalyze)
+      val file = new java.io.File(arguments.directoryToAnalyze)
       val allFiles: Array[File] = {
         if (file.isDirectory) FileUtils.listFiles(file, Array("java"), true).asScala.toArray
         else Array(file)
@@ -38,18 +39,20 @@ object BrboMain {
 
     sourceFiles.foreach({
       case (sourceFile: File, sourceFileContents: String) =>
-        checkBound(sourceFile.getAbsolutePath, sourceFileContents, commandLineArguments)
+        val decompositionResult = decompose(sourceFile.getAbsolutePath, sourceFileContents, arguments)
+        checkBound(decompositionResult, arguments)
     })
   }
 
   /**
    *
-   * @param sourceFilePath Used to extract class name
-   * @param sourceFileContents
-   * @param arguments
+   * @param sourceFilePath     Used to extract class name
+   * @param sourceFileContents Source code
+   * @param arguments          Command line arguments
    * @return
    */
   def decompose(sourceFilePath: String, sourceFileContents: String, arguments: CommandLineArguments): Option[List[DecompositionResult]] = {
+    logger.info(s"Phase 1: Decompose")
     logger.info(s"Decompose file `$sourceFilePath`")
 
     val className: String = {
@@ -85,17 +88,26 @@ object BrboMain {
 
   /**
    *
-   * @param sourceFilePath Used to extract class name
-   * @param sourceFileContents
-   * @param commandLineArguments
+   * @param decompositionResult Results from decomposition
+   * @param arguments           Command line arguments
    */
-  def checkBound(sourceFilePath: String, sourceFileContents: String, commandLineArguments: CommandLineArguments): Unit = {
-    decompose(sourceFilePath, sourceFileContents, commandLineArguments) match {
+  def checkBound(decompositionResult: Option[List[DecompositionResult]], arguments: CommandLineArguments): Unit = {
+    logger.info(s"Phase 2: Bound check")
+
+    decompositionResult match {
       case Some(decompositionResults) =>
         decompositionResults.foreach({
           result =>
-            if (commandLineArguments.decomposeOnly) logger.info(s"Not perform bound check")
-            else BoundChecking.extractBoundAndCheck(result, commandLineArguments)
+            val inputMethod = result.inputMethod
+            val solver: Z3Solver = new Z3Solver
+            BoundChecking.ensureNoAssertion(inputMethod.methodTree)
+            val boundExpression: AST = BoundChecking.extractBoundExpression(solver, inputMethod.methodTree, inputMethod.inputVariables ++ inputMethod.localVariables)
+            logger.info("")
+            logger.info("")
+            logger.info(s"Extracted bound expression is `$boundExpression`")
+
+            if (arguments.decomposeOnly) logger.info(s"Not perform bound check")
+            else BoundChecking.checkBound(solver, result, boundExpression, arguments)
         })
       case None =>
     }
@@ -103,18 +115,19 @@ object BrboMain {
 
   /**
    *
-   * @param solver
-   * @param sourceFilePath Used to extract class name
-   * @param sourceFileContents
-   * @param commandLineArguments
+   * @param solver             Z3 solver
+   * @param sourceFilePath     Used to extract class name
+   * @param sourceFileContents Source code
+   * @param arguments          Command line arguments
    * @return
    */
-  def inferResourceInvariants(solver: Z3Solver, sourceFilePath: String, sourceFileContents: String, commandLineArguments: CommandLineArguments): Option[GlobalInvariants] = {
-    assert(commandLineArguments.amortizationMode != ALL_AMORTIZE, "Expect choosing one amortization mode")
+  @deprecated
+  def inferResourceInvariants(solver: Z3Solver, sourceFilePath: String, sourceFileContents: String, arguments: CommandLineArguments): Option[GlobalInvariants] = {
+    assert(arguments.amortizationMode != ALL_AMORTIZE, "Expect choosing one amortization mode")
 
-    decompose(sourceFilePath, sourceFileContents, commandLineArguments) match {
+    decompose(sourceFilePath, sourceFileContents, arguments) match {
       case Some(decompositionResults) =>
-        val globalInvariants = decompositionResults.map({ result => BoundChecking.inferInvariantsForResource(solver, result, commandLineArguments) })
+        val globalInvariants = decompositionResults.map({ result => BoundChecking.inferInvariantsForResource(solver, result, arguments) })
         assert(globalInvariants.size == 1, "Expect that choosing one amortization mode leads to one decomposition result")
         Some(globalInvariants.head)
       case None => None

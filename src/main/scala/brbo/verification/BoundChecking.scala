@@ -147,8 +147,8 @@ object BoundChecking {
         val counterVariable = deltaCounterPair.counter
 
         Future {
-          logger.info(s"Infer invariant for the peak value of delta variable `$deltaVariable`")
           val globalInvariantFuture = Future {
+            logger.info(s"Infer invariant for the peak value of delta variable `$deltaVariable`. Max degree: `$MAX_DEGREE_DELTA`")
             boundInference.inferBound(
               solver,
               Locations(
@@ -174,8 +174,8 @@ object BoundChecking {
           }
 
           // TODO: It seems that ICRA cannot infer strong invariants right before `D=0`
-          logger.info(s"Infer invariant for the accumulation of delta variable `$deltaVariable` (per visit to its subprogram)")
           val accumulationInvariantFuture = Future {
+            logger.info(s"Infer invariant for the accumulation of delta variable `$deltaVariable` (per visit to its subprogram). Max degree: `$MAX_DEGREE_DELTA`")
             boundInference.inferBound(
               solver,
               Locations(
@@ -248,7 +248,7 @@ object BoundChecking {
               }
             }
             else {*/
-            logger.info(s"Infer invariants for AST counter `$counterVariable` with ICRA")
+            logger.info(s"Infer invariants for AST counter `$counterVariable` with ICRA. Max degree: `$MAX_DEGREE_COUNTER`")
             boundInference.inferBound(
               solver,
               Locations(
@@ -367,10 +367,11 @@ object BoundChecking {
 
     val counterInvariants = {
       val counterAxioms: AST = {
-        logger.info(s"Provide counter axioms only for mode `$SELECTIVE_AMORTIZE` (Current mode: `${arguments.amortizationMode}`)")
-        arguments.amortizationMode match {
+        decompositionResult.amortizationMode match {
           case SELECTIVE_AMORTIZE => CounterAxiomGenerator.generateCounterAxioms(solver, methodBody)
-          case _ => solver.mkTrue()
+          case mode@_ =>
+            logger.info(s"Provide counter axioms only for mode `$SELECTIVE_AMORTIZE` (Current mode: `$mode`)")
+            solver.mkTrue()
         }
       }
       logger.trace(s"Counter axioms:\n$counterAxioms")
@@ -526,17 +527,6 @@ object BoundChecking {
     assert(assertions.size == 1, s"Please verify exactly 1 bound expression. Instead, we have `${assertions.size}` bound expression(s)")
     val boundExpression = assertions.head.asInstanceOf[ExpressionStatementTree].getExpression.asInstanceOf[MethodInvocationTree].getArguments.get(0)
     TreeUtils.translatePureExpressionToZ3AST(solver, boundExpression, typeContext)
-  }
-
-  def extractBoundAndCheck(decompositionResult: DecompositionResult, commandLineArguments: CommandLineArguments): Unit = {
-    val inputMethod = decompositionResult.inputMethod
-    val solver: Z3Solver = new Z3Solver
-    BoundChecking.ensureNoAssertion(inputMethod.methodTree)
-    val boundExpression: AST = BoundChecking.extractBoundExpression(solver, inputMethod.methodTree, inputMethod.inputVariables ++ inputMethod.localVariables)
-    logger.info("")
-    logger.info("")
-    logger.info(s"Extracted bound expression is `$boundExpression`")
-    checkBound(solver, decompositionResult, boundExpression, commandLineArguments)
   }
 
   case class GlobalInvariants(resourceInvariants: AST, deltaInvariants: AST, counterInvariants: AST, deltaCounterPairs: Set[DeltaCounterPair])
