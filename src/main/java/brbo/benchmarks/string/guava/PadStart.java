@@ -10,7 +10,7 @@ abstract public class PadStart extends Common {
       return;
     int sb = 0;
     int R = 0;
-    boundAssertion(R <= minLength);
+    boundAssertion(R <= string + minLength);
     for (int i = string; i < minLength; i++) {
       sb++;
       R = R + 1;

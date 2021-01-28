@@ -21,6 +21,9 @@ public abstract class Synthetic02 extends Common {
         if (ndBool()) {
           R = R + 1;
         }
+        else {
+          R = R + 1;
+        }
       }
       i++;
     }

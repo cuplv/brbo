@@ -8,7 +8,7 @@ abstract public class Join2 extends Common {
       return;
     int iterator = n;
     int R = 0;
-    boundAssertion(R <= 2 * n);
+    boundAssertion(R <= 1 + n);
     int buf = 0;
     iterator--;
     if (iterator <= 0)

@@ -18,7 +18,7 @@ public abstract class Synthetic06 extends Common {
             R = R + 1;
           }
           else {
-            R = R + (-1);
+            R = R + 1;
           }
           k++;
         }

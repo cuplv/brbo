@@ -8,24 +8,27 @@ abstract class Synthetic09 extends Common {
       return;
     int R = 0;
     int i = 0;
-    boundAssertion (R <= 2 * m * n);
+    boundAssertion(R <= 2 * m * n);
     while (i < n) {
       int j = 0;
       while (j < m) {
         j++;
-        R = R + 1;
+        if (ndBool()) {
+          R = R + 1;
+        }
+        else {
+          R = R + 1;
+        }
       }
       i++;
     }
 
     i = 0;
     while (i < n) {
-      if (ndBool()) {
-        int k = 0;
-        while (k < m) {
-          k++;
-          R = R + 1;
-        }
+      int k = 0;
+      while (k < m) {
+        k++;
+        R = R + 1;
       }
       i++;
     }

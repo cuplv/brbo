@@ -10,7 +10,7 @@ abstract public class Join extends Common {
     if (noOfItems <= 0)
       return;
     int R = 0;
-    boundAssertion(R <= 2 * (endIndex - startIndex));
+    boundAssertion(R <= 1 + 2 * endIndex);
     int buf = 0;
     buf++;
     R = R + 1;

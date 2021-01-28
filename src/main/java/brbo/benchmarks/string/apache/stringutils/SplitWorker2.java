@@ -10,17 +10,19 @@ abstract public class SplitWorker2 extends Common {
     boundAssertion(R <= str);
     int list = 0;
     int sizePlus1 = 1;
-    int i = 0, start = 0;
+    int i = 0;
+    int start = 0;
     boolean match = false;
     boolean lastMatch = false;
-    int len = str;
     if (separatorChars == 0) {
-      while (i < len) {
+      i = 0;
+      start = 0;
+      while (i < str) {
         if (ndBool()) {
           if (match || preserveAllTokens) {
             lastMatch = true;
             if (sizePlus1 == max) {
-              i = len;
+              i = str;
               lastMatch = false;
             }
             sizePlus1++;
@@ -35,14 +37,20 @@ abstract public class SplitWorker2 extends Common {
         lastMatch = false;
         match = true;
         i++;
+      }
+      if (match || preserveAllTokens && lastMatch) {
+        list += i - start;
+        R = R + (i - start);
       }
     } else if (separatorChars == 1) {
-      while (i < len) {
+      i = 0;
+      start = 0;
+      while (i < str) {
         if (ndBool()) {
           if (match || preserveAllTokens) {
             lastMatch = true;
             if (sizePlus1 == max) {
-              i = len;
+              i = str;
               lastMatch = false;
             }
             sizePlus1++;
@@ -57,14 +65,20 @@ abstract public class SplitWorker2 extends Common {
         lastMatch = false;
         match = true;
         i++;
+      }
+      if (match || preserveAllTokens && lastMatch) {
+        list += i - start;
+        R = R + (i - start);
       }
     } else {
-      while (i < len) {
+      i = 0;
+      start = 0;
+      while (i < str) {
         if (ndBool()) {
           if (match || preserveAllTokens) {
             lastMatch = true;
             if (sizePlus1 == max) {
-              i = len;
+              i = str;
               lastMatch = false;
             }
             sizePlus1++;
@@ -80,10 +94,10 @@ abstract public class SplitWorker2 extends Common {
         match = true;
         i++;
       }
-    }
-    if (match || preserveAllTokens && lastMatch) {
-      list += i - start;
-      R = R + (i - start);
+      if (match || preserveAllTokens && lastMatch) {
+        list += i - start;
+        R = R + (i - start);
+      }
     }
   }
 }

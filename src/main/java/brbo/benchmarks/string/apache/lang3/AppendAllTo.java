@@ -8,7 +8,7 @@ abstract public class AppendAllTo extends Common {
       return;
     int builder = 0;
     int R = 0;
-    boundAssertion(R <= types * sep + 1);
+    boundAssertion(R <= types * sep + types + 1);
     builder++;
     R = R + 1;
     for (int i = 1; i < types; i++) {
