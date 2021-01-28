@@ -96,18 +96,22 @@ object BrboMain {
 
     decompositionResult match {
       case Some(decompositionResults) =>
-        decompositionResults.foreach({
-          result =>
+        decompositionResults.zipWithIndex.foreach({
+          case (result, index) =>
+            logger.info("")
+            logger.info("")
+            logger.info(s"Check bound for `$index`-th decomposition result")
+            val startTime = System.nanoTime()
             val inputMethod = result.inputMethod
             val solver: Z3Solver = new Z3Solver
             BoundChecking.ensureNoAssertion(inputMethod.methodTree)
             val boundExpression: AST = BoundChecking.extractBoundExpression(solver, inputMethod.methodTree, inputMethod.inputVariables ++ inputMethod.localVariables)
-            logger.info("")
-            logger.info("")
             logger.info(s"Extracted bound expression is `$boundExpression`")
 
             if (arguments.decomposeOnly) logger.info(s"Not perform bound check")
             else BoundChecking.checkBound(solver, result, boundExpression, arguments)
+            val endTime = System.nanoTime()
+            logger.info(s"Time consumption: `${(endTime - startTime).toDouble / 1000000000}` seconds")
         })
       case None =>
     }
