@@ -14,7 +14,7 @@ import java.nio.charset.Charset
 import java.text.SimpleDateFormat
 import java.util.Date
 import scala.collection.JavaConverters._
-import scala.collection.immutable.HashMap
+import scala.collection.immutable.{HashMap, HashSet}
 
 object BrboMain {
   private val logger = LogManager.getLogger("brbo.BrboMain")
@@ -41,21 +41,22 @@ object BrboMain {
       })
     }
 
-    val csvFileContents = {
-      sourceFiles.map({
+    val results: List[List[AnalysisResult]] = {
+      sourceFiles.toList.map({
         case (sourceFile: File, sourceFileContents: String) =>
           val decompositionResult = decompose(sourceFile.getAbsolutePath, sourceFileContents, arguments)
-          val results = checkBound(decompositionResult, arguments)
-          results.map(r => r.toCSV).mkString("\n")
-      }).mkString("\n")
+          checkBound(decompositionResult, arguments)
+      })
     }
-    val csvFile = {
-      val directoryOrFile = FilenameUtils.getBaseName(arguments.directoryToAnalyze)
-      val date = new SimpleDateFormat("YYYYMMdd-HHmm").format(new Date)
-      new File(s"$OUTPUT_DIRECTORY/$directoryOrFile-$date.csv")
-    }
-    logger.info(s"Write results to file `${csvFile.getAbsolutePath}`")
-    FileUtils.writeStringToFile(csvFile, csvFileContents, Charset.forName("UTF-8"))
+    val rawCsvFileContents = results.flatten.map(r => r.toCSV).mkString("\n")
+    val aggregatedCsvFileContents = aggregateResults(results).map(r => r.toCSV).mkString("\n")
+    val directoryOrFile = FilenameUtils.getBaseName(arguments.directoryToAnalyze)
+    val date = new SimpleDateFormat("YYYYMMdd-HHmm").format(new Date)
+    val rawCsvFile = new File(s"$OUTPUT_DIRECTORY/$directoryOrFile-raw-$date.csv")
+    val aggregatedCsvFile = new File(s"$OUTPUT_DIRECTORY/$directoryOrFile-$date.csv")
+    logger.info(s"Write results to file `${rawCsvFile.getAbsolutePath}`, `${aggregatedCsvFile.getAbsolutePath}`")
+    FileUtils.writeStringToFile(rawCsvFile, rawCsvFileContents, Charset.forName("UTF-8"))
+    FileUtils.writeStringToFile(aggregatedCsvFile, aggregatedCsvFileContents, Charset.forName("UTF-8"))
   }
 
   /**
@@ -130,9 +131,10 @@ object BrboMain {
               else BoundChecking.checkBound(solver, result, boundExpression, arguments)
             }
             val endTime = System.nanoTime()
-            val timeString = "%.3f" format (endTime - startTime).toDouble / 1000000000
+            val timeElapsed = (endTime - startTime).toDouble / 1000000000
+            val timeString = StringFormatUtils.threeDigits(timeElapsed)
             logger.info(s"Time consumption: `$timeString` seconds")
-            AnalysisResult(result.inputMethod.className, timeString, verified, result.amortizationMode)
+            AnalysisResult(result.inputMethod.className, timeElapsed, verified, result.amortizationMode)
         })
       case None => List[AnalysisResult]()
     }
@@ -164,8 +166,70 @@ object BrboMain {
     try source.mkString finally source.close()
   }
 
-  case class AnalysisResult(name: String, time: String, verified: Boolean, mode: AmortizationMode) {
-    def toCSV: String = s"$name,$time,$verified,$mode"
+  private def interpretResult(b: Boolean): String = if (b) "Yes" else "No"
+
+  case class AnalysisResult(file: String, time: Double, verified: Boolean, mode: AmortizationMode) {
+    def toCSV: String = s"$file,${StringFormatUtils.threeDigits(time)},$verified,$mode"
+  }
+
+  case class Result(time: Double, verified: Boolean)
+
+  case class AggregatedResult(no: Result, selective: Result, full: Result, files: Set[String]) {
+    def updateTimeAndFile(analysisResult: AnalysisResult, file: String): AggregatedResult = {
+      val time = analysisResult.time
+      analysisResult.mode match {
+        case brbo.verification.AmortizationMode.NO_AMORTIZE =>
+          AggregatedResult(Result(no.time + time, no.verified), selective, full, files + file)
+        case brbo.verification.AmortizationMode.FULL_AMORTIZE =>
+          AggregatedResult(no, selective, Result(full.time + time, full.verified), files + file)
+        case brbo.verification.AmortizationMode.SELECTIVE_AMORTIZE =>
+          AggregatedResult(no, Result(selective.time + time, selective.verified), full, files + file)
+        case _ => throw new Exception("Unexpected")
+      }
+    }
+
+    def updateTimeAndFileList(analysisResults: Iterable[AnalysisResult], file: String): AggregatedResult = {
+      var r = this
+      analysisResults.foreach({
+        result => r = r.updateTimeAndFile(result, file)
+      })
+      r
+    }
+
+    def toCSV: String = {
+      s"${files.size},${interpretResult(no.verified)},${StringFormatUtils.threeDigits(no.time)}," +
+        s"${interpretResult(full.verified)},${StringFormatUtils.threeDigits(full.time)}," +
+        s"${interpretResult(selective.verified)},${StringFormatUtils.threeDigits(selective.time)}"
+    }
+  }
+
+  private def aggregateResults(results: List[List[AnalysisResult]]): List[AggregatedResult] = {
+    var r1 = AggregatedResult(Result(0, verified = true), Result(0, verified = true), Result(0, verified = true), new HashSet[String])
+    var r2 = AggregatedResult(Result(0, verified = true), Result(0, verified = true), Result(0, verified = false), new HashSet[String])
+    var r3 = AggregatedResult(Result(0, verified = true), Result(0, verified = false), Result(0, verified = true), new HashSet[String])
+    var r4 = AggregatedResult(Result(0, verified = true), Result(0, verified = false), Result(0, verified = false), new HashSet[String])
+    var r5 = AggregatedResult(Result(0, verified = false), Result(0, verified = true), Result(0, verified = true), new HashSet[String])
+    var r6 = AggregatedResult(Result(0, verified = false), Result(0, verified = true), Result(0, verified = false), new HashSet[String])
+    var r7 = AggregatedResult(Result(0, verified = false), Result(0, verified = false), Result(0, verified = true), new HashSet[String])
+    var r8 = AggregatedResult(Result(0, verified = false), Result(0, verified = false), Result(0, verified = false), new HashSet[String])
+    results.foreach({
+      result =>
+        assert(result.size == 3)
+        val no = result.head
+        val selective = result(1)
+        val full = result(2)
+        (no.verified, selective.verified, full.verified) match {
+          case (true, true, true) => r1 = r1.updateTimeAndFileList(result, no.file)
+          case (true, true, false) => r2 = r2.updateTimeAndFileList(result, no.file)
+          case (true, false, true) => r3 = r3.updateTimeAndFileList(result, no.file)
+          case (true, false, false) => r4 = r4.updateTimeAndFileList(result, no.file)
+          case (false, true, true) => r5 = r5.updateTimeAndFileList(result, no.file)
+          case (false, true, false) => r6 = r6.updateTimeAndFileList(result, no.file)
+          case (false, false, true) => r7 = r7.updateTimeAndFileList(result, no.file)
+          case (false, false, false) => r8 = r8.updateTimeAndFileList(result, no.file)
+        }
+    })
+    List[AggregatedResult](r1, r2, r3, r4, r5, r6, r7, r8)
   }
 
 }
