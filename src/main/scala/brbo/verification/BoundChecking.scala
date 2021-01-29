@@ -518,7 +518,7 @@ object BoundChecking {
         expressionStatementTree.getExpression match {
           case methodInvocationTree: MethodInvocationTree =>
             val methodSelect = methodInvocationTree.getMethodSelect.toString
-            if (methodSelect == "boundAssertion") true
+            if (methodSelect == "mostPreciseBound") true
             else false
           case _ => false
         }

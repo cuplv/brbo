@@ -48,8 +48,8 @@ object BrboMain {
           checkBound(decompositionResult, arguments)
       })
     }
-    val rawCsvFileContents = results.flatten.map(r => r.toCSV).mkString("\n")
-    val aggregatedCsvFileContents = aggregateResults(results).map(r => r.toCSV).mkString("\n")
+    val rawCsvFileContents = "name,time,verified,mode\n" + results.flatten.map(r => r.toCSV).mkString("\n")
+    val aggregatedCsvFileContents = "programs,verified,time,verified,time,verified,time\n" + aggregateResults(results).map(r => r.toCSV).mkString("\n")
     val directoryOrFile = FilenameUtils.getBaseName(arguments.directoryToAnalyze)
     val date = new SimpleDateFormat("YYYYMMdd-HHmm").format(new Date)
     val rawCsvFile = new File(s"$OUTPUT_DIRECTORY/$directoryOrFile-raw-$date.csv")
@@ -132,8 +132,7 @@ object BrboMain {
             }
             val endTime = System.nanoTime()
             val timeElapsed = (endTime - startTime).toDouble / 1000000000
-            val timeString = StringFormatUtils.threeDigits(timeElapsed)
-            logger.info(s"Time consumption: `$timeString` seconds")
+            logger.info(s"Time consumption: `${StringFormatUtils.oneDigit(timeElapsed)}` seconds")
             AnalysisResult(result.inputMethod.className, timeElapsed, verified, result.amortizationMode)
         })
       case None => List[AnalysisResult]()
@@ -169,7 +168,7 @@ object BrboMain {
   private def interpretResult(b: Boolean): String = if (b) "Yes" else "No"
 
   case class AnalysisResult(file: String, time: Double, verified: Boolean, mode: AmortizationMode) {
-    def toCSV: String = s"$file,${StringFormatUtils.threeDigits(time)},$verified,$mode"
+    def toCSV: String = s"$file,${StringFormatUtils.oneDigit(time)},$verified,$mode"
   }
 
   case class Result(time: Double, verified: Boolean)
@@ -197,9 +196,9 @@ object BrboMain {
     }
 
     def toCSV: String = {
-      s"${files.size},${interpretResult(no.verified)},${StringFormatUtils.threeDigits(no.time)}," +
-        s"${interpretResult(full.verified)},${StringFormatUtils.threeDigits(full.time)}," +
-        s"${interpretResult(selective.verified)},${StringFormatUtils.threeDigits(selective.time)}"
+      s"${files.size},${interpretResult(no.verified)},${StringFormatUtils.oneDigit(no.time)}," +
+        s"${interpretResult(full.verified)},${StringFormatUtils.oneDigit(full.time)}," +
+        s"${interpretResult(selective.verified)},${StringFormatUtils.oneDigit(selective.time)}"
     }
   }
 
