@@ -11,7 +11,6 @@ import brbo.verification.AmortizationMode.{AmortizationMode, FULL_AMORTIZE, NO_A
 import brbo.verification.Decomposition.{DecompositionResult, DeltaCounterPair}
 import brbo.verification.dependency.reachdef.ReachingValue
 import brbo.verification.dependency.{ControlDependency, DataDependency}
-import com.sun.source.tree.Tree.Kind
 import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.block.Block.BlockType
@@ -22,7 +21,7 @@ import scala.collection.JavaConverters._
 import scala.collection.immutable.{HashMap, HashSet}
 
 class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) {
-  private val debug = arguments.debugMode
+  private val debug = arguments.getDebugMode
   private val logger = LogManager.getLogger(classOf[Decomposition])
 
   private val commands = inputMethod.commands
@@ -36,7 +35,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
 
   def decompose(commandLineArguments: CommandLineArguments): List[DecompositionResult] = {
     val listOfSubprograms: List[IntermediateResult] = {
-      val amortizationMode = commandLineArguments.amortizationMode
+      val amortizationMode = commandLineArguments.getAmortizationMode
       logger.info(s"Decomposing... Mode: `$amortizationMode`")
       amortizationMode match {
         case brbo.verification.AmortizationMode.NO_AMORTIZE =>
@@ -235,7 +234,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
       indent = 2
     )
     val result = DecompositionResult(newSourceFile, deltaCounterPairs.values.toSet, amortizationMode, inputMethod)
-    if (debug || arguments.printCFG) CFGUtils.printPDF(result.outputMethod.cfg, Some("decomposed-"))
+    if (debug || arguments.getPrintCFG) CFGUtils.printPDF(result.outputMethod.cfg, Some("decomposed-"))
     result
   }
 
@@ -631,7 +630,7 @@ object Decomposition {
             val updateNode = CFGUtils.getNodesCorrespondingToExpressionStatementTree(statement, targetMethod.cfg)
 
             updateTree.increment match {
-              case literalTree: LiteralTree =>
+              /*case literalTree: LiteralTree =>
                 assert(literalTree.getKind == Kind.INT_LITERAL)
                 // The initial subprogram is the minimal enclosing loop when `R` is updated by a constant
                 val subprogram: StatementTree = {
@@ -647,7 +646,7 @@ object Decomposition {
                   case None => updateNode
                 }
                 logger.trace(s"Resource update `$statement`'s initial subprogram is `$subprogram`. Entry node is `$entryNode`")
-                Some(subprogram, entryNode)
+                Some(subprogram, entryNode)*/
               case _ => Some(statement, updateNode)
             }
           case None => None

@@ -23,6 +23,8 @@ object BoundChecking {
   private val logger = LogManager.getLogger("brbo.verification.BoundChecking")
   private val MAX_DEGREE_DELTA = 1
   private val MAX_DEGREE_COUNTER = 3
+  private val MOST_PRECISE_BOUND = "mostPreciseBound"
+  private val LESS_PRECISE_BOUND = "lessPreciseBound"
 
   def treatCounterAsResourceInstrumentation(counterVariable: String, resourceVariable: String): StatementTreeInstrumentation = {
     StatementTreeInstrumentation(
@@ -425,7 +427,7 @@ object BoundChecking {
       (solver.mkAnd(resourceInvariants, deltaInvariants, counterInvariants), s"Sanity check - Invariants about resource, delta, and counter variables should SAT"),
       (boundExpression, s"Sanity check - The bound expression should SAT"),
     )
-    sanityCheck(solver, checks, expect = true, allowFail = true, arguments.skipSanityCheck)
+    sanityCheck(solver, checks, expect = true, allowFail = true, arguments.getSkipSanityCheck)
     logger.info(s"Sanity check finished")
 
     logger.info(s"Assert all int-typed input variables are positive")
@@ -445,7 +447,7 @@ object BoundChecking {
         logger.info(s"Discharge bound check query to Z3")
         val result = !solver.checkSAT(printUnsatCore = false)
         if (!result) {
-          if (arguments.debugMode || decompositionResult.amortizationMode == SELECTIVE_AMORTIZE || arguments.printCounterExample) {
+          if (arguments.getDebugMode || decompositionResult.amortizationMode == SELECTIVE_AMORTIZE || arguments.getPrintCounterExample) {
             // solver.printAssertions()
             solver.printModel()
           }
@@ -508,24 +510,48 @@ object BoundChecking {
     })
   }
 
-  def extractBoundExpression(solver: Z3Solver, methodTree: MethodTree, typeContext: Map[String, BrboType]): AST = {
+  def extractBoundExpression(solver: Z3Solver, methodTree: MethodTree, typeContext: Map[String, BrboType], lessPrecise: Boolean): AST = {
+    logger.info(s"""Extract the ${if (lessPrecise) "less" else "most"} precise bound""")
+
+    def findCommand(commands: Iterable[StatementTree], methodToMatch: String): Iterable[StatementTree] = {
+      commands.filter({
+        case expressionStatementTree: ExpressionStatementTree =>
+          expressionStatementTree.getExpression match {
+            case methodInvocationTree: MethodInvocationTree =>
+              val methodSelect = methodInvocationTree.getMethodSelect.toString
+              if (methodSelect == methodToMatch) true
+              else false
+            case _ => false
+          }
+        case _ => false
+      })
+    }
+
+    def assumeExactOneBound(n: Int): Unit = {
+      assert(n == 1, s"Please verify exactly 1 bound expression. Instead, we have `$n` bound expression(s)")
+    }
+
     val methodBody = methodTree.getBody
     if (methodBody == null)
       throw new Exception(s"There is no method body to extract bound expression from in $methodTree")
     val commands = collectCommands(methodTree.getBody)
-    val assertions = commands.filter({
-      case expressionStatementTree: ExpressionStatementTree =>
-        expressionStatementTree.getExpression match {
-          case methodInvocationTree: MethodInvocationTree =>
-            val methodSelect = methodInvocationTree.getMethodSelect.toString
-            if (methodSelect == "mostPreciseBound") true
-            else false
-          case _ => false
+    val boundAssertions = {
+      val boundAssertions = findCommand(commands, if (lessPrecise) LESS_PRECISE_BOUND else MOST_PRECISE_BOUND)
+      if (lessPrecise) {
+        if (boundAssertions.isEmpty) {
+          logger.info(s"Did not find the less precise bound. Look for the most precise bound instead")
+          val boundAssertions2 = findCommand(commands, MOST_PRECISE_BOUND)
+          assumeExactOneBound(boundAssertions2.size)
+          boundAssertions2
         }
-      case _ => false
-    })
-    assert(assertions.size == 1, s"Please verify exactly 1 bound expression. Instead, we have `${assertions.size}` bound expression(s)")
-    val boundExpression = assertions.head.asInstanceOf[ExpressionStatementTree].getExpression.asInstanceOf[MethodInvocationTree].getArguments.get(0)
+        else boundAssertions
+      }
+      else {
+        assumeExactOneBound(boundAssertions.size)
+        boundAssertions
+      }
+    }
+    val boundExpression = boundAssertions.head.asInstanceOf[ExpressionStatementTree].getExpression.asInstanceOf[MethodInvocationTree].getArguments.get(0)
     TreeUtils.translatePureExpressionToZ3AST(solver, boundExpression, typeContext)
   }
 

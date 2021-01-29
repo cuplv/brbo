@@ -23,13 +23,15 @@ class BoundCheckingUnitTest extends AnyFlatSpec {
         val deltaCounterPairs = Set[DeltaCounterPair](DeltaCounterPair("D100", "C1"))
         val inputMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val decompositionResult = DecompositionResult(testCase.inputProgram, deltaCounterPairs, UNKNOWN, inputMethod)
+        val arguments = new CommandLineArguments
+        arguments.initialize(UNKNOWN, debugMode = false, "", skipSanityCheck = false,
+          testCase.expectedOutput == "true", printIcraInputs = false, icraTimeout = 20,
+          printCFG = false, decomposeOnly = false, lessPreciseBound = false)
         val result = BoundChecking.checkBound(
           solver,
           decompositionResult,
           boundExpression,
-          CommandLineArguments(UNKNOWN, debugMode = false, "", skipSanityCheck = false,
-            testCase.expectedOutput == "true", printIcraInputs = false, icraTimeout = 20,
-            printCFG = false, decomposeOnly = false)
+          arguments
         )
         StringCompare.ignoreWhitespaces(result.toString, testCase.expectedOutput, s"Test case ${testCase.className} failed")
     })

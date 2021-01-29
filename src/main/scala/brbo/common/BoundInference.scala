@@ -59,10 +59,10 @@ class BoundInference(targetMethod: TargetMethod, arguments: CommandLineArguments
 
   def checkAGuess(locations: Locations, polynomial: Polynomial, whichVariable: String): Boolean = {
     val cProgram = InvariantInference.translateToCAndInsertAssertions(targetMethod, locations, s"$whichVariable <= ${polynomial.toString}")
-    if (arguments.printIcraInputs) {
+    if (arguments.getPrintIcraInputs) {
       logger.error(s"ICRA input:\n$cProgram")
     }
-    Icra.runAndParseAssertionChecks(cProgram, arguments.icraTimeout) match {
+    Icra.runAndParseAssertionChecks(cProgram, arguments.getIcraTimeout) match {
       case Some(checks) => checks.forall(b => b)
       case None => false
     }

@@ -3,7 +3,6 @@ package brbo.common
 import brbo.common.BeforeOrAfterOrThis.AFTER
 import brbo.common.CommandLineArguments.DEFAULT_ARGUMENTS
 import brbo.common.GhostVariableUtils.GhostVariable.Resource
-import brbo.verification.AmortizationMode.UNKNOWN
 import brbo.verification.BasicProcessor
 import brbo.{StringCompare, TestCase, TestCaseJavaProgram}
 import com.sun.source.tree.ExpressionStatementTree

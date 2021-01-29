@@ -1,7 +1,7 @@
 package brbo.verification
 
 import brbo.common.CommandLineArguments.DEFAULT_ARGUMENTS
-import brbo.common.{CommandLineArguments, MathUtils}
+import brbo.common.MathUtils
 import brbo.verification.AmortizationMode.UNKNOWN
 import brbo.{StringCompare, TestCaseJavaProgram}
 import org.apache.logging.log4j.LogManager
@@ -68,7 +68,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.taintSetTests.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val result = Decomposition.computeTaintSetControlAndData(targetMethod, DEFAULT_ARGUMENTS.debugMode)
+        val result = Decomposition.computeTaintSetControlAndData(targetMethod, DEFAULT_ARGUMENTS.getDebugMode)
         assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
     })
   }
