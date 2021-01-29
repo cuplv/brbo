@@ -7,7 +7,7 @@ abstract public class FetchOneRow extends Common {
     if (nFields <= 0)
       return;
     int R = 0;
-    boundAssertion(R <= nFields);
+    mostPreciseBound(R <= nFields);
     for (int i2 = 1; i2 <= nFields; i2++) {
       if (ndBool()) {
         if (ndBool()) {

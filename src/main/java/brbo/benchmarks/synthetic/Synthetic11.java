@@ -7,7 +7,7 @@ abstract class Synthetic11 extends Common {
     if (n <= 0 || m <= 0)
       return;
     int R = 0;
-    boundAssertion (R <= 1);
+    mostPreciseBound(R <= 1);
     while (true) {
       R = R + 1;
       R = R - 1;

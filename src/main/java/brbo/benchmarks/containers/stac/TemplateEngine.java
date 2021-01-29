@@ -7,7 +7,7 @@ public abstract class TemplateEngine extends Common {
     if (text <= 0)
       return;
     int R = 0;
-    boundAssertion (R <= text);
+    mostPreciseBound(R <= text);
 
     int linePointer = 0;
     int startTagLocation = 0;

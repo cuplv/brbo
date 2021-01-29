@@ -8,7 +8,7 @@ public abstract class Synthetic05 extends Common {
       return;
     int R = 0;
     int i = 0;
-    boundAssertion (R <= l * m * n * o);
+    mostPreciseBound(R <= l * m * n * o);
     while (i < n) {
       int j = 0;
       while (j < m) {

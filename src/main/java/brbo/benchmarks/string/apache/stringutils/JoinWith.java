@@ -7,7 +7,7 @@ abstract public class JoinWith extends Common {
     if (separator <= 0 || n <= 0)
       return;
     int R = 0;
-    boundAssertion(R <= n * separator + n);
+    mostPreciseBound(R <= n * separator + n);
     int result = 0;
     int iterator = n;
     while (iterator > 0) {

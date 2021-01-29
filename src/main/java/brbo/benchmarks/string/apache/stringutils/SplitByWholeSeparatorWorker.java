@@ -7,7 +7,7 @@ abstract public class SplitByWholeSeparatorWorker extends Common {
     if (str <= 0 || separator <= 0 || max <= 0)
       return;
     int R = 0;
-    boundAssertion(R <= str);
+    mostPreciseBound(R <= str);
     int substrings = 0;
     int numberOfStrings = 0;
     int beg = 0;

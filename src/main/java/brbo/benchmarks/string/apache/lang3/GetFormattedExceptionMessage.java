@@ -8,7 +8,7 @@ abstract public class GetFormattedExceptionMessage extends Common {
       return;
     int buffer = 0;
     int R = 0;
-    boundAssertion(R <= 3 + 6 * contextValues);
+    mostPreciseBound(R <= 3 + 6 * contextValues);
     buffer++;
     R  = R + 1;
     buffer++;

@@ -7,7 +7,7 @@ abstract public class XmlObjectsInit extends Common {
     if (objects <= 0 || relations <= 0)
       return;
     int R = 0;
-    boundAssertion(R <= objects + 2 * relations);
+    mostPreciseBound(R <= objects + 2 * relations);
     for (int i = 0; i < objects; i++) {
       if (ndBool()) {
         R = R + 1;

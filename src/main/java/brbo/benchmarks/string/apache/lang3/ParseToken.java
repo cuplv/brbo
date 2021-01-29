@@ -8,7 +8,7 @@ abstract public class ParseToken extends Common {
       return;
     int buf = 0;
     int R = 0;
-    boundAssertion(R <= pattern + pattern + 1);
+    mostPreciseBound(R <= pattern + 1);
     int i = ndInt2(0, pattern - 1);
     if (ndBool()) {
       buf++;

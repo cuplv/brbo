@@ -9,7 +9,7 @@ abstract public class ReplaceChars extends Common {
     boolean modified = false;
     int buf = 0;
     int R = 0;
-    boundAssertion(R <= str);
+    mostPreciseBound(R <= str);
     for (int i = 0; i < str; i++) {
       int index = ndBool() ? -1 : ndInt2(0, searchChars - 1);
       if (index >= 0) {

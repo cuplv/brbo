@@ -7,7 +7,7 @@ abstract public class SplitWorker2 extends Common {
     if (str <= 0 || max <= 0 || separatorChars < 0)
       return;
     int R = 0;
-    boundAssertion(R <= str);
+    mostPreciseBound(R <= str);
     int list = 0;
     int sizePlus1 = 1;
     int i = 0;
@@ -15,8 +15,6 @@ abstract public class SplitWorker2 extends Common {
     boolean match = false;
     boolean lastMatch = false;
     if (separatorChars == 0) {
-      i = 0;
-      start = 0;
       while (i < str) {
         if (ndBool()) {
           if (match || preserveAllTokens) {
@@ -37,14 +35,8 @@ abstract public class SplitWorker2 extends Common {
         lastMatch = false;
         match = true;
         i++;
-      }
-      if (match || preserveAllTokens && lastMatch) {
-        list += i - start;
-        R = R + (i - start);
       }
     } else if (separatorChars == 1) {
-      i = 0;
-      start = 0;
       while (i < str) {
         if (ndBool()) {
           if (match || preserveAllTokens) {
@@ -65,14 +57,8 @@ abstract public class SplitWorker2 extends Common {
         lastMatch = false;
         match = true;
         i++;
-      }
-      if (match || preserveAllTokens && lastMatch) {
-        list += i - start;
-        R = R + (i - start);
       }
     } else {
-      i = 0;
-      start = 0;
       while (i < str) {
         if (ndBool()) {
           if (match || preserveAllTokens) {
@@ -94,10 +80,10 @@ abstract public class SplitWorker2 extends Common {
         match = true;
         i++;
       }
-      if (match || preserveAllTokens && lastMatch) {
-        list += i - start;
-        R = R + (i - start);
-      }
+    }
+    if (match || preserveAllTokens && lastMatch) {
+      list += i - start;
+      R = R + (i - start);
     }
   }
 }

@@ -7,7 +7,7 @@ public abstract class LitesqlGenCpp1 extends Common {
     if (handles <= 0)
       return;
     int R = 0;
-    boundAssertion (R <= (1));
+    mostPreciseBound(R <= (1));
 
     int iterator = handles;
     while (iterator > 0) {

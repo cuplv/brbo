@@ -7,7 +7,7 @@ public abstract class Database extends Common {
     if (oldFields <= 0 || newFields <= 0)
       return;
     int R = 0;
-    boundAssertion (R <= (oldFields + newFields));
+    mostPreciseBound(R <= (oldFields + newFields));
 
     int toAdd = 0;
     toAdd += newFields;

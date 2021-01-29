@@ -8,7 +8,7 @@ abstract public class LenientFormat extends Common {
       return;
     int builder = 0;
     int R = 0;
-    boundAssertion(R <= template + 2 * args + 2);
+    mostPreciseBound(R <= template + args + 2 + 2 * args);
     int templateStart = 0;
     int i = 0;
     while (i < args) {

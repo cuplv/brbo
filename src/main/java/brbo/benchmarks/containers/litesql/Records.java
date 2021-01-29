@@ -7,7 +7,7 @@ abstract public class Records extends Common {
     if (recordNum <= 0 || fieldnum <= 0)
       return;
     int R = 0;
-    boundAssertion(R <= recordNum * fieldnum);
+    mostPreciseBound(R <= recordNum * fieldnum);
     for (int i = 0; i < recordNum; i++) {
       if (ndBool()) {
         break;

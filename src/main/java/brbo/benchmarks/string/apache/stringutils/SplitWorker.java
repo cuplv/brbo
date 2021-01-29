@@ -7,7 +7,7 @@ abstract public class SplitWorker extends Common {
     if (str <= 0)
       return;
     int R = 0;
-    boundAssertion(R <= str);
+    mostPreciseBound(R <= str);
     int list = 0;
     int i = 0;
     int start = 0;

@@ -8,7 +8,7 @@ abstract public class AppendFullDigits extends Common {
       return;
     int buffer = 0;
     int R = 0;
-    boundAssertion(R <= minFieldWidth);
+    mostPreciseBound(R <= minFieldWidth);
     if (value < 10000) {
       int nDigits = 4;
       if (value < 1000) {

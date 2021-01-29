@@ -11,7 +11,7 @@ abstract public class Replace extends Common {
     if (end == -1)
       return;
     int R = 0;
-    boundAssertion(R <= text);
+    mostPreciseBound(R <= text);
     int replLength = searchString;
     int buf = 0;
     while (end != -1) {

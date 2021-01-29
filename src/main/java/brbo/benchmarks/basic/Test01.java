@@ -7,7 +7,7 @@ abstract class Test01 extends Common {
     if (n <= 0)
       return;
     int R = 0;
-    boundAssertion (R <= 1);
+    mostPreciseBound(R <= 1);
     int i = 0;
     while (i < n) {
       // i++;

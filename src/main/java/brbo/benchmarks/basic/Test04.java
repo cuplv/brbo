@@ -8,7 +8,7 @@ abstract class Test04 extends Common {
       return;
     int R = 0;
     int i = 0;
-    boundAssertion (R <= n * m + l);
+    mostPreciseBound(R <= n * m + l);
     while (i < n) {
       int j = 0;
       while (j < m) {

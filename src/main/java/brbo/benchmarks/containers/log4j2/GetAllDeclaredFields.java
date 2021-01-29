@@ -8,7 +8,7 @@ abstract public class GetAllDeclaredFields extends Common {
       return;
     int iterator = cls;
     int R = 0;
-    boundAssertion(R <= cls);
+    mostPreciseBound(R <= cls);
     int fields = 0;
     while (iterator > 0) {
       int entry = ndInt2(1, iterator);

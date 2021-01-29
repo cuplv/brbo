@@ -8,7 +8,8 @@ abstract public class PadEnd extends Common {
       return;
     int sb = 0;
     int R = 0;
-    boundAssertion(R <= string + minLength);
+    mostPreciseBound(R <= minLength);
+    lessPreciseBound(R <= minLength + string);
     sb += string;
     R = R + string;
     for (int i = string; i < minLength; i++) {

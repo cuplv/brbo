@@ -7,7 +7,7 @@ public abstract class SnapBuddyLoader2 extends Common {
     if (lines <= 0)
       return;
     int R = 0;
-    boundAssertion (R <= lines);
+    mostPreciseBound(R <= lines);
 
     int photoIdList = 0;
     int friendIdList = 0;

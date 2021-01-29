@@ -6,7 +6,7 @@ public abstract class OutputHandler extends Common {
   void addResultHelper(int map) {
     int R = 0;
     assume(map > 0);
-    boundAssertion (R <= map);
+    mostPreciseBound(R <= map);
 
     int iterator = map;
     while (iterator > 0) {

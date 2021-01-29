@@ -8,7 +8,7 @@ abstract public class AppendQuotedString extends Common {
       return;
     int appendTo = 0;
     int R = 0;
-    boundAssertion(R <= pattern);
+    mostPreciseBound(R <= pattern);
     int start = pos;
     int lastHold = start;
     for (int i = pos; i < pattern; i++) {

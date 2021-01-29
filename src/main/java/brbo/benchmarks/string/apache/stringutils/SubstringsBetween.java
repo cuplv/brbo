@@ -7,7 +7,7 @@ abstract public class SubstringsBetween extends Common {
     if (str <= 0 || open <= 0 || close <= 0)
       return;
     int R = 0;
-    boundAssertion(R <= str);
+    mostPreciseBound(R <= str);
     int list = 0;
     int pos = 0;
     while (pos < str - close) {
