@@ -10,6 +10,7 @@ abstract public class ReplaceChars extends Common {
     int buf = 0;
     int R = 0;
     mostPreciseBound(R <= str);
+    lessPreciseBound(R <= str * 2);
     for (int i = 0; i < str; i++) {
       int index = ndBool() ? -1 : ndInt2(0, searchChars - 1);
       if (index >= 0) {

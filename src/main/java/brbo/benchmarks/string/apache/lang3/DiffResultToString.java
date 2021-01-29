@@ -10,6 +10,7 @@ abstract public class DiffResultToString extends Common {
     int rhsBuilder = 0;
     int R = 0;
     mostPreciseBound(R <= diff);
+    lessPreciseBound(R <= 8 * diff);
     int iterator = diff;
     while (iterator > 0) {
       int entry = ndInt2(1, iterator);
