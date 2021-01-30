@@ -146,6 +146,6 @@ object BasicProcessor {
   def getTargetMethod(className: String, sourceFileContents: String): TargetMethod = {
     val processor = run(className, sourceFileContents)
     processor.assumeOneClassOneMethod()
-    TargetMethod(className, processor.getMethods.head._1, processor.getMethods.head._2, processor.getLineNumber, processor.getPath)
+    TargetMethod(className, processor.getMethods.head._1, processor.getMethods.head._2, processor.getLineNumber, processor.getPath, processor.getSourceCode)
   }
 }

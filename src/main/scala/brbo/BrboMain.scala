@@ -49,10 +49,10 @@ object BrboMain {
           checkBound(decompositionResult, arguments)
       })
     }
-    val rawCsvFileContents = "name,time,verified,mode\n" + results.flatten.map(r => r.toCSV).mkString("\n")
-    val aggregatedCsvFileContents = "programs,verified,time,verified,time,verified,time\n" + aggregateResultsSummary(results).map(r => r.toCSV).mkString("\n")
+    val rawCsvFileContents = "name,lines,time,verified,mode\n" + results.flatten.map(r => r.toCSV).mkString("\n")
+    val aggregatedCsvFileContents = "programs,lines,verified,time,verified,time,verified,time\n" + aggregateResultsSummary(results).map(r => r.toCSV).mkString("\n")
     val aggregatedCsvFileContentsIndividual = {
-      "program,verified,time,verified,time,verified,time\n" + aggregateResultsIndividual(results).sortWith({
+      "program,lines,verified,time,verified,time,verified,time\n" + aggregateResultsIndividual(results).sortWith({
         case (r1, r2) => r1.files.head < r2.files.head
       }).map(r => r.toCSV).mkString("\n")
     }
@@ -142,7 +142,8 @@ object BrboMain {
             val endTime = System.nanoTime()
             val timeElapsed = (endTime - startTime).toDouble / 1000000000
             logger.info(s"Time consumption: `${StringFormatUtils.oneDigit(timeElapsed)}` seconds")
-            RawResult(result.inputMethod.className, timeElapsed, verified, result.amortizationMode)
+            val numberOfLines = result.inputMethod.sourceCode.split("\r\n|\r|\n").length
+            RawResult(result.inputMethod.className, timeElapsed, verified, result.amortizationMode, numberOfLines)
         })
       case None => List[RawResult]()
     }

@@ -369,10 +369,13 @@ object BoundChecking {
 
     val counterInvariants = {
       val counterAxioms: AST = {
+        logger.info(s"Not provide counter axioms")
         decompositionResult.amortizationMode match {
-          case SELECTIVE_AMORTIZE => CounterAxiomGenerator.generateCounterAxioms(solver, methodBody)
+          case SELECTIVE_AMORTIZE =>
+            // CounterAxiomGenerator.generateCounterAxioms(solver, methodBody)
+            solver.mkTrue()
           case mode@_ =>
-            logger.info(s"Provide counter axioms only for mode `$SELECTIVE_AMORTIZE` (Current mode: `$mode`)")
+            // logger.info(s"Provide counter axioms only for mode `$SELECTIVE_AMORTIZE` (Current mode: `$mode`)")
             solver.mkTrue()
         }
       }

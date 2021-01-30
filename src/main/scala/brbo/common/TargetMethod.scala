@@ -22,7 +22,8 @@ case class TargetMethod(fullQualifiedClassName: String,
                         methodTree: MethodTree,
                         cfg: ControlFlowGraph,
                         getLineNumber: Tree => Int,
-                        getPath: Tree => TreePath) {
+                        getPath: Tree => TreePath,
+                        sourceCode: String) {
   private val logger = LogManager.getLogger(classOf[TargetMethod])
 
   TreeUtils.satisfyRestriction(methodTree.getBody)
