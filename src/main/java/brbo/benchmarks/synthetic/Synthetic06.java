@@ -9,6 +9,7 @@ public abstract class Synthetic06 extends Common {
     int R = 0;
     int i = 0;
     mostPreciseBound(R <= l * m * n);
+    lessPreciseBound(R <= 2 * l * m * n);
     while (i < n) {
       int j = 0;
       while (j < m) {

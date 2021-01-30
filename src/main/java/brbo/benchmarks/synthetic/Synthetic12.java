@@ -8,6 +8,7 @@ abstract class Synthetic12 extends Common {
       return;
     int R = 0;
     mostPreciseBound(R <= 1);
+    lessPreciseBound(R <= 2);
     while (true) {
       if (ndBool()) {
         R = R + 1;
