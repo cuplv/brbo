@@ -8,6 +8,7 @@ public abstract class SnapBuddyLoader2 extends Common {
       return;
     int R = 0;
     mostPreciseBound(R <= lines);
+    lessPreciseBound(R <= 2 * lines);
 
     int photoIdList = 0;
     int friendIdList = 0;

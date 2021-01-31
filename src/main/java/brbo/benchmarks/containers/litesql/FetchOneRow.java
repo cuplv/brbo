@@ -8,6 +8,7 @@ abstract public class FetchOneRow extends Common {
       return;
     int R = 0;
     mostPreciseBound(R <= nFields);
+    lessPreciseBound(R <= 8 * nFields);
     for (int i2 = 1; i2 <= nFields; i2++) {
       if (ndBool()) {
         if (ndBool()) {

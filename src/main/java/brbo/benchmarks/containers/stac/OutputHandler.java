@@ -7,6 +7,7 @@ public abstract class OutputHandler extends Common {
     int R = 0;
     assume(map > 0);
     mostPreciseBound(R <= map);
+    lessPreciseBound(R <= 2 * map);
 
     int iterator = map;
     while (iterator > 0) {
