@@ -148,7 +148,8 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
       case Some(subprogram) =>
         val pair = deltaCounterPairs(subprogram)
         val deltaPrime = GhostVariableUtils.generateDeltaVariablePrime(pair.delta)
-        s"$deltaPrime = ($deltaPrime > ${pair.delta}) ? $deltaPrime: ${pair.delta}; ${pair.delta} = 0; ${pair.counter} = ${pair.counter} + 1;"
+        // s"$deltaPrime = ($deltaPrime > ${pair.delta}) ? $deltaPrime: ${pair.delta}; ${pair.delta} = 0; ${pair.counter} = ${pair.counter} + 1;"
+        s"$deltaPrime = ${pair.delta}; ${pair.delta} = 0; ${pair.counter} = ${pair.counter} + 1;"
       case None => ""
     }
 
