@@ -446,12 +446,12 @@ object BoundChecking {
     solver.mkAssert(counterInvariants)
     solver.mkAssert(solver.mkNot(boundExpression))
     val result: Boolean = {
+      val isImportant = arguments.getDebugMode || decompositionResult.amortizationMode == SELECTIVE_AMORTIZE
       try {
         logger.info(s"Discharge bound check query to Z3")
         val result = !solver.checkSAT(printUnsatCore = false)
         if (!result) {
-          if (arguments.getDebugMode || decompositionResult.amortizationMode == SELECTIVE_AMORTIZE || arguments.getPrintCounterExample) {
-            // solver.printAssertions()
+          if (isImportant || arguments.getPrintCounterExample) {
             solver.printModel()
           }
         }
@@ -459,6 +459,9 @@ object BoundChecking {
       }
       catch {
         case e: Z3UnknownException =>
+          if (isImportant) {
+            solver.printAssertions()
+          }
           logger.fatal(s"Bound check - Z3 returns UNKNOWN: ${e.message}")
           false
         case e: Exception =>

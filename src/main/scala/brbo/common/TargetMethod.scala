@@ -46,7 +46,7 @@ case class TargetMethod(fullQualifiedClassName: String,
   val (numberedGraph: NumberedGraph[BrboNode], rootOfNumberedGraph: BrboNode) = deepCopyGraph(cfg, transpose = false)
 
   val className: String = {
-    // We expect input method's class name to be a fully qualified class name (e.g., `brbo.benchmarks.containers.stac.OutputHandler`)
+    // We expect input method's class name to be a fully qualified class name (e.g., `x.y.z.OutputHandler`)
     val index = fullQualifiedClassName.lastIndexOf(".")
     val newClassName = fullQualifiedClassName.substring(index + 1)
     logger.trace(s"New class name: `$newClassName`")

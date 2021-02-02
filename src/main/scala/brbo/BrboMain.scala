@@ -49,22 +49,29 @@ object BrboMain {
           checkBound(decompositionResult, arguments)
       })
     }
-    val rawCsvFileContents = "name,lines,time,verified,mode\n" + results.flatten.map(r => r.toCSV).mkString("\n")
-    val aggregatedCsvFileContents = "programs,lines,verified,time,verified,time,verified,time\n" + aggregateResultsSummary(results).map(r => r.toCSV).mkString("\n")
-    val aggregatedCsvFileContentsIndividual = {
-      "program,lines,verified,time,verified,time,verified,time\n" + aggregateResultsIndividual(results).sortWith({
-        case (r1, r2) => r1.files.head < r2.files.head
-      }).map(r => r.toCSV).mkString("\n")
-    }
+
+    logger.info(s"Write results to files. Aggregate results only under mode `$ALL_AMORTIZE`")
     val directoryOrFile = FilenameUtils.getBaseName(arguments.getDirectoryToAnalyze)
     val date = new SimpleDateFormat("MMdd-HHmm").format(new Date) // YYYYMMdd-HHmm
+    arguments.getAmortizationMode match {
+      case ALL_AMORTIZE =>
+        val aggregatedCsvFileContents = "programs,lines,verified,time,verified,time,verified,time\n" + aggregateResultsSummary(results).map(r => r.toCSV).mkString("\n")
+        val aggregatedCsvFileContentsIndividual = {
+          "program,lines,verified,time,verified,time,verified,time\n" + aggregateResultsIndividual(results).sortWith({
+            case (r1, r2) => r1.files.head < r2.files.head
+          }).map(r => r.toCSV).mkString("\n")
+        }
+        val aggregatedCsvFile = new File(s"$OUTPUT_DIRECTORY/$directoryOrFile-summary-$date-${arguments.toFileName}.csv")
+        val aggregatedCsvIndividualFile = new File(s"$OUTPUT_DIRECTORY/$directoryOrFile-individual-$date-${arguments.toFileName}.csv")
+        FileUtils.writeStringToFile(aggregatedCsvFile, aggregatedCsvFileContents, Charset.forName("UTF-8"))
+        FileUtils.writeStringToFile(aggregatedCsvIndividualFile, aggregatedCsvFileContentsIndividual, Charset.forName("UTF-8"))
+        logger.info(s"Write results to file `${aggregatedCsvFile.getAbsolutePath}`, ${aggregatedCsvIndividualFile.getAbsolutePath}")
+      case _ =>
+    }
+    val rawCsvFileContents = "name,lines,time,verified,mode\n" + results.flatten.map(r => r.toCSV).mkString("\n")
     val rawCsvFile = new File(s"$OUTPUT_DIRECTORY/$directoryOrFile-raw-$date-${arguments.toFileName}.csv")
-    val aggregatedCsvFile = new File(s"$OUTPUT_DIRECTORY/$directoryOrFile-summary-$date-${arguments.toFileName}.csv")
-    val aggregatedCsvIndividualFile = new File(s"$OUTPUT_DIRECTORY/$directoryOrFile-individual-$date-${arguments.toFileName}.csv")
-    logger.info(s"Write results to file `${rawCsvFile.getAbsolutePath}`, `${aggregatedCsvFile.getAbsolutePath}`, ${aggregatedCsvIndividualFile.getAbsolutePath}")
+    logger.info(s"Write results to file `${rawCsvFile.getAbsolutePath}`")
     FileUtils.writeStringToFile(rawCsvFile, rawCsvFileContents, Charset.forName("UTF-8"))
-    FileUtils.writeStringToFile(aggregatedCsvFile, aggregatedCsvFileContents, Charset.forName("UTF-8"))
-    FileUtils.writeStringToFile(aggregatedCsvIndividualFile, aggregatedCsvFileContentsIndividual, Charset.forName("UTF-8"))
   }
 
   /**
