@@ -1,8 +1,8 @@
-package brbo.benchmarks.synthetic;
+package brbo.archive.unjustified.synthetic;
 
 import brbo.benchmarks.Common;
 
-abstract class Synthetic08 extends Common {
+abstract class Synthetic03 extends Common {
   void f(int n, int m) {
     if (n <= 0 || m <= 0)
       return;
@@ -22,10 +22,8 @@ abstract class Synthetic08 extends Common {
     while (i < n) {
       int k = 0;
       while (k < m) {
-        if (ndBool()) {
-          k++;
-          R = R + 1;
-        }
+        k++;
+        R = R + 1;
       }
       i++;
     }

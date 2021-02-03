@@ -1,4 +1,4 @@
-package brbo.benchmarks.synthetic;
+package brbo.archive.unjustified.synthetic;
 
 import brbo.benchmarks.Common;
 
