@@ -9,6 +9,7 @@ abstract public class Modify extends Common {
     int buffer = 0;
     int R = 0;
     mostPreciseBound(R <= str);
+    lessPreciseBound(R <= MAX * str + MAX);
     int i = 0;
     while (i < str) {
       if (ndBool()) {

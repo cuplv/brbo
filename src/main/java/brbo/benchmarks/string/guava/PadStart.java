@@ -11,7 +11,7 @@ abstract public class PadStart extends Common {
     int sb = 0;
     int R = 0;
     mostPreciseBound(R <= minLength);
-    lessPreciseBound(R <= minLength + string);
+    lessPreciseBound(R <= MAX * minLength + MAX * string + MAX);
     for (int i = string; i < minLength; i++) {
       sb++;
       R = R + 1;

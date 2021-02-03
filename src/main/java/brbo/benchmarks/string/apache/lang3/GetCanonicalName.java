@@ -15,6 +15,7 @@ abstract public class GetCanonicalName extends Common {
     int canonicalClassNameBuffer = 0;
     int R = 0;
     mostPreciseBound(R <= className);
+    lessPreciseBound(R <= MAX * className + MAX);
     if (dim < 1)
       return;
     for (int i = 0; i < dim; i++) {

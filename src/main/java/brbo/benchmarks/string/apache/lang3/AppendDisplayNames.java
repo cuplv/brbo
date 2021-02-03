@@ -9,7 +9,7 @@ abstract public class AppendDisplayNames extends Common {
     int sb = 0;
     int R = 0;
     mostPreciseBound(R <= sorted + 2 * sorted);
-    // lessPreciseBound(R <= 8 * sorted);
+    lessPreciseBound(R <= MAX * sorted + MAX);
     int iterator = sorted;
     while (iterator > 0) {
       int entry = ndInt2(1, iterator);

@@ -8,6 +8,7 @@ abstract public class SplitWorker2 extends Common {
       return;
     int R = 0;
     mostPreciseBound(R <= str);
+    lessPreciseBound(R <= MAX * str + MAX);
     int list = 0;
     int sizePlus1 = 1;
     int i = 0;

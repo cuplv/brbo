@@ -9,6 +9,7 @@ abstract public class GetShortClassName extends Common {
     int arrayPrefix = 0;
     int R = 0;
     mostPreciseBound(R <= 2 * className);
+    lessPreciseBound(R <= MAX * className + MAX);
     int className_ = className;
     while (ndBool() && className_ > 0) {
       className_--;

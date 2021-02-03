@@ -9,6 +9,7 @@ abstract public class AppendDetail extends Common {
     int buffer = 0;
     int R = 0;
     mostPreciseBound(R <= 1 + array);
+    lessPreciseBound(R <= MAX + MAX * array);
     for (int i = 0; i < array; i++) {
       if (i > 0) {
         buffer++;

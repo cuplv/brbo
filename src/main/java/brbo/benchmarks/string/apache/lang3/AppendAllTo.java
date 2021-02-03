@@ -9,6 +9,12 @@ abstract public class AppendAllTo extends Common {
     int builder = 0;
     int R = 0;
     mostPreciseBound(R <= types * sep + types + 1);
+    lessPreciseBound(R <= MAX * types * types +
+        MAX * sep * sep +
+        MAX * types * sep +
+        MAX * types + MAX * sep +
+        MAX
+    );
     builder++;
     R = R + 1;
     for (int i = 1; i < types; i++) {

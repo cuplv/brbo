@@ -8,6 +8,12 @@ abstract public class JoinWith extends Common {
       return;
     int R = 0;
     mostPreciseBound(R <= n * separator + n);
+    lessPreciseBound(R <= MAX * n * n +
+        MAX * n * separator +
+        MAX * separator * separator +
+        MAX * n + MAX * separator +
+        MAX
+    );
     int result = 0;
     int iterator = n;
     while (iterator > 0) {

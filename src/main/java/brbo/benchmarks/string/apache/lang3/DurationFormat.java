@@ -9,6 +9,11 @@ abstract public class DurationFormat extends Common {
     int buffer = 0;
     int R = 0;
     mostPreciseBound(R <= tokens + tokens * (years + months));
+    lessPreciseBound(R <= MAX * tokens * tokens +
+        MAX * years * years + MAX * months * months +
+        MAX * tokens * years + MAX * tokens * months +
+        MAX * months + MAX * years + MAX * tokens + MAX
+    );
     int iterator = tokens;
     while (iterator > 0) {
       int entry = ndInt2(1, iterator);

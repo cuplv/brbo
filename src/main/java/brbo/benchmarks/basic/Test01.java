@@ -8,7 +8,7 @@ abstract class Test01 extends Common {
       return;
     int R = 0;
     mostPreciseBound(R <= n);
-    lessPreciseBound(R <= n * 2);
+    lessPreciseBound(R <= MAX * n + MAX);
     int i = 0;
     while (i < n) {
       i++;

@@ -9,6 +9,7 @@ abstract public class Squeeze extends Common {
     int buffer = 0;
     int R = 0;
     mostPreciseBound(R <= str);
+    lessPreciseBound(R <= MAX * str + MAX);
     for (int i = 1; i < str; i++) {
       if (ndBool()) {
         if (ndBool()) {

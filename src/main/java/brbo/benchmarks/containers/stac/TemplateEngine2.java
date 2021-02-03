@@ -8,6 +8,16 @@ public abstract class TemplateEngine2 extends Common {
       return;
     int R = 0;
     mostPreciseBound(R <= text * templateds + separator * templateds);
+    lessPreciseBound(R <= MAX * text * templateds +
+        MAX * separator * templateds +
+        MAX * separator * text +
+        MAX * text * text +
+        MAX * separator * separator +
+        MAX * templateds * templateds +
+        MAX * text +
+        MAX * templateds + MAX * separator +
+        MAX
+    );
 
     int i = 0;
     while (i < templateds) {

@@ -9,6 +9,7 @@ abstract public class Join2 extends Common {
     int iterator = n;
     int R = 0;
     mostPreciseBound(R <= 1 + 2 * n);
+    lessPreciseBound(R <= MAX + MAX * n);
     int buf = 0;
     iterator--;
     if (iterator <= 0)

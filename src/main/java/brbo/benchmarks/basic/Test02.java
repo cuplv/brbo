@@ -9,6 +9,7 @@ abstract class Test02 extends Common {
     int R = 0;
     int i = 0;
     mostPreciseBound(R <= m + n);
+    lessPreciseBound(R <= MAX * m + MAX * n + MAX);
     while (i < n) {
       i++;
       R = R + 1;

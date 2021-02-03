@@ -9,6 +9,7 @@ abstract public class AppendRecursiveTypes extends Common {
     int builder = 0;
     int R = 0;
     mostPreciseBound(R <= recursiveTypeIndexes + 1 + argumentTypes * 3);
+    lessPreciseBound(R <= MAX * recursiveTypeIndexes + MAX * argumentTypes + MAX);
     for (int i = 0; i < recursiveTypeIndexes; i++) {
       int sep = 2;
 

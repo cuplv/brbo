@@ -9,7 +9,7 @@ abstract public class ParseToken extends Common {
     int buf = 0;
     int R = 0;
     mostPreciseBound(R <= pattern + 1);
-    lessPreciseBound(R <= 8 * pattern);
+    lessPreciseBound(R <= MAX * pattern + MAX);
     int i = ndInt2(0, pattern - 1);
     if (ndBool()) {
       buf++;

@@ -9,6 +9,7 @@ abstract public class Literal extends Common {
     int sb = 0;
     int R = 0;
     mostPreciseBound(R <= pattern);
+    lessPreciseBound(R <= MAX * pattern + MAX);
     int currentIdx = ndInt2(0, pattern - 1);
     while (currentIdx < pattern) {
       if (ndBool()) {

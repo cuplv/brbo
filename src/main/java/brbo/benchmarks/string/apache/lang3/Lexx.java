@@ -9,6 +9,7 @@ abstract public class Lexx extends Common {
     int buffer = 0;
     int R = 0;
     mostPreciseBound(R <= format);
+    lessPreciseBound(R <= MAX * format + MAX);
     int inLiteral = 0;
     for (int i = 0; i < format; i++) {
       if (inLiteral > 0 && ndBool()) {

@@ -9,6 +9,7 @@ abstract public class SimpleQuote extends Common {
     int sb = 0;
     int R = 0;
     mostPreciseBound(R <= value * 2 + 1);
+    lessPreciseBound(R <= MAX * value + MAX);
     for (int i = 0; i < value; i++) {
       if (ndBool()) {
         sb += 2;
