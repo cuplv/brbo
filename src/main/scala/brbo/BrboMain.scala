@@ -19,6 +19,8 @@ import scala.collection.immutable.HashMap
 
 object BrboMain {
   private val logger = LogManager.getLogger("brbo.BrboMain")
+  private val BATCH_SIZE = 200
+
   val OUTPUT_DIRECTORY: String = s"${System.getProperty("user.dir")}/output"
 
   def main(args: Array[String]) {
@@ -42,6 +44,19 @@ object BrboMain {
       })
     }
 
+    logger.info(s"Run Brbo on programs in batches. Batch size: `$BATCH_SIZE`")
+    sourceFiles.grouped(BATCH_SIZE).zipWithIndex.foreach({
+      case (batch, index) => runBatch(batch, index, arguments)
+    })
+  }
+
+  def runBatch(sourceFiles: Map[File, String], batchIndex: Int, arguments: CommandLineArguments): Unit = {
+    val batchString = s"${StringFormatUtils.threeDigit(batchIndex * BATCH_SIZE)}-${StringFormatUtils.threeDigit((batchIndex + 1) * BATCH_SIZE - 1)}"
+    logger.info(s"Run `$batchIndex`-th batch`: $batchString")
+
+    val directoryOrFile = FilenameUtils.getBaseName(arguments.getDirectoryToAnalyze)
+    val date = new SimpleDateFormat("MMdd-HHmm").format(new Date) // YYYYMMdd-HHmm
+
     val results: List[List[RawResult]] = {
       sourceFiles.toList.map({
         case (sourceFile: File, sourceFileContents: String) =>
@@ -51,8 +66,6 @@ object BrboMain {
     }
 
     logger.info(s"Write results to files. Aggregate results only under mode `$ALL_AMORTIZE`")
-    val directoryOrFile = FilenameUtils.getBaseName(arguments.getDirectoryToAnalyze)
-    val date = new SimpleDateFormat("MMdd-HHmm").format(new Date) // YYYYMMdd-HHmm
     arguments.getAmortizationMode match {
       case ALL_AMORTIZE =>
         val aggregatedCsvFileContents = "programs,lines,verified,time,verified,time,verified,time\n" + aggregateResultsSummary(results).map(r => r.toCSV).mkString("\n")
@@ -61,15 +74,15 @@ object BrboMain {
             case (r1, r2) => r1.files.head < r2.files.head
           }).map(r => r.toCSV).mkString("\n")
         }
-        val aggregatedCsvFile = new File(s"$OUTPUT_DIRECTORY/$directoryOrFile-summary-$date-${arguments.toFileName}.csv")
-        val aggregatedCsvIndividualFile = new File(s"$OUTPUT_DIRECTORY/$directoryOrFile-individual-$date-${arguments.toFileName}.csv")
+        val aggregatedCsvFile = new File(s"$OUTPUT_DIRECTORY/$directoryOrFile-summary-$date-${arguments.toFileName}-$batchString.csv")
+        val aggregatedCsvIndividualFile = new File(s"$OUTPUT_DIRECTORY/$directoryOrFile-individual-$date-${arguments.toFileName}-$batchString.csv")
         FileUtils.writeStringToFile(aggregatedCsvFile, aggregatedCsvFileContents, Charset.forName("UTF-8"))
         FileUtils.writeStringToFile(aggregatedCsvIndividualFile, aggregatedCsvFileContentsIndividual, Charset.forName("UTF-8"))
         logger.info(s"Write results to file `${aggregatedCsvFile.getAbsolutePath}`, ${aggregatedCsvIndividualFile.getAbsolutePath}")
       case _ =>
     }
     val rawCsvFileContents = "name,lines,time,verified,mode\n" + results.flatten.map(r => r.toCSV).mkString("\n")
-    val rawCsvFile = new File(s"$OUTPUT_DIRECTORY/$directoryOrFile-raw-$date-${arguments.toFileName}.csv")
+    val rawCsvFile = new File(s"$OUTPUT_DIRECTORY/$directoryOrFile-raw-$date-${arguments.toFileName}-$batchString.csv")
     logger.info(s"Write results to file `${rawCsvFile.getAbsolutePath}`")
     FileUtils.writeStringToFile(rawCsvFile, rawCsvFileContents, Charset.forName("UTF-8"))
   }
