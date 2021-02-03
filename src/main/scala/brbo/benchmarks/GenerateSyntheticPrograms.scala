@@ -24,14 +24,22 @@ class GenerateSyntheticPrograms(treeMaxHeight: Int, treeMaxWidth: Int, resourceV
   private var usedIteratorIndex = 0
   private var usedEntryIndex = 0
 
+  assert(treeMaxWidth > 0)
+  assert(treeMaxHeight > 0)
+
   def generate: Statement = {
     generateStatement(State(0, None))
   }
 
   def generateStatement(state: State): Statement = {
-    val statements = Range.apply(0, random.nextInt(treeMaxWidth)).map({
-      _ => generateBasicStatement(state)
-    }).toList
+    val range = Range.apply(0, random.nextInt(treeMaxWidth))
+    val statements: List[BasicStatement] = {
+      val list: List[BasicStatement] = range.map({
+        _ => generateBasicStatement(state)
+      }).toList
+      if (list.nonEmpty) list
+      else List[BasicStatement](generateBasicStatement(state)) // Avoid generating empty statement
+    }
     Statement(statements)
   }
 
