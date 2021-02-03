@@ -3,6 +3,14 @@ package brbo.common
 import com.microsoft.z3._
 import org.apache.logging.log4j.LogManager
 
+import java.io.PrintWriter
+import java.nio.file.Files
+import scala.concurrent.duration.{Duration, SECONDS}
+import scala.concurrent.{Await, Future, TimeoutException, blocking}
+import scala.sys.process.ProcessLogger
+import scala.sys.process._
+import scala.concurrent.ExecutionContext.Implicits.global
+
 class Z3Solver {
   // Copied from hopper: https://github.com/cuplv/hopper
   // This is a thread safe version
@@ -200,14 +208,64 @@ class Z3Solver {
 object Z3Solver {
   private val logger = LogManager.getLogger("brbo.common.Z3Solver")
 
-  // private var timeUsage: Double = 0
-  // private var numberOfQueries: Int = 0
-
   private val configuration = new java.util.HashMap[String, String]
   configuration.put("model", "true")
+  private val Z3_COMMAND_LINE_TIMEOUT = 10 // Unit: Seconds
 
-  // def getTimeUsage: Double = timeUsage
-  // def getNumberOfQueries: Int = numberOfQueries
+  val Z3_PATH: String = s"${System.getProperty("user.dir")}/lib/z3/z3"
+
+  def toSmt2File(solver: Z3Solver): String = solver.solver.toString
+
+  def checkSATCommandLine(solver: Z3Solver): Boolean = {
+    val stdout = new StringBuilder
+    val stderr = new StringBuilder
+
+    val smt2FileContents = toSmt2File(solver) + "\n(check-sat)"
+    val file = Files.createTempFile("prefix-", ".smt2")
+    new PrintWriter(file.toAbsolutePath.toString) {
+      write(smt2FileContents);
+      close()
+    }
+
+    val cmd = s"$Z3_PATH -T:$Z3_COMMAND_LINE_TIMEOUT -smt2 ${file.toAbsolutePath}"
+
+    try {
+      val process = cmd.run(ProcessLogger(stdout append _, stderr append _))
+      val future = Future(blocking(process.exitValue()))
+      val actualTimeout = Duration(Z3_COMMAND_LINE_TIMEOUT, SECONDS)
+      val result = try {
+        Await.result(future, actualTimeout)
+      } catch {
+        case _: TimeoutException =>
+          logger.fatal(s"Z3 timed out after `$actualTimeout`!")
+          process.destroy()
+          process.exitValue()
+      }
+      if (result == 0) {
+        val removeFile = s"rm $file"
+        removeFile.!!
+        stdout.toString() match {
+          case "unsat" => false
+          case "sat" => true
+          case _ =>
+            logger.info(s"Z3 stdout:\n$stdout")
+            throw new Exception("Unknown Z3 output")
+        }
+      }
+      else {
+        logger.fatal(s"Error when running Z3. Exit code: `$result`")
+        logger.error(s"stderr:\n$stderr")
+        false
+      }
+    }
+    catch {
+      case e: Exception =>
+        logger.error(s"Exception when executing command `$cmd`", e)
+        logger.error(s"stdout:\n$stdout")
+        logger.error(s"stderr:\n$stderr")
+        throw new RuntimeException("Error when running Z3")
+    }
+  }
 
   // Run this before creating an instance of Z3Solver
   def loadNativeLibraries(): Unit = {

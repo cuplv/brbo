@@ -1,11 +1,14 @@
 package brbo.benchmarks
 
 import brbo.StringCompare
+import org.apache.logging.log4j.LogManager
 import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.collection.immutable.HashSet
 
 class GenerateSyntheticProgramsUnitTest extends AnyFlatSpec {
+  private val logger = LogManager.getLogger(classOf[GenerateSyntheticProgramsUnitTest])
+
   "Print ASTs" should "be correct" in {
     val command = Command("R", Symbol(Left(1)))
     val command2 = Command("R", Symbol(Right("entry1")))
@@ -36,6 +39,7 @@ class GenerateSyntheticProgramsUnitTest extends AnyFlatSpec {
   }
 
   "Generate synthetic programs" should "be correct" in {
+    logger.error("This is a FAKE unit test because does not assertion check!")
     GenerateSyntheticPrograms.generateSourceCode(50, 2, 3, "R", HashSet[String]("n"))
   }
 }

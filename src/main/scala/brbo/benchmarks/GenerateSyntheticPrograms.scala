@@ -1,12 +1,10 @@
 package brbo.benchmarks
 
-import java.io.File
-import java.nio.charset.Charset
-
-import brbo.BrboMain.OUTPUT_DIRECTORY
 import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
 
+import java.io.File
+import java.nio.charset.Charset
 import scala.collection.immutable.HashSet
 
 /**
@@ -101,6 +99,8 @@ class GenerateSyntheticPrograms(treeMaxHeight: Int, treeMaxWidth: Int, resourceV
 
 object GenerateSyntheticPrograms {
   private val logger = LogManager.getLogger("brbo.benchmarks.GenerateSyntheticPrograms")
+  private val MAX_ATTEMPTS = 10000000L
+  private val SYNTHETIC_DIRECTORY = s"${System.getProperty("user.dir")}/src/main/java/brbo/benchmarks/synthetic"
 
   val INDENT: Int = 2
 
@@ -160,11 +160,8 @@ object GenerateSyntheticPrograms {
   }
 
   def generateSourceCode(numberOfPrograms: Int, treeMaxHeight: Int, treeMaxWidth: Int, resourceVariable: String, inputs: Set[String]): Unit = {
-    val MAX_ATTEMPTS = 1000000
-    val SYNTHETIC_DIRECTORY = s"${System.getProperty("user.dir")}/src/main/java/brbo/benchmarks/synthetic"
-
     var set = new HashSet[Statement]
-    var i = 0
+    var i = 0L
     while (set.size < numberOfPrograms && i < MAX_ATTEMPTS) {
       val generateSyntheticPrograms = new GenerateSyntheticPrograms(treeMaxHeight, treeMaxWidth, resourceVariable, inputs)
       val program = generateSyntheticPrograms.generate

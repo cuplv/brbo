@@ -1,5 +1,6 @@
 package brbo.verification
 
+import brbo.common
 import brbo.common.BeforeOrAfterOrThis.{AFTER, THIS}
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, Resource}
 import brbo.common.GhostVariableUtils.generateDeltaVariablePrime
@@ -449,7 +450,10 @@ object BoundChecking {
       val isImportant = arguments.getDebugMode || decompositionResult.amortizationMode == SELECTIVE_AMORTIZE
       try {
         logger.info(s"Discharge bound check query to Z3")
-        val result = !solver.checkSAT(printUnsatCore = false)
+        val result = {
+          !Z3Solver.checkSATCommandLine(solver)
+          // !solver.checkSAT(printUnsatCore = false)
+        }
         if (!result) {
           if (isImportant || arguments.getPrintCounterExample) {
             solver.printModel()
