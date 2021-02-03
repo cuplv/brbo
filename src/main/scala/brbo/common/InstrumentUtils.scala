@@ -409,6 +409,7 @@ object InstrumentUtils {
       |#define true 1
       |#define false 0
       |#define boolean int
+      |#define MAX 8
       |void __VERIFIER_assert(int cond) {
       |  if (!(cond)) {
       |    ERROR: __VERIFIER_error();
