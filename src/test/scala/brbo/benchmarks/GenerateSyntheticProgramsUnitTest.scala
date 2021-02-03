@@ -36,7 +36,7 @@ class GenerateSyntheticProgramsUnitTest extends AnyFlatSpec {
   }
 
   "Generate synthetic programs" should "be correct" in {
-    GenerateSyntheticPrograms.generateSourceCode(20, 2, 3, "R", HashSet[String]("n"))
+    GenerateSyntheticPrograms.generateSourceCode(30, 2, 3, "R", HashSet[String]("n"))
   }
 }
 

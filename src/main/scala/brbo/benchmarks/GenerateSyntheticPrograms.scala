@@ -7,10 +7,7 @@ import brbo.BrboMain.OUTPUT_DIRECTORY
 import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
 
-import scala.collection.immutable.HashMap
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.{Duration, SECONDS}
-import scala.concurrent.{Await, Future, TimeoutException}
+import scala.collection.immutable.HashSet
 
 /**
  *
@@ -107,37 +104,92 @@ object GenerateSyntheticPrograms {
 
   val INDENT: Int = 2
 
-  def generateSourceCode(numberOfPrograms: Int, treeMaxHeight: Int, treeMaxWidth: Int, resourceVariable: String, inputs: Set[String]): Unit = {
-    val future = Future {
-      var map = new HashMap[String, Statement]
-      while (map.size < numberOfPrograms) {
-        val generateSyntheticPrograms = new GenerateSyntheticPrograms(treeMaxHeight, treeMaxWidth, resourceVariable, inputs)
-        val program = generateSyntheticPrograms.generate
+  private def multiplyUpperBound(expression: Expr, entry: String, upperBound: Expr): Expr = {
+    expression match {
+      case Number(_) => MulExpr(expression, upperBound)
+      case Identifier(name) =>
+        if (name == entry) upperBound
+        else MulExpr(expression, upperBound)
+      case AddExpr(left, right) =>
+        AddExpr(multiplyUpperBound(left, entry, upperBound), multiplyUpperBound(right, entry, upperBound))
+      case MulExpr(_, _) =>
+        val baseExpressions = BoundExpression.collectBaseExpr(expression)
+        val existsEntry = baseExpressions.exists({
+          case Number(_) => false
+          case Identifier(name) => name == entry
+          case _ => false
+        })
+        if (existsEntry)
+          BoundExpression.substituteBaseExpression(expression, Identifier(entry), upperBound)
+        else
+          MulExpr(expression, upperBound)
+    }
+  }
 
-        val key = program.toString(0)
-        if (!map.contains(key)) {
-          val sourceCode =
-            s"""class Synthetic${map.size} {
-               |  void f(${inputs.map(x => s"int $x").mkString(", ")}) {
-               |    if (${inputs.map(x => s"$x <= 0").mkString(" || ")})
-               |      return;
-               |    int $resourceVariable = 0;
-               |${program.toString(4)}
-               |  }
-               |}""".stripMargin
-          val file = new File(s"$OUTPUT_DIRECTORY/Synthetic${map.size}.java")
-          FileUtils.writeStringToFile(file, sourceCode, Charset.forName("UTF-8"))
-        }
-
-        map = map + (key -> program)
+  def generateBound(ast: AST): Expr = {
+    val boundExpression = {
+      ast match {
+        case Statement(statements) =>
+          statements.foldLeft(Number(0): Expr)({
+            (acc, statement) =>
+              val newBound = generateBound(statement)
+              if (newBound == Number(0)) acc
+              else AddExpr(acc, generateBound(statement))
+          })
+        case basicStatement: BasicStatement =>
+          basicStatement match {
+            case Loop(header, statement) =>
+              val bodyBound = generateBound(statement)
+              header match {
+                case BasicHeader(_, upperBound) => MulExpr(Identifier(upperBound), bodyBound)
+                case IteratorHeader(_, initialValue, entry) =>
+                  val flatten = BoundExpression.flattenToSumOfMulExpr(bodyBound, None)
+                  multiplyUpperBound(flatten, entry, Identifier(initialValue))
+              }
+            case Command(_, update) => generateBound(update)
+          }
+        case _: Header => throw new Exception("Unexpected")
+        case Symbol(value) =>
+          value match {
+            case Left(integer) => Number(integer)
+            case Right(string) => Identifier(string)
+          }
       }
     }
-    val timeout = 5
-    try {
-      Await.result(future, Duration(timeout, SECONDS))
-    } catch {
-      case _: TimeoutException =>
-        logger.info(s"Cannot generate $numberOfPrograms programs within `$timeout` seconds. You need to manually kill this process!")
+    BoundExpression.getRidOfZeroItems(boundExpression)
+  }
+
+  def generateSourceCode(numberOfPrograms: Int, treeMaxHeight: Int, treeMaxWidth: Int, resourceVariable: String, inputs: Set[String]): Unit = {
+    val MAX_ATTEMPTS = 1000000
+
+    var set = new HashSet[Statement]
+    var i = 0
+    while (set.size < numberOfPrograms && i < MAX_ATTEMPTS) {
+      val generateSyntheticPrograms = new GenerateSyntheticPrograms(treeMaxHeight, treeMaxWidth, resourceVariable, inputs)
+      val program = generateSyntheticPrograms.generate
+
+      if (!set.contains(program)) {
+        val boundExpression = generateBound(program)
+        val sourceCode =
+          s"""package brbo.benchmarks.synthetic;
+             |import brbo.benchmarks.Common;
+             |public abstract class Synthetic${set.size} extends Common {
+             |  void f(${inputs.map(x => s"int $x").mkString(", ")}) {
+             |    if (${inputs.map(x => s"$x <= 0").mkString(" || ")})
+             |      return;
+             |    int $resourceVariable = 0;
+             |    mostPreciseBound($resourceVariable <= $boundExpression);
+             |${program.toString(4)}
+             |  }
+             |}""".stripMargin
+        val file = new File(s"$OUTPUT_DIRECTORY/Synthetic${set.size}.java")
+        FileUtils.writeStringToFile(file, sourceCode, Charset.forName("UTF-8"))
+      }
+
+      set = set + program
+      i = i + 1
     }
+    if (i == MAX_ATTEMPTS) logger.info(s"Cannot generate $numberOfPrograms programs within `$MAX_ATTEMPTS` attempts")
+    logger.info(s"Generated ${set.size} programs")
   }
 }
