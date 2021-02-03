@@ -818,10 +818,10 @@ object DecompositionUnitTest {
         |    while (it > 0)
         |    {
         |      it--;
-        |      D0p = (D0p > D0) ? D0p: D0; D0 = 0; C6 = C6 + 1;D0 = D0 + m;
+        |      D0p = D0; D0 = 0; C6 = C6 + 1;D0 = D0 + m;
         |      R = R + m;
         |    }
-        |    D1p = (D1p > D1) ? D1p: D1; D1 = 0; C7 = C7 + 1;D1 = D1 + n;
+        |    D1p = D1; D1 = 0; C7 = C7 + 1;D1 = D1 + n;
         |    R = R + n;
         |  }
         |}""".stripMargin
@@ -856,9 +856,9 @@ object DecompositionUnitTest {
         |    while (it > 0)
         |    {
         |      it--;
-        |      D0p = (D0p > D0) ? D0p: D0; D0 = 0; C7 = C7 + 1;D0 = D0 + 1;
+        |      D0p = D0; D0 = 0; C7 = C7 + 1;D0 = D0 + 1;
         |      R = R + 1;
-        |      D1p = (D1p > D1) ? D1p: D1; D1 = 0; C8 = C8 + 1;D1 = D1 + n;
+        |      D1p = D1; D1 = 0; C8 = C8 + 1;D1 = D1 + n;
         |      R = R + n;
         |    }
         |  }

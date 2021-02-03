@@ -152,6 +152,27 @@ object InstrumentUtilsUnitTest {
         |  }
         |}""".stripMargin
 
+    val forLoopTest2 =
+      """class ForLoopTest2 {
+        |    void f(int n) {
+        |        for (int i = 0, j = 0; i < 10; i++, j+=2) {
+        |            i--;
+        |        }
+        |    }
+        |}""".stripMargin
+    val forLoopTestExpected2 =
+      """{
+        |  {// For loop
+        |    int i = 0;
+        |    int j = 0;
+        |    while (i < 10) {
+        |      i--;
+        |      i++;
+        |      j += 2;
+        |    }
+        |  }
+        |}""".stripMargin
+
     val ifTest =
       """class IfTest {
         |    void f(int n) {
@@ -239,6 +260,7 @@ object InstrumentUtilsUnitTest {
       // TestCaseJavaProgram("DoWhileTest", doWhileTest, doWhileTestExpected),
       TestCaseJavaProgram("EmptyTest", emptyTest, emptyTestExpected),
       TestCaseJavaProgram("ForLoopTest", forLoopTest, forLoopTestExpected),
+      TestCaseJavaProgram("ForLoopTest2", forLoopTest2, forLoopTestExpected2),
       TestCaseJavaProgram("IfTest", ifTest, ifTestExpected),
       TestCaseJavaProgram("LabelTest", labelTest, labelTestExpected),
       TestCaseJavaProgram("ReturnTest", returnTest, returnTestExpected),

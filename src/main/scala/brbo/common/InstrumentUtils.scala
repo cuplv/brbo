@@ -344,19 +344,17 @@ object InstrumentUtils {
         if (!string.endsWith(";")) s"$spaces${tree.toString};"
         else s"$spaces${tree.toString}"
       case blockTree: BlockTree =>
-        val body = instrumentStatementTreesHelper2(blockTree.getStatements.asScala, instrumentation, indent + INDENT)
+        val body = instrumentStatementTreesHelper(blockTree.getStatements.asScala, instrumentation, indent + INDENT)
         s"$spaces{\n$body\n$spaces}"
       case forLoopTree: ForLoopTree =>
-        assert(forLoopTree.getInitializer.size() <= 1)
-        assert(forLoopTree.getUpdate.size() <= 1)
-        val result1 = instrumentStatementTreesHelper2(forLoopTree.getInitializer.asScala, instrumentation, indent + INDENT)
+        val result1 = instrumentStatementTreesHelper(forLoopTree.getInitializer.asScala, instrumentation, indent + INDENT)
         val result2 = {
           val body = forLoopTree.getStatement match {
             case blockTree: BlockTree =>
-              instrumentStatementTreesHelper2(blockTree.getStatements.asScala, instrumentation, indent + INDENT + INDENT)
+              instrumentStatementTreesHelper(blockTree.getStatements.asScala, instrumentation, indent + INDENT + INDENT)
             case _ => throw new Exception("Unreachable")
           }
-          val updates = instrumentStatementTreesHelper2(forLoopTree.getUpdate.asScala, instrumentation, indent + INDENT + INDENT)
+          val updates = instrumentStatementTreesHelper(forLoopTree.getUpdate.asScala, instrumentation, indent + INDENT + INDENT)
           val extraIndent = " " * INDENT
           s"$spaces${extraIndent}while (${forLoopTree.getCondition}) {\n" +
             s"$body\n$updates\n$spaces$extraIndent}"
@@ -396,7 +394,7 @@ object InstrumentUtils {
     else part1
   }
 
-  private def instrumentStatementTreesHelper2(trees: Iterable[StatementTree], instrumentation: StatementTreeInstrumentation, indent: Int): String = {
+  private def instrumentStatementTreesHelper(trees: Iterable[StatementTree], instrumentation: StatementTreeInstrumentation, indent: Int): String = {
     trees.map(tree => instrumentStatementTreesHelper(tree, instrumentation, indent)).mkString("\n")
   }
 

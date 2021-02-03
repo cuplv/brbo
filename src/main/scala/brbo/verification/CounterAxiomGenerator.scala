@@ -27,6 +27,18 @@ object CounterAxiomGenerator {
     generateCounterMapHelper(tree, FIRST_COUNTER_ID)._1
   }
 
+  def generateCounterMapHelper(trees: Iterable[StatementTree], id: Int): (Map[Tree, String], Int) = {
+    var newId = id
+    var map = new HashMap[Tree, String]
+    trees.foreach({
+      tree =>
+        val (newMap, newNewId) = generateCounterMapHelper(tree, newId)
+        map = map ++ newMap
+        newId = newNewId
+    })
+    (map, newId)
+  }
+
   def generateCounterMapHelper(tree: StatementTree, id: Int): (Map[Tree, String], Int) = {
     def throwException(message: String): Nothing = {
       throw new Exception(s"Generate counter map - $message in AST: $tree")
@@ -46,12 +58,9 @@ object CounterAxiomGenerator {
         map = map + (tree -> generateCounterId(id))
         newId = newId + 1
 
-        tree.getStatements.asScala.foreach({
-          statement =>
-            val (newMap, newNewId) = generateCounterMapHelper(statement, newId)
-            map = map ++ newMap
-            newId = newNewId
-        })
+        val (newMap, newNewId) = generateCounterMapHelper(tree.getStatements.asScala, newId)
+        map = map ++ newMap
+        newId = newNewId
       case _: DoWhileLoopTree =>
         /*map = map + (tree -> generateCounterId(id))
         newId = newId + 1
@@ -66,18 +75,14 @@ object CounterAxiomGenerator {
 
         val initializers = tree.getInitializer.asScala
         val updates = tree.getUpdate.asScala
-        assert(initializers.size <= 1)
-        assert(updates.size <= 1)
-        val (newMap1, newNewId1) = {
-          if (initializers.isEmpty) (new HashMap[Tree, String], newId)
-          else generateCounterMapHelper(initializers.head, newId)
-        }
+
+        val (newMap1, newNewId1) = generateCounterMapHelper(initializers, newId)
         map = map ++ newMap1
         newId = newNewId1
         val (newMap2, newNewId2) = generateCounterMapHelper(tree.getStatement, newId)
         map = map ++ newMap2
         newId = newNewId2
-        val (newMap3, newNewId3) = generateCounterMapHelper(updates.head, newId)
+        val (newMap3, newNewId3) = generateCounterMapHelper(updates, newId)
         map = map ++ newMap3
         newId = newNewId3
       case tree: IfTree =>
