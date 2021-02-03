@@ -35,7 +35,7 @@ sealed trait Header extends AST
 
 case class BasicHeader(i: String, upperBound: String) extends Header {
   override def toString(indent: Int): String = {
-    s"for (int $i = 0; $i < $upperBound; i++)"
+    s"for (int $i = 0; $i < $upperBound; $i++)"
   }
 }
 

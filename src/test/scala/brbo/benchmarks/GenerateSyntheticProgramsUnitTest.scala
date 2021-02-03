@@ -19,7 +19,7 @@ class GenerateSyntheticProgramsUnitTest extends AnyFlatSpec {
     val loop3 = Loop(header2, Statement(List(command2)))
 
     val expected1 =
-      """for (int i1 = 0; i1 < n; i++) {
+      """for (int i1 = 0; i1 < n; i1++) {
         |    R = R + 1;
         |}""".stripMargin
     val expected2 =
@@ -36,7 +36,7 @@ class GenerateSyntheticProgramsUnitTest extends AnyFlatSpec {
   }
 
   "Generate synthetic programs" should "be correct" in {
-    GenerateSyntheticPrograms.generateSourceCode(30, 2, 3, "R", HashSet[String]("n"))
+    GenerateSyntheticPrograms.generateSourceCode(50, 2, 3, "R", HashSet[String]("n"))
   }
 }
 

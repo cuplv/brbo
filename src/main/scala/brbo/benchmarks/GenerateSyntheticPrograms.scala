@@ -161,6 +161,7 @@ object GenerateSyntheticPrograms {
 
   def generateSourceCode(numberOfPrograms: Int, treeMaxHeight: Int, treeMaxWidth: Int, resourceVariable: String, inputs: Set[String]): Unit = {
     val MAX_ATTEMPTS = 1000000
+    val SYNTHETIC_DIRECTORY = s"${System.getProperty("user.dir")}/src/main/java/brbo/benchmarks/synthetic"
 
     var set = new HashSet[Statement]
     var i = 0
@@ -170,20 +171,26 @@ object GenerateSyntheticPrograms {
 
       if (!set.contains(program)) {
         val boundExpression = generateBound(program)
-        val sourceCode =
-          s"""package brbo.benchmarks.synthetic;
-             |import brbo.benchmarks.Common;
-             |public abstract class Synthetic${set.size} extends Common {
-             |  void f(${inputs.map(x => s"int $x").mkString(", ")}) {
-             |    if (${inputs.map(x => s"$x <= 0").mkString(" || ")})
-             |      return;
-             |    int $resourceVariable = 0;
-             |    mostPreciseBound($resourceVariable <= $boundExpression);
-             |${program.toString(4)}
-             |  }
-             |}""".stripMargin
-        val file = new File(s"$OUTPUT_DIRECTORY/Synthetic${set.size}.java")
-        FileUtils.writeStringToFile(file, sourceCode, Charset.forName("UTF-8"))
+        if (boundExpression != Number(0)) {
+          val sourceCode =
+            s"""package brbo.benchmarks.synthetic;
+               |import brbo.benchmarks.Common;
+               |public abstract class Synthetic${set.size} extends Common {
+               |  void f(${inputs.map(x => s"int $x").mkString(", ")}) {
+               |    if (${inputs.map(x => s"$x <= 0").mkString(" || ")})
+               |      return;
+               |    int $resourceVariable = 0;
+               |    mostPreciseBound($resourceVariable <= $boundExpression);
+               |${program.toString(4)}
+               |  }
+               |}""".
+              stripMargin
+          val file = new File(s"$SYNTHETIC_DIRECTORY/Synthetic${set.size}.java")
+          FileUtils.writeStringToFile(file, sourceCode, Charset.forName("UTF-8"))
+        }
+        else {
+          logger.error(s"Skip generating programs whose bounds are `${Number(0)}`")
+        }
       }
 
       set = set + program
