@@ -1,5 +1,6 @@
 package brbo.benchmarks
 
+import brbo.common.StringFormatUtils
 import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
 
@@ -177,10 +178,11 @@ object GenerateSyntheticPrograms {
       if (!set.contains(program)) {
         val boundExpression = generateBound(program)
         if (boundExpression != Number(0)) {
+          val className = StringFormatUtils.integer(set.size, 3)
           val sourceCode =
             s"""package brbo.benchmarks.synthetic;
                |import brbo.benchmarks.Common;
-               |public abstract class Synthetic${set.size} extends Common {
+               |public abstract class Synthetic$className extends Common {
                |  void f(${inputs.map(x => s"int $x").mkString(", ")}) {
                |    if (${inputs.map(x => s"$x <= 0").mkString(" || ")})
                |      return;
@@ -190,7 +192,7 @@ object GenerateSyntheticPrograms {
                |  }
                |}""".
               stripMargin
-          val file = new File(s"$SYNTHETIC_DIRECTORY/Synthetic${set.size}.java")
+          val file = new File(s"$SYNTHETIC_DIRECTORY/Synthetic$className.java")
           FileUtils.writeStringToFile(file, sourceCode, Charset.forName("UTF-8"))
         }
         else {

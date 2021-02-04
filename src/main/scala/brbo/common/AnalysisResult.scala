@@ -8,7 +8,7 @@ object AnalysisResult {
   def interpretResult(b: Boolean): String = if (b) "Y" else "N"
 
   case class RawResult(file: String, time: Double, verified: Boolean, mode: AmortizationMode, lines: Int) {
-    def toCSV: String = s"$file,$lines,${StringFormatUtils.oneDigit(time)},$verified,$mode"
+    def toCSV: String = s"$file,$lines,${StringFormatUtils.float(time)},$verified,$mode"
 
     def toUnitResult: UnitResult = UnitResult(time, verified)
   }
@@ -44,9 +44,9 @@ object AnalysisResult {
           assert(files.size == 1)
           s"${files.head}"
         }
-      s"$name,$lines,${interpretResult(no.verified)},${StringFormatUtils.oneDigit(no.time)}," +
-        s"${interpretResult(full.verified)},${StringFormatUtils.oneDigit(full.time)}," +
-        s"${interpretResult(selective.verified)},${StringFormatUtils.oneDigit(selective.time)}"
+      s"$name,$lines,${interpretResult(no.verified)},${StringFormatUtils.float(no.time)}," +
+        s"${interpretResult(full.verified)},${StringFormatUtils.float(full.time)}," +
+        s"${interpretResult(selective.verified)},${StringFormatUtils.float(selective.time)}"
     }
   }
 

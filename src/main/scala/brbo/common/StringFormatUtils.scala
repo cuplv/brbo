@@ -1,7 +1,7 @@
 package brbo.common
 
 object StringFormatUtils {
-  def oneDigit(d: Double): String = "%.1f" format d
+  def float(d: Double, digit: Int = 1): String = s"%.${digit}f" format d
 
-  def threeDigit(i: Int): String = "%03d".format(i)
+  def integer(i: Int, digit: Int): String = s"%0${digit}d".format(i)
 }
