@@ -1,6 +1,5 @@
 package brbo.verification
 
-import brbo.common
 import brbo.common.BeforeOrAfterOrThis.{AFTER, THIS}
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, Resource}
 import brbo.common.GhostVariableUtils.generateDeltaVariablePrime
@@ -26,6 +25,8 @@ object BoundChecking {
   private val MAX_DEGREE_COUNTER = 3
   private val MOST_PRECISE_BOUND = "mostPreciseBound"
   private val LESS_PRECISE_BOUND = "lessPreciseBound"
+  val MAX_COEFFICIENT: String = "MAX" // Defined in Common.java
+  val MAX_COEFFICIENT_VALUE: Int = 8 // Defined in Common.java
 
   def treatCounterAsResourceInstrumentation(counterVariable: String, resourceVariable: String): StatementTreeInstrumentation = {
     StatementTreeInstrumentation(

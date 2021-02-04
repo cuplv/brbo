@@ -1,10 +1,12 @@
 package brbo.common
 
 import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT}
+import brbo.verification.BoundChecking
 import com.microsoft.z3.AST
 import com.sun.source.tree.Tree.Kind
 import com.sun.source.tree._
 import com.sun.source.util.TreePath
+
 import javax.lang.model.`type`.TypeMirror
 import org.apache.logging.log4j.LogManager
 
@@ -78,7 +80,11 @@ object TreeUtils {
               case INT => solver.mkIntVar(identifier)
               case BOOL => solver.mkBoolVar(identifier)
             }
-          case None => throwException(s"Type context does not have type information for variable $identifier")
+          case None =>
+            if (identifier == BoundChecking.MAX_COEFFICIENT)
+              solver.mkIntVal(BoundChecking.MAX_COEFFICIENT_VALUE)
+            else
+              throwException(s"Type context does not have type information for variable $identifier")
         }
       case tree: LiteralTree =>
         tree.getKind match {

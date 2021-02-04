@@ -5,6 +5,7 @@ import brbo.common.GhostVariableUtils.GhostVariable.Resource
 import brbo.common.InstrumentUtils.FileFormat.{C_FORMAT, FileFormat, JAVA_FORMAT}
 import brbo.common.InstrumentUtils.InstrumentMode.{ALL, AT_MOST_ONCE, InstrumentMode}
 import brbo.common.TypeUtils.BrboType
+import brbo.verification.BoundChecking
 import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
@@ -400,7 +401,7 @@ object InstrumentUtils {
 
 
   private val cFilePrefix =
-    """extern void __VERIFIER_error() __attribute__((noreturn));
+    s"""extern void __VERIFIER_error() __attribute__((noreturn));
       |extern void __VERIFIER_assume (int);
       |extern int __VERIFIER_nondet_int ();
       |#define static_assert __VERIFIER_assert
@@ -409,7 +410,7 @@ object InstrumentUtils {
       |#define true 1
       |#define false 0
       |#define boolean int
-      |#define MAX 8
+      |#define ${BoundChecking.MAX_COEFFICIENT} ${BoundChecking.MAX_COEFFICIENT_VALUE}
       |void __VERIFIER_assert(int cond) {
       |  if (!(cond)) {
       |    ERROR: __VERIFIER_error();
