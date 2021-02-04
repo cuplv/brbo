@@ -9,7 +9,7 @@ abstract public class AppendFullDigits extends Common {
     int buffer = 0;
     int R = 0;
     mostPreciseBound(R <= minFieldWidth);
-    mostPreciseBound(R <= MAX * minFieldWidth + MAX * value);
+    lessPreciseBound(R <= MAX * minFieldWidth + MAX * value);
     if (value < 10000) {
       int nDigits = 4;
       if (value < 1000) {
