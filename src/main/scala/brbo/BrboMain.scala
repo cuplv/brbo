@@ -18,7 +18,7 @@ import scala.collection.JavaConverters._
 
 object BrboMain {
   private val logger = LogManager.getLogger("brbo.BrboMain")
-  private val BATCH_SIZE = 200
+  private val BATCH_SIZE = 100
 
   val OUTPUT_DIRECTORY: String = s"${System.getProperty("user.dir")}/output"
 

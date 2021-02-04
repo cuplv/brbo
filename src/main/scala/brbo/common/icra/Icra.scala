@@ -42,7 +42,12 @@ object Icra {
       close()
     }
 
-    val cmd = s"$ICRA_PATH -cra-split-loops -cra-prsd ${file.toAbsolutePath}"
+    // val cmd = s"""bash -c \"ulimit -H -v 1000000 && $ICRA_PATH -cra-split-loops -cra-prsd ${file.toAbsolutePath}\""""
+    // val cmd = s"""ulimit -H -v 1000000; $ICRA_PATH -cra-split-loops -cra-prsd ${file.toAbsolutePath}"""
+    val cmd = {
+      val timeoutPrefix = if (timeout >= 0) s"timeout ${timeout}s" else ""
+      s"$timeoutPrefix $ICRA_PATH -cra-split-loops -cra-prsd ${file.toAbsolutePath}"
+    }
 
     try {
       // Set a timeout

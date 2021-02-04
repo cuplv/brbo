@@ -1,6 +1,7 @@
 package brbo.benchmarks
 
 import brbo.common.StringFormatUtils
+import brbo.verification.BoundChecking
 import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
 
@@ -176,8 +177,10 @@ object GenerateSyntheticPrograms {
       val program = generateSyntheticPrograms.generate
 
       if (!set.contains(program)) {
-        val boundExpression = generateBound(program)
-        if (boundExpression != Number(0)) {
+        val mostPreciseBound = generateBound(program)
+        // TODO: Not exactly weakening all coefficients
+        val lessPreciseBound = MulExpr(mostPreciseBound, Number(BoundChecking.MAX_COEFFICIENT_VALUE))
+        if (mostPreciseBound != Number(0)) {
           val className = StringFormatUtils.integer(set.size, 3)
           val sourceCode =
             s"""package brbo.benchmarks.synthetic;
@@ -187,7 +190,8 @@ object GenerateSyntheticPrograms {
                |    if (${inputs.map(x => s"$x <= 0").mkString(" || ")})
                |      return;
                |    int $resourceVariable = 0;
-               |    mostPreciseBound($resourceVariable <= $boundExpression);
+               |    mostPreciseBound($resourceVariable <= $mostPreciseBound);
+               |    lessPreciseBound($resourceVariable <= $lessPreciseBound);
                |${program.toString(4)}
                |  }
                |}""".
