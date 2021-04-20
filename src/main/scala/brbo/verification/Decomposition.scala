@@ -79,7 +79,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
 
   def decomposeSelectiveAmortize(): IntermediateResult = {
     logger.info(s"Decompose mode: `${brbo.verification.AmortizationMode.SELECTIVE_AMORTIZE}`")
-    var subprograms = eliminateEnvironmentInterference(mergeIfOverlap(initializeSubprograms()))
+    var subprograms = eliminateEnvironmentInterference(Subprograms(initializeSubprograms())) // eliminateEnvironmentInterference(mergeIfOverlap(initializeSubprograms()))
     var continue = true
     while (continue) {
       val interferedSubprograms = findInterference(subprograms)
@@ -101,7 +101,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
           }
         }
         traceOrError(s"Decomposition - New subprogram: $newSubprogram")
-        subprograms = mergeIfOverlap(subprograms.programs - pair._1 - pair._2 + newSubprogram)
+        subprograms = Subprograms(subprograms.programs - pair._1 - pair._2 + newSubprogram) // mergeIfOverlap(subprograms.programs - pair._1 - pair._2 + newSubprogram)
       }
     }
     IntermediateResult(subprograms, SELECTIVE_AMORTIZE)
@@ -301,7 +301,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
           traceOrError(s"Subprogram is interfered by the environment: $interferedSubprogram")
           val newSubprogram: Subprogram = enlarge(interferedSubprogram)
           traceOrError(s"Eliminate environment interference - New subprogram: $newSubprogram")
-          newSubprograms = mergeIfOverlap(newSubprograms.programs - interferedSubprogram + newSubprogram)
+          newSubprograms = Subprograms(newSubprograms.programs - interferedSubprogram + newSubprogram)// mergeIfOverlap(newSubprograms.programs - interferedSubprogram + newSubprogram)
         case None => continue = false
       }
     }
@@ -472,7 +472,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
     allCommonEnclosingTrees
   }
 
-  def subsequentExecution(subprogram1: Subprogram, subprogram2: Subprogram): Boolean = {
+  def subsequentExecute(subprogram1: Subprogram, subprogram2: Subprogram): Boolean = {
     val commonTrees = getAllCommonEnclosingTrees(subprogram1, subprogram2)
     if (commonTrees.exists(tree => TreeUtils.loopKinds.contains(tree.getKind)))
       true
@@ -512,7 +512,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
    */
   def interfere(subprogram1: Subprogram, subprogram2: Subprogram): Boolean = {
     // First check if there exists a path from subprogram1's exit to subprogram2's entry
-    if (!subsequentExecution(subprogram1, subprogram2)) {
+    if (!subsequentExecute(subprogram1, subprogram2)) {
       traceOrError(s"Subprogram 2 cannot be subsequently executed after subprogram 1")
       traceOrError(s"Subprogram 1:\n$subprogram1")
       traceOrError(s"Subprogram 2:\n$subprogram2")
@@ -596,7 +596,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
       programs2 =>
         val program1 = programs2.head
         val program2 = programs2.tail.head
-        if (program1 != program2) assert(!overlap(program1, program2), s"Overlapping subprograms:\n$program1\n$program2")
+        // if (program1 != program2) assert(!overlap(program1, program2), s"Overlapping subprograms:\n$program1\n$program2")
     })
 
     override def toString: String = {

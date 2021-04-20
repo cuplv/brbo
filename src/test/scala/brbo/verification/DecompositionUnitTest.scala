@@ -94,7 +94,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
           case (subprogram1, subprogram2) =>
             logger.debug(s"Subprogram 1: $subprogram1")
             logger.debug(s"Subprogram 2: $subprogram2")
-            decomposition.subsequentExecution(subprogram1, subprogram2)
+            decomposition.subsequentExecute(subprogram1, subprogram2)
         })
         assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
     })

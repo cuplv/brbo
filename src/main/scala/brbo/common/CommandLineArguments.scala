@@ -46,6 +46,9 @@ class CommandLineArguments {
   @Option(name = "--less-precise", required = false, usage = "Verify the bounds specified by function `lessPreciseBound`.")
   private var lessPreciseBound: Boolean = false
 
+  @Option(name = "--generate-synthetic", required = false, usage = "Generate `n` synthetic programs")
+  private var generateSynthetic: Int = 0
+
   def getAmortizationMode: AmortizationMode = {
     amortizationMode.toLowerCase() match {
       case "no" => NO_AMORTIZE
@@ -74,6 +77,8 @@ class CommandLineArguments {
 
   def getLessPreciseBound: Boolean = lessPreciseBound
 
+  def getGenerateSynthetic: Int = generateSynthetic
+
   private var initialized = false
 
   def initialize(amortizationMode: AmortizationMode,
@@ -85,7 +90,8 @@ class CommandLineArguments {
                  icraTimeout: Int,
                  printCFG: Boolean,
                  decomposeOnly: Boolean,
-                 lessPreciseBound: Boolean): Unit = {
+                 lessPreciseBound: Boolean,
+                 generateSynthetic: Int): Unit = {
     if (initialized) {
       logger.info(s"Already initialized")
       return
@@ -101,6 +107,7 @@ class CommandLineArguments {
     this.printCFG = printCFG
     this.decomposeOnly = decomposeOnly
     this.lessPreciseBound = lessPreciseBound
+    this.generateSynthetic = generateSynthetic
   }
 
   override def toString: String = {
@@ -114,7 +121,8 @@ class CommandLineArguments {
       s"ICRA's time out: `$icraTimeout` seconds",
       s"Print CFG? `$printCFG`",
       s"No bound check? `$decomposeOnly`",
-      s"Check less precise bounds? `$lessPreciseBound`"
+      s"Check less precise bounds? `$lessPreciseBound`",
+      s"Generate `$generateSynthetic` synthetic programs"
     )
     strings.mkString("\n")
   }
@@ -150,7 +158,7 @@ object CommandLineArguments {
     val arguments = new CommandLineArguments
     arguments.initialize(UNKNOWN, debugMode = false, "", skipSanityCheck = false,
       printCounterExample = false, printIcraInputs = false, icraTimeout = 20,
-      printCFG = false, decomposeOnly = false, lessPreciseBound = false)
+      printCFG = false, decomposeOnly = false, lessPreciseBound = false, generateSynthetic = 0)
     arguments
   }
 }

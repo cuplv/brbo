@@ -37,11 +37,6 @@ class GenerateSyntheticProgramsUnitTest extends AnyFlatSpec {
     assert(StringCompare.ignoreWhitespaces(loop2.toString(2), expected2, "Loop 2 failed"))
     assert(StringCompare.ignoreWhitespaces(loop3.toString(4), expected3, "Loop 3 failed"))
   }
-
-  "Generate synthetic programs" should "be correct" in {
-    logger.error("This is a FAKE unit test because it does no assertion check!")
-    GenerateSyntheticPrograms.generateSourceCode(500, 2, 3, "R", HashSet[String]("n"))
-  }
 }
 
 object GenerateSyntheticProgramsUnitTest {

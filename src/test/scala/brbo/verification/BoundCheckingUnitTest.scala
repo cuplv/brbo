@@ -26,7 +26,7 @@ class BoundCheckingUnitTest extends AnyFlatSpec {
         val arguments = new CommandLineArguments
         arguments.initialize(UNKNOWN, debugMode = false, "", skipSanityCheck = false,
           testCase.expectedOutput == "true", printIcraInputs = false, icraTimeout = 20,
-          printCFG = false, decomposeOnly = false, lessPreciseBound = false)
+          printCFG = false, decomposeOnly = false, lessPreciseBound = false, generateSynthetic = 0)
         val result = BoundChecking.checkBound(
           solver,
           decompositionResult,

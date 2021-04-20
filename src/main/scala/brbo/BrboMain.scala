@@ -9,12 +9,15 @@ import brbo.verification.{BasicProcessor, BoundChecking, Decomposition}
 import com.microsoft.z3.AST
 import org.apache.commons.io.{FileUtils, FilenameUtils}
 import org.apache.logging.log4j.LogManager
-
 import java.io.File
 import java.nio.charset.Charset
 import java.text.SimpleDateFormat
 import java.util.Date
+
+import brbo.benchmarks.GenerateSyntheticPrograms
+
 import scala.collection.JavaConverters._
+import scala.collection.immutable.HashSet
 
 object BrboMain {
   private val logger = LogManager.getLogger("brbo.BrboMain")
@@ -26,6 +29,22 @@ object BrboMain {
     logger.info("Brbo has started.")
 
     val arguments = CommandLineArguments.parseArguments(args)
+
+    if (arguments.getGenerateSynthetic > 0) {
+      val treeMaxHeight = 2
+      val treeMaxWidth = 3
+      val resourceVariableName = "R"
+      val inputVariables = HashSet[String]("n")
+      logger.info(s"Generate `${arguments.getGenerateSynthetic}` programs")
+      logger.info(s"Tree max height is `$treeMaxHeight`")
+      logger.info(s"Tree max width is `$treeMaxWidth`")
+      logger.info(s"Resource variable name is `$resourceVariableName`")
+      logger.info(s"Inputs of synthetic programs are `$inputVariables`")
+      GenerateSyntheticPrograms.generateSourceCode(arguments.getGenerateSynthetic, treeMaxHeight, treeMaxWidth, resourceVariableName, inputVariables)
+      logger.info("Exit now.")
+      sys.exit()
+    }
+
     arguments.toString.split("\n").foreach(s => logger.info(s"Command line argument - $s"))
     logger.warn(s"We assume each class contains exactly one method")
 
