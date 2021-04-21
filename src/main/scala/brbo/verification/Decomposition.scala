@@ -79,7 +79,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
 
   def decomposeSelectiveAmortize(): IntermediateResult = {
     logger.info(s"Decompose mode: `${brbo.verification.AmortizationMode.SELECTIVE_AMORTIZE}`")
-    var subprograms = eliminateEnvironmentInterference(Subprograms(initializeSubprograms())) // eliminateEnvironmentInterference(mergeIfOverlap(initializeSubprograms()))
+    var subprograms = eliminateEnvironmentInterference(mergeIfOverlap(initializeSubprograms()))
     var continue = true
     while (continue) {
       val interferedSubprograms = findInterference(subprograms)
@@ -101,7 +101,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
           }
         }
         traceOrError(s"Decomposition - New subprogram: $newSubprogram")
-        subprograms = Subprograms(subprograms.programs - pair._1 - pair._2 + newSubprogram) // mergeIfOverlap(subprograms.programs - pair._1 - pair._2 + newSubprogram)
+        subprograms = mergeIfOverlap(subprograms.programs - pair._1 - pair._2 + newSubprogram)
       }
     }
     IntermediateResult(subprograms, SELECTIVE_AMORTIZE)
@@ -301,7 +301,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
           traceOrError(s"Subprogram is interfered by the environment: $interferedSubprogram")
           val newSubprogram: Subprogram = enlarge(interferedSubprogram)
           traceOrError(s"Eliminate environment interference - New subprogram: $newSubprogram")
-          newSubprograms = Subprograms(newSubprograms.programs - interferedSubprogram + newSubprogram)// mergeIfOverlap(newSubprograms.programs - interferedSubprogram + newSubprogram)
+          newSubprograms = mergeIfOverlap(newSubprograms.programs - interferedSubprogram + newSubprogram)
         case None => continue = false
       }
     }
@@ -596,7 +596,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
       programs2 =>
         val program1 = programs2.head
         val program2 = programs2.tail.head
-        // if (program1 != program2) assert(!overlap(program1, program2), s"Overlapping subprograms:\n$program1\n$program2")
+        if (program1 != program2) assert(!overlap(program1, program2), s"Overlapping subprograms:\n$program1\n$program2")
     })
 
     override def toString: String = {
