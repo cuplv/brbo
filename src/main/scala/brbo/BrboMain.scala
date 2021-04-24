@@ -4,8 +4,8 @@ import brbo.common.AnalysisResult.{RawResult, aggregateResultsIndividual, aggreg
 import brbo.common._
 import brbo.verification.AmortizationMode.ALL_AMORTIZE
 import brbo.verification.BoundChecking.GlobalInvariants
-import brbo.verification.Decomposition.DecompositionResult
-import brbo.verification.{BasicProcessor, BoundChecking, Decomposition}
+import brbo.verification.decomposition.DecompositionUtils.DecompositionResult
+import brbo.verification.{BasicProcessor, BoundChecking}
 import com.microsoft.z3.AST
 import org.apache.commons.io.{FileUtils, FilenameUtils}
 import org.apache.logging.log4j.LogManager
@@ -15,6 +15,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 
 import brbo.benchmarks.GenerateSyntheticPrograms
+import brbo.verification.decomposition.Decomposition
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable.HashSet

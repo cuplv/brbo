@@ -2,7 +2,7 @@ package brbo.verification
 
 import brbo.common.{CommandLineArguments, Z3Solver}
 import brbo.verification.AmortizationMode.UNKNOWN
-import brbo.verification.Decomposition.{DecompositionResult, DeltaCounterPair}
+import brbo.verification.decomposition.DecompositionUtils.{DecompositionResult, DeltaCounterPair}
 import brbo.{StringCompare, TestCaseJavaProgram}
 import com.microsoft.z3.AST
 import org.apache.logging.log4j.LogManager

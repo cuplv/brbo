@@ -1,8 +1,9 @@
-package brbo.verification
+package brbo.verification.decomposition
 
 import brbo.common.CommandLineArguments.DEFAULT_ARGUMENTS
 import brbo.common.MathUtils
 import brbo.verification.AmortizationMode.UNKNOWN
+import brbo.verification.BasicProcessor
 import brbo.{StringCompare, TestCaseJavaProgram}
 import org.apache.logging.log4j.LogManager
 import org.scalatest.flatspec.AnyFlatSpec
@@ -68,7 +69,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.taintSetTests.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val result = Decomposition.computeTaintSetControlAndData(targetMethod, DEFAULT_ARGUMENTS.getDebugMode)
+        val result = DecompositionUtils.computeTaintSetControlAndData(targetMethod, DEFAULT_ARGUMENTS.getDebugMode)
         assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
     })
   }
