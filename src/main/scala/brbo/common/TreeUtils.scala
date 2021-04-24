@@ -6,7 +6,6 @@ import com.microsoft.z3.AST
 import com.sun.source.tree.Tree.Kind
 import com.sun.source.tree._
 import com.sun.source.util.TreePath
-
 import javax.lang.model.`type`.TypeMirror
 import org.apache.logging.log4j.LogManager
 
@@ -195,7 +194,7 @@ object TreeUtils {
     }
   }
 
-  def satisfyRestriction(tree: StatementTree): Unit = {
+  def acceptableTree(tree: StatementTree): Unit = {
     if (tree == null) return
 
     tree match {
@@ -204,16 +203,16 @@ object TreeUtils {
           case variableTree: VariableTree => assert(variableTree.getInitializer != null, s"Variable declaration should have initializers: `$tree`")
           case _ =>
         }
-      case blockTree: BlockTree => blockTree.getStatements.asScala.foreach(t => satisfyRestriction(t))
+      case blockTree: BlockTree => blockTree.getStatements.asScala.foreach(t => acceptableTree(t))
       case forLoopTree: ForLoopTree =>
-        forLoopTree.getInitializer.asScala.foreach(t => satisfyRestriction(t))
-        satisfyRestriction(forLoopTree.getStatement)
-        forLoopTree.getUpdate.asScala.foreach(t => satisfyRestriction(t))
+        forLoopTree.getInitializer.asScala.foreach(t => acceptableTree(t))
+        acceptableTree(forLoopTree.getStatement)
+        forLoopTree.getUpdate.asScala.foreach(t => acceptableTree(t))
       case ifTree: IfTree =>
-        satisfyRestriction(ifTree.getThenStatement)
-        satisfyRestriction(ifTree.getElseStatement)
-      case labeledStatementTree: LabeledStatementTree => satisfyRestriction(labeledStatementTree.getStatement)
-      case whileLoopTree: WhileLoopTree => satisfyRestriction(whileLoopTree.getStatement)
+        acceptableTree(ifTree.getThenStatement)
+        acceptableTree(ifTree.getElseStatement)
+      case labeledStatementTree: LabeledStatementTree => acceptableTree(labeledStatementTree.getStatement)
+      case whileLoopTree: WhileLoopTree => acceptableTree(whileLoopTree.getStatement)
       case _ => throw new Exception(s"Unsupported tree: `$tree`")
     }
   }
@@ -286,16 +285,21 @@ object TreeUtils {
   }
 
   def getMaximalEnclosingLoop(path: TreePath): Option[Tree] = {
+    val enclosingTrees: List[Tree] = getEnclosingTrees(path)
+    enclosingTrees.find({
+      enclosingTree => loopKinds.contains(enclosingTree.getKind)
+    })
+  }
+
+  def getEnclosingTrees(path: TreePath): List[Tree] = {
     var enclosingTrees: List[Tree] = Nil
     var p = path
     while (p != null) {
       val leaf = p.getLeaf
-      assert(leaf != null) /*nninvariant*/
+      assert(leaf != null)
       enclosingTrees = leaf :: enclosingTrees
       p = p.getParentPath
     }
-    enclosingTrees.find({
-      enclosingTree => loopKinds.contains(enclosingTree.getKind)
-    })
+    enclosingTrees
   }
 }

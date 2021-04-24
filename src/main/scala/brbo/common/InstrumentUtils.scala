@@ -439,6 +439,8 @@ object InstrumentUtils {
       |""".stripMargin
 
   def changeEntryNode(inputMethod: TargetMethod, entryCommand: StatementTree): TargetMethod = {
+    val enclosingTrees = TreeUtils.getEnclosingTrees(inputMethod.getPath(entryCommand))
+    assert(enclosingTrees.head == entryCommand, s"$entryCommand*****$enclosingTrees")
     ???
   }
 }

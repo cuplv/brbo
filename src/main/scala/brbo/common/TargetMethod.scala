@@ -26,7 +26,7 @@ case class TargetMethod(fullQualifiedClassName: String,
                         sourceCode: String) {
   private val logger = LogManager.getLogger(classOf[TargetMethod])
 
-  TreeUtils.satisfyRestriction(methodTree.getBody)
+  TreeUtils.acceptableTree(methodTree.getBody)
 
   val inputVariables: Map[String, BrboType] = TreeUtils.getAllInputVariables(methodTree)
   logger.trace(s"[Method `${methodTree.getName}`] Input variables: `$inputVariables`")
