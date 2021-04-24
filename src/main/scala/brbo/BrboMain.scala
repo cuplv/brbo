@@ -4,7 +4,7 @@ import brbo.common.AnalysisResult.{RawResult, aggregateResultsIndividual, aggreg
 import brbo.common._
 import brbo.verification.AmortizationMode.ALL_AMORTIZE
 import brbo.verification.BoundChecking.GlobalInvariants
-import brbo.verification.decomposition.DecompositionUtils.DecompositionResult
+import brbo.verification.decomposition.DecompositionResult
 import brbo.verification.{BasicProcessor, BoundChecking}
 import com.microsoft.z3.AST
 import org.apache.commons.io.{FileUtils, FilenameUtils}

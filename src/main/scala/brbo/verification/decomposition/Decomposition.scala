@@ -8,7 +8,6 @@ import brbo.common.TypeUtils.BrboType
 import brbo.common.TypeUtils.BrboType.{BrboType, INT}
 import brbo.common._
 import brbo.verification.AmortizationMode.{AmortizationMode, FULL_AMORTIZE, NO_AMORTIZE, SELECTIVE_AMORTIZE}
-import brbo.verification.decomposition.DecompositionUtils.{DecompositionResult, DeltaCounterPair}
 import brbo.verification.{BasicProcessor, CounterAxiomGenerator}
 import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
@@ -106,7 +105,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
   def initializeSubprograms(): Set[Subprogram] = {
     commands.foldLeft(new HashSet[Subprogram])({
       (acc, statement) =>
-        DecompositionUtils.initializeSubprogramFromStatement(statement, inputMethod) match {
+        DecompositionUtils.initializeGroupFromStatement(statement, inputMethod) match {
           case Some((statement, _)) => acc + Subprogram(List(statement))
           case None => acc
         }
@@ -179,9 +178,9 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
     s"${appendSemiColonWhenNecessary(prepend1)}${appendSemiColonWhenNecessary(prepend2)}"
   }
 
-  def insertGhostVariables(decompositionIntermediateResult: IntermediateResult): DecompositionResult = {
-    val subprograms: Subprograms = decompositionIntermediateResult.subprograms
-    val amortizationMode: AmortizationMode = decompositionIntermediateResult.amortizationMode
+  def insertGhostVariables(intermediateResult: IntermediateResult): DecompositionResult = {
+    val subprograms: Subprograms = intermediateResult.subprograms
+    val amortizationMode: AmortizationMode = intermediateResult.amortizationMode
     logger.info(s"Inserting resets and updates to ghost variables... Mode: `$amortizationMode`")
 
     val deltaCounterPairs: Map[Subprogram, DeltaCounterPair] = {

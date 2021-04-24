@@ -8,7 +8,7 @@ import brbo.common.TreeUtils.collectCommands
 import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT, VOID}
 import brbo.common.{Locations, _}
 import brbo.verification.AmortizationMode.SELECTIVE_AMORTIZE
-import brbo.verification.decomposition.DecompositionUtils.{DecompositionResult, DeltaCounterPair}
+import brbo.verification.decomposition.{DecompositionResult, DeltaCounterPair}
 import com.microsoft.z3.{AST, BoolExpr, Expr}
 import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager

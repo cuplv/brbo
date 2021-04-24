@@ -437,4 +437,8 @@ object InstrumentUtils {
       |  return x;
       |}
       |""".stripMargin
+
+  def changeEntryNode(inputMethod: TargetMethod, entryCommand: StatementTree): TargetMethod = {
+    ???
+  }
 }

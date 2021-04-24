@@ -1,9 +1,7 @@
 package brbo.verification.decomposition
 
-import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, Resource}
+import brbo.common.GhostVariableUtils.GhostVariable.Resource
 import brbo.common.{CFGUtils, GhostVariableUtils, TargetMethod, TreeUtils}
-import brbo.verification.AmortizationMode.AmortizationMode
-import brbo.verification.BasicProcessor
 import brbo.verification.dependency.reachdef.ReachingValue
 import brbo.verification.dependency.{ControlDependency, DataDependency}
 import com.sun.source.tree.{ExpressionStatementTree, ExpressionTree, StatementTree}
@@ -30,7 +28,7 @@ object DecompositionUtils {
    * @param targetMethod The method that encloses the above statement
    * @return The initial program and its entry node in the CFG
    */
-  def initializeSubprogramFromStatement(statement: StatementTree, targetMethod: TargetMethod): Option[(StatementTree, Node)] = {
+  def initializeGroupFromStatement(statement: StatementTree, targetMethod: TargetMethod): Option[(StatementTree, Node)] = {
     statement match {
       case expressionStatementTree: ExpressionStatementTree =>
         GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Resource) match {
@@ -90,7 +88,7 @@ object DecompositionUtils {
 
     val taintSet = TreeUtils.collectCommands(targetMethod.methodTree.getBody).flatMap({
       statement =>
-        initializeSubprogramFromStatement(statement, targetMethod) match {
+        initializeGroupFromStatement(statement, targetMethod) match {
           case Some((initialSubprogram, entryNode)) =>
             traceOrError(s"Compute taint set for `$initialSubprogram`", debug)
             val conditionTrees = TreeUtils.collectConditionTreesWithoutBrackets(initialSubprogram)
@@ -314,26 +312,4 @@ object DecompositionUtils {
 
     set1 ++ set2
   }
-
-  case class DeltaCounterPair(delta: String, counter: String) {
-    GhostVariableUtils.isGhostVariable(delta, Delta)
-    GhostVariableUtils.isGhostVariable(counter, Counter)
-  }
-
-  /**
-   *
-   * @param newSourceFileContents The source code after decomposing the input method
-   * @param deltaCounterPairs     The paris of delta variables and counters in the new source code
-   * @param amortizationMode      The mode that was used to construct this decomposition
-   * @param inputMethod           The input method that was decomposed
-   */
-  case class DecompositionResult(newSourceFileContents: String,
-                                 deltaCounterPairs: Set[DeltaCounterPair],
-                                 amortizationMode: AmortizationMode,
-                                 inputMethod: TargetMethod) {
-    logger.info(s"Decomposition result (Mode: `$amortizationMode`):\n$newSourceFileContents")
-    val outputMethod: TargetMethod = BasicProcessor.getTargetMethod(inputMethod.fullQualifiedClassName, newSourceFileContents)
-    assert(outputMethod.inputVariables == inputMethod.inputVariables)
-  }
-
 }
