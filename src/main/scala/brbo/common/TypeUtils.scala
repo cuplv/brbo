@@ -1,6 +1,6 @@
 package brbo.common
 
-import brbo.common.InstrumentUtils.FileFormat.{C_FORMAT, FileFormat, JAVA_FORMAT}
+import brbo.common.instrument.FileFormat.{C_FORMAT, FileFormat, JAVA_FORMAT}
 import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT}
 import javax.lang.model.`type`.TypeMirror
 import org.checkerframework.framework.`type`.AnnotatedTypeMirror

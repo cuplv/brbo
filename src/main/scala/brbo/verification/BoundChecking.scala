@@ -3,7 +3,7 @@ package brbo.verification
 import brbo.common.BeforeOrAfterOrThis.{AFTER, THIS}
 import brbo.common.GhostVariableUtils.GhostVariable.{Counter, Delta, Resource}
 import brbo.common.GhostVariableUtils.generateDeltaVariablePrime
-import brbo.common.InstrumentUtils.StatementTreeInstrumentation
+import brbo.common.instrument.StatementTreeInstrumentation
 import brbo.common.TreeUtils.collectCommands
 import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT, VOID}
 import brbo.common.{Locations, _}

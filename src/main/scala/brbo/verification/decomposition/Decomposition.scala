@@ -2,11 +2,12 @@ package brbo.verification.decomposition
 
 import brbo.common.BeforeOrAfterOrThis.BEFORE
 import brbo.common.GhostVariableUtils.GhostVariable.{Delta, Resource}
-import brbo.common.InstrumentUtils.FileFormat.JAVA_FORMAT
-import brbo.common.InstrumentUtils.{NewMethodInformation, StatementTreeInstrumentation}
 import brbo.common.TypeUtils.BrboType
 import brbo.common.TypeUtils.BrboType.{BrboType, INT}
 import brbo.common._
+import brbo.common.instrument.FileFormat.JAVA_FORMAT
+import brbo.common.instrument.{InstrumentUtils, StatementTreeInstrumentation}
+import brbo.common.instrument.InstrumentUtils.{NewMethodInformation, appendSemiColon}
 import brbo.verification.AmortizationMode.{AmortizationMode, FULL_AMORTIZE, NO_AMORTIZE, SELECTIVE_AMORTIZE}
 import brbo.verification.{BasicProcessor, CounterAxiomGenerator}
 import com.sun.source.tree._
@@ -169,13 +170,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
       else ""
     }
 
-    def appendSemiColonWhenNecessary(string: String): String = {
-      if (string == "") ""
-      else if (string.endsWith(";")) s"$string"
-      else s"$string;"
-    }
-
-    s"${appendSemiColonWhenNecessary(prepend1)}${appendSemiColonWhenNecessary(prepend2)}"
+    s"${appendSemiColon(prepend1)}${appendSemiColon(prepend2)}"
   }
 
   def insertGhostVariables(intermediateResult: IntermediateResult): DecompositionResult = {

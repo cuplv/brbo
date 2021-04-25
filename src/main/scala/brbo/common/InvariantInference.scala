@@ -1,10 +1,11 @@
 package brbo.common
 
-import brbo.common.InstrumentUtils.FileFormat.C_FORMAT
-import brbo.common.InstrumentUtils.{NewMethodInformation, StatementTreeInstrumentation}
 import brbo.common.InvariantInference.logger
 import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT}
 import brbo.common.icra.{Assignment, Icra}
+import brbo.common.instrument.FileFormat.C_FORMAT
+import brbo.common.instrument.{InstrumentUtils, StatementTreeInstrumentation}
+import brbo.common.instrument.InstrumentUtils.NewMethodInformation
 import com.microsoft.z3.{AST, BoolExpr}
 import org.apache.logging.log4j.LogManager
 

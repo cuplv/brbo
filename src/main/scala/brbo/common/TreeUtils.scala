@@ -118,7 +118,7 @@ object TreeUtils {
         val statements = tree.getInitializer.asScala.toList ::: tree.getStatement :: tree.getUpdate.asScala.toList
         collectCommands(statements)
       case tree: IfTree => collectCommands(tree.getThenStatement) ::: collectCommands(tree.getElseStatement) ::: Nil
-      case tree: LabeledStatementTree => collectCommands(tree.getStatement)
+      // case tree: LabeledStatementTree => collectCommands(tree.getStatement)
       case _: SwitchTree => throwException("Not yet support switch tree")
       case _: SynchronizedTree => throwException("Not yet support synchronized tree")
       case _: ThrowTree => throwException("Not yet support throw tree")
@@ -149,7 +149,7 @@ object TreeUtils {
           collectStatementTrees(tree2.getInitializer.asScala) ++ collectStatementTrees(tree2.getStatement) ++ collectStatementTrees(tree2.getUpdate.asScala)
         case tree2: IfTree =>
           collectStatementTrees(tree2.getThenStatement) ++ collectStatementTrees(tree2.getElseStatement)
-        case tree2: LabeledStatementTree => collectStatementTrees(tree2.getStatement)
+        // case tree2: LabeledStatementTree => collectStatementTrees(tree2.getStatement)
         case tree2: WhileLoopTree => collectStatementTrees(tree2.getStatement)
         case _ => throw new Exception(s"Not yet support tree $tree (type: ${tree.getClass})")
       }
@@ -171,7 +171,7 @@ object TreeUtils {
           collectConditionTreesWithoutBrackets(tree2.getUpdate.asScala) + tree2.getCondition
       case tree2: IfTree =>
         collectConditionTreesWithoutBrackets(tree2.getThenStatement) ++ collectConditionTreesWithoutBrackets(tree2.getElseStatement) + tree2.getCondition
-      case tree2: LabeledStatementTree => collectConditionTreesWithoutBrackets(tree2.getStatement)
+      // case tree2: LabeledStatementTree => collectConditionTreesWithoutBrackets(tree2.getStatement)
       case tree2: WhileLoopTree => collectConditionTreesWithoutBrackets(tree2.getStatement) + tree2.getCondition
       case _ => throw new Exception(s"Not yet support tree $tree (type: ${tree.getClass})")
     }
@@ -211,7 +211,7 @@ object TreeUtils {
       case ifTree: IfTree =>
         acceptableTree(ifTree.getThenStatement)
         acceptableTree(ifTree.getElseStatement)
-      case labeledStatementTree: LabeledStatementTree => acceptableTree(labeledStatementTree.getStatement)
+      // case labeledStatementTree: LabeledStatementTree => acceptableTree(labeledStatementTree.getStatement)
       case whileLoopTree: WhileLoopTree => acceptableTree(whileLoopTree.getStatement)
       case _ => throw new Exception(s"Unsupported tree: `$tree`")
     }
@@ -300,6 +300,13 @@ object TreeUtils {
       enclosingTrees = leaf :: enclosingTrees
       p = p.getParentPath
     }
+    assert(enclosingTrees.head.isInstanceOf[CompilationUnitTree])
+    assert(enclosingTrees.tail.head.isInstanceOf[ClassTree])
+    assert(enclosingTrees.tail.tail.head.isInstanceOf[MethodTree])
     enclosingTrees
+  }
+
+  def getEnclosingStatementTrees(path: TreePath): List[StatementTree] = {
+    getEnclosingTrees(path).tail.tail.tail.map(t => t.asInstanceOf[StatementTree])
   }
 }

@@ -1,8 +1,9 @@
-package brbo.common
+package brbo.common.instrument
 
 import brbo.common.BeforeOrAfterOrThis.BEFORE
-import brbo.common.InstrumentUtils.InstrumentMode.{ALL, AT_MOST_ONCE}
-import brbo.common.InstrumentUtils.StatementTreeInstrumentation
+import brbo.common.Locations
+import brbo.common.instrument.InstrumentMode.{ALL, AT_MOST_ONCE}
+import brbo.common.instrument.StatementTreeInstrumentation
 import brbo.verification.{BasicProcessor, BoundChecking}
 import brbo.{StringCompare, TestCaseJavaProgram}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -55,15 +56,6 @@ class InstrumentUtilsUnitTest extends AnyFlatSpec {
         )
         assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, s"Test ${testCase.className} failed!"))
     })
-  }
-
-  "Changing entry nodes" should "succeed" in {
-    InstrumentUtilsUnitTest.changeEntryNodeUnitTest.foreach {
-      testCase =>
-        val inputMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val entryCommand = inputMethod.commands.filter(t => t.toString == "int y = 2").head
-        InstrumentUtils.changeEntryNode(inputMethod, entryCommand)
-    }
   }
 }
 
@@ -205,7 +197,7 @@ object InstrumentUtilsUnitTest {
         |  }
         |}""".stripMargin
 
-    val labelTest =
+    /*val labelTest =
       """class LabelTest {
         |    void f(int n) {
         |        int i = 0;
@@ -218,7 +210,7 @@ object InstrumentUtilsUnitTest {
         |  int i = 0;
         |  Label:
         |  i = 1;
-        |}""".stripMargin
+        |}""".stripMargin*/
 
     val returnTest =
       """class ReturnTest {
@@ -271,7 +263,7 @@ object InstrumentUtilsUnitTest {
       TestCaseJavaProgram("ForLoopTest", forLoopTest, forLoopTestExpected),
       TestCaseJavaProgram("ForLoopTest2", forLoopTest2, forLoopTestExpected2),
       TestCaseJavaProgram("IfTest", ifTest, ifTestExpected),
-      TestCaseJavaProgram("LabelTest", labelTest, labelTestExpected),
+      // TestCaseJavaProgram("LabelTest", labelTest, labelTestExpected),
       TestCaseJavaProgram("ReturnTest", returnTest, returnTestExpected),
       TestCaseJavaProgram("VariableTest", variableTest, variableTestExpected),
       TestCaseJavaProgram("WhileTest", whileTest, whileTestExpected)
@@ -685,118 +677,6 @@ object InstrumentUtilsUnitTest {
     List[TestCaseJavaProgram](
       TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),
       TestCaseJavaProgram("Test02", test02, test02ExpectedOutput),
-    )
-  }
-
-  val changeEntryNodeUnitTest: List[TestCaseJavaProgram] = {
-    val block: String =
-      """class Block {
-        |  void f(int n)
-        |  {
-        |    int x = 1;
-        |    int y = 2;
-        |    int z = 3;
-        |  }
-        |}""".stripMargin
-    val blockExpected =
-      """""".stripMargin
-
-    val whileLoop: String = // A loop with a nesting depth of 1
-      """class WhileLoop {
-        |  void f(int n)
-        |  {
-        |    while (1 < 2) {
-        |      int x = 1;
-        |      int y = 2;
-        |      int z = 3;
-        |    }
-        |  }
-        |}""".stripMargin
-    val whileLoopExpected =
-      """""".stripMargin
-
-    val forLoop: String = // A loop with a nesting depth of 2
-      """class ForLoop {
-        |  void f(int n, int m)
-        |  {
-        |    for (int i = 0; i < 3; i++) {
-        |      int x = 1;
-        |      int y = 2;
-        |      int z = 3;
-        |    }
-        |  }
-        |}""".stripMargin
-    val forLoopExpected =
-      """""".stripMargin
-
-    val label: String =
-      """class Label {
-        |  void f(int n)
-        |  {
-        |    L1: int x = 1;
-        |    L2: int y = 2;
-        |    int z = 3;
-        |  }
-        |}""".stripMargin
-    val labelExpected =
-      """""".stripMargin
-
-    val nestedLoop01: String =
-      """class NestedLoop01 {
-        |  void f(int n)
-        |  {
-        |    while (1 < 2) {
-        |      while (3 < 4) {
-        |        int x = 1;
-        |        int y = 2;
-        |        int z = 3;
-        |      }
-        |    }
-        |  }
-        |}""".stripMargin
-    val nestedLoop01Expected =
-      """""".stripMargin
-
-    val nestedLoop02: String =
-      """class NestedLoop02 {
-        |  void f(int n)
-        |  {
-        |    while (1 < 2) {
-        |      while (3 < 4) {
-        |      }
-        |      int x = 1;
-        |      int y = 2;
-        |      int z = 3;
-        |    }
-        |  }
-        |}""".stripMargin
-    val nestedLoop02Expected =
-      """""".stripMargin
-
-    val nestedLoop03: String =
-      """class NestedLoop03 {
-        |  void f(int n)
-        |  {
-        |    while (1 < 2) {
-        |      int x = 1;
-        |      int y = 2;
-        |      int z = 3;
-        |      while (3 < 4) {
-        |      }
-        |    }
-        |  }
-        |}""".stripMargin
-    val nestedLoop03Expected =
-      """""".stripMargin
-
-    List[TestCaseJavaProgram](
-      TestCaseJavaProgram("Block", block, blockExpected),
-      TestCaseJavaProgram("WhileLoop", whileLoop, whileLoopExpected),
-      TestCaseJavaProgram("ForLoop", forLoop, forLoopExpected),
-      TestCaseJavaProgram("Label", label, labelExpected),
-      TestCaseJavaProgram("NestedLoop01", nestedLoop01, nestedLoop01Expected),
-      TestCaseJavaProgram("NestedLoop02", nestedLoop02, nestedLoop02Expected),
-      TestCaseJavaProgram("NestedLoop03", nestedLoop03, nestedLoop03Expected),
     )
   }
 }

@@ -1,10 +1,11 @@
-package brbo.common
+package brbo.common.instrument
 
 import brbo.common.BeforeOrAfterOrThis.{AFTER, BEFORE, THIS}
 import brbo.common.GhostVariableUtils.GhostVariable.Resource
-import brbo.common.InstrumentUtils.FileFormat.{C_FORMAT, FileFormat, JAVA_FORMAT}
-import brbo.common.InstrumentUtils.InstrumentMode.{ALL, AT_MOST_ONCE, InstrumentMode}
 import brbo.common.TypeUtils.BrboType
+import brbo.common.instrument.FileFormat.{FileFormat, JAVA_FORMAT, C_FORMAT}
+import brbo.common.instrument.InstrumentMode.{ALL, AT_MOST_ONCE, InstrumentMode}
+import brbo.common.{GhostVariableUtils, Locations, TargetMethod, TreeUtils}
 import brbo.verification.BoundChecking
 import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
@@ -310,18 +311,6 @@ object InstrumentUtils {
     }
   }
 
-  object InstrumentMode extends Enumeration {
-    type InstrumentMode = Value
-    val AT_MOST_ONCE, ALL = Value
-  }
-
-  object FileFormat extends Enumeration {
-    type FileFormat = Value
-    val JAVA_FORMAT, C_FORMAT = Value
-  }
-
-  case class StatementTreeInstrumentation(locations: Locations, whatToInsert: StatementTree => String)
-
   /**
    *
    * @param targetMethod    The method to be instrumented
@@ -402,45 +391,45 @@ object InstrumentUtils {
 
   private val cFilePrefix =
     s"""extern void __VERIFIER_error() __attribute__((noreturn));
-      |extern void __VERIFIER_assume (int);
-      |extern int __VERIFIER_nondet_int ();
-      |#define static_assert __VERIFIER_assert
-      |#define assume __VERIFIER_assume
-      |#define LARGE_INT 1000000
-      |#define true 1
-      |#define false 0
-      |#define boolean int
-      |#define ${BoundChecking.MAX_COEFFICIENT} ${BoundChecking.MAX_COEFFICIENT_VALUE}
-      |void __VERIFIER_assert(int cond) {
-      |  if (!(cond)) {
-      |    ERROR: __VERIFIER_error();
-      |  }
-      |  return;
-      |}
-      |void assert(int cond) {
-      |  if (!(cond)) {
-      |    ERROR: __VERIFIER_error();
-      |  }
-      |  return;
-      |}
-      |int ndInt() {
-      |  return __VERIFIER_nondet_int();
-      |}
-      |int ndBool() {
-      |  int x = ndInt();
-      |  assume(x == 1 || x == 0);
-      |  return x;
-      |}
-      |int ndInt2(int lower, int upper) {
-      |  int x = ndInt();
-      |  assume(lower <= x && x <= upper);
-      |  return x;
-      |}
-      |""".stripMargin
+       |extern void __VERIFIER_assume (int);
+       |extern int __VERIFIER_nondet_int ();
+       |#define static_assert __VERIFIER_assert
+       |#define assume __VERIFIER_assume
+       |#define LARGE_INT 1000000
+       |#define true 1
+       |#define false 0
+       |#define boolean int
+       |#define ${BoundChecking.MAX_COEFFICIENT} ${BoundChecking.MAX_COEFFICIENT_VALUE}
+       |void __VERIFIER_assert(int cond) {
+       |  if (!(cond)) {
+       |    ERROR: __VERIFIER_error();
+       |  }
+       |  return;
+       |}
+       |void assert(int cond) {
+       |  if (!(cond)) {
+       |    ERROR: __VERIFIER_error();
+       |  }
+       |  return;
+       |}
+       |int ndInt() {
+       |  return __VERIFIER_nondet_int();
+       |}
+       |int ndBool() {
+       |  int x = ndInt();
+       |  assume(x == 1 || x == 0);
+       |  return x;
+       |}
+       |int ndInt2(int lower, int upper) {
+       |  int x = ndInt();
+       |  assume(lower <= x && x <= upper);
+       |  return x;
+       |}
+       |""".stripMargin
 
-  def changeEntryNode(inputMethod: TargetMethod, entryCommand: StatementTree): TargetMethod = {
-    val enclosingTrees = TreeUtils.getEnclosingTrees(inputMethod.getPath(entryCommand))
-    assert(enclosingTrees.head == entryCommand, s"$entryCommand*****$enclosingTrees")
-    ???
+  def appendSemiColon(string: String): String = {
+    if (string == "") ""
+    else if (string.endsWith(";")) s"$string"
+    else s"$string;"
   }
 }

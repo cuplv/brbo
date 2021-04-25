@@ -1,10 +1,9 @@
 package brbo.verification
 
-import brbo.common.{InstrumentUtils, JavacUtils, TargetMethod}
+import brbo.common.instrument.InstrumentUtils
+import brbo.common.{JavacUtils, TargetMethod}
 import com.sun.source.tree.{ClassTree, CompilationUnitTree, MethodTree, Tree}
 import com.sun.source.util.{SourcePositions, TreePath, TreePathScanner, Trees}
-import javax.annotation.processing.SupportedAnnotationTypes
-import javax.lang.model.SourceVersion
 import org.apache.commons.io.FilenameUtils
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
@@ -12,6 +11,8 @@ import org.checkerframework.dataflow.cfg.UnderlyingAST.CFGMethod
 import org.checkerframework.dataflow.cfg.builder.CFGBuilder
 import org.checkerframework.javacutil.BasicTypeProcessor
 
+import javax.annotation.processing.SupportedAnnotationTypes
+import javax.lang.model.SourceVersion
 import scala.collection.JavaConverters._
 import scala.collection.immutable.HashMap
 
