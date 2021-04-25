@@ -17,14 +17,20 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
   }
   private val dominator = new Dominator(inputMethod)
 
-  override def decompose(): List[DecompositionResult] = {
+  override def decompose: List[DecompositionResult] = decompose(fullAmortize, selectiveAmortize, noAmortize)
+
+  def selectiveAmortize: IntermediateResult[Group] = {
     val groups = initializeGroups()
     val newGroups = mergeGroups(groups)
     val finalGroups = Groups(newGroups.elements.map(group => decideReset(group)))
     ???
   }
 
-  def initializeGroups(): Groups = {
+  def noAmortize: IntermediateResult[Group] = ???
+
+  def fullAmortize: IntermediateResult[Group] = ???
+
+  def initializeGroups(): Groups[Group] = {
     val updateCommands = commands.foldLeft(new HashSet[Group])({
       (acc, statement) =>
         DecompositionUtils.initializeGroups(statement, inputMethod) match {
@@ -35,7 +41,7 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
     Groups(updateCommands)
   }
 
-  def mergeGroups(groups: Groups): Groups = {
+  def mergeGroups(groups: Groups[Group]): Groups[Group] = {
     var newGroups: Set[Group] = groups.elements
     var continue = true
     while (continue) {
@@ -91,7 +97,7 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
 
   case class Update(statement: StatementTree, node: Node)
 
-  case class Group(resetLocation: Option[StatementTree], updates: Set[Update]) {
+  case class Group(resetLocation: Option[StatementTree], updates: Set[Update]) extends Segment {
     val taintSets: Set[TaintSet] = updates.map({
       update => DecompositionUtils.taintSetPerExecution(update.node, reachingDefinition, controlDependency, new HashSet[Node], debug = false)
     })
@@ -102,8 +108,15 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
     }
 
     def toTestString: String = s"Group(${resetLocation.toString}, ${updates.toList.map(u => u.toString).sorted})"
-  }
 
-  case class Groups(elements: Set[Group])
+    override def beginCommand: StatementTree = {
+      resetLocation match {
+        case Some(value) => value
+        case None => throw new Exception("Unexpected")
+      }
+    }
+
+    override def containCommand(tree: StatementTree): Boolean = updates.exists(u => u.statement == tree)
+  }
 
 }

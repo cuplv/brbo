@@ -1,67 +1,45 @@
 package brbo.verification.decomposition
 
-import brbo.common.BeforeOrAfterOrThis.BEFORE
-import brbo.common.GhostVariableUtils.GhostVariable.{Delta, Resource}
+import brbo.common.GhostVariableUtils.GhostVariable.Resource
 import brbo.common.TypeUtils.BrboType
-import brbo.common.TypeUtils.BrboType.{BrboType, INT}
 import brbo.common._
 import brbo.common.instrument.FileFormat.JAVA_FORMAT
-import brbo.common.instrument.InstrumentUtils.{NewMethodInformation, appendSemiColon}
-import brbo.common.instrument.{InstrumentUtils, StatementTreeInstrumentation}
-import brbo.verification.AmortizationMode.{AmortizationMode, FULL_AMORTIZE, NO_AMORTIZE, SELECTIVE_AMORTIZE}
+import brbo.common.instrument.InstrumentUtils
+import brbo.common.instrument.InstrumentUtils.NewMethodInformation
+import brbo.verification.AmortizationMode.{FULL_AMORTIZE, NO_AMORTIZE, SELECTIVE_AMORTIZE}
 import brbo.verification.BasicProcessor
 import com.sun.source.tree._
 
 import scala.collection.JavaConverters._
-import scala.collection.immutable.{HashMap, HashSet}
+import scala.collection.immutable.HashSet
 
 class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) extends DecompositionInterface(inputMethod, arguments) {
 
-  override def decompose(): List[DecompositionResult] = {
-    val listOfSubprograms: List[IntermediateResult] = {
-      val amortizationMode = arguments.getAmortizationMode
-      logger.info(s"Decomposing... Mode: `$amortizationMode`")
-      amortizationMode match {
-        case brbo.verification.AmortizationMode.NO_AMORTIZE =>
-          List[IntermediateResult](decomposeNoAmortize())
-        case brbo.verification.AmortizationMode.FULL_AMORTIZE =>
-          List[IntermediateResult](decomposeFullAmortize())
-        case brbo.verification.AmortizationMode.SELECTIVE_AMORTIZE =>
-          List[IntermediateResult](decomposeSelectiveAmortize())
-        case brbo.verification.AmortizationMode.ALL_AMORTIZE =>
-          List[IntermediateResult](
-            decomposeNoAmortize(),
-            decomposeSelectiveAmortize(),
-            decomposeFullAmortize()
-          )
-      }
-    }
-    listOfSubprograms.map({ result => insertGhostVariables(result) })
-  }
+  override def decompose: List[DecompositionResult] = decompose(fullAmortize, selectiveAmortize, noAmortize)
 
-  def decomposeNoAmortize(): IntermediateResult = {
+  def noAmortize: IntermediateResult[Subprogram] = {
     logger.info(s"Decompose mode: `${brbo.verification.AmortizationMode.NO_AMORTIZE}`")
     val subprograms = commands.foldLeft(new HashSet[Subprogram])({
       (acc, command) =>
         command match {
           case expressionStatementTree: ExpressionStatementTree =>
             GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Resource) match {
-              case Some(_) => acc + Subprogram(List(command))
+              case Some(_) => acc + Subprogram(inputMethod, List(command))
               case None => acc
             }
           case _ => acc
         }
     })
-    IntermediateResult(Subprograms(subprograms), NO_AMORTIZE)
+    IntermediateResult(Groups(subprograms), NO_AMORTIZE)
   }
 
-  def decomposeFullAmortize(): IntermediateResult = {
+  def fullAmortize: IntermediateResult[Subprogram] = {
     logger.info(s"Decompose mode: `${brbo.verification.AmortizationMode.FULL_AMORTIZE}`")
-    val subprogram = Subprogram(inputMethod.methodTree.getBody.getStatements.asScala.toList)
-    IntermediateResult(Subprograms(HashSet[Subprogram](subprogram)), FULL_AMORTIZE)
+    val subprogram = Subprogram(inputMethod, inputMethod.methodTree.getBody.getStatements.asScala.toList)
+    IntermediateResult(Groups(HashSet[Subprogram](subprogram)), FULL_AMORTIZE)
   }
 
-  def decomposeSelectiveAmortize(): IntermediateResult = {
+  def selectiveAmortize: IntermediateResult[Subprogram] = {
     logger.info(s"Decompose mode: `${brbo.verification.AmortizationMode.SELECTIVE_AMORTIZE}`")
     var subprograms = eliminateEnvironmentInterference(mergeIfOverlap(initializeSubprograms()))
     var continue = true
@@ -88,133 +66,17 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
         subprograms = mergeIfOverlap(subprograms.programs - pair._1 - pair._2 + newSubprogram)
       }
     }
-    IntermediateResult(subprograms, SELECTIVE_AMORTIZE)
+    IntermediateResult(Groups(subprograms.programs), SELECTIVE_AMORTIZE)
   }
 
   def initializeSubprograms(): Set[Subprogram] = {
     commands.foldLeft(new HashSet[Subprogram])({
       (acc, statement) =>
         DecompositionUtils.initializeGroups(statement, inputMethod) match {
-          case Some((statement, _)) => acc + Subprogram(List(statement))
+          case Some((statement, _)) => acc + Subprogram(inputMethod, List(statement))
           case None => acc
         }
     })
-  }
-
-  private def shouldInstrument(subprograms: Subprograms)(tree: StatementTree): Boolean = {
-    if (tree == null) return false
-
-    val insertResetsAndCounterUpdates = subprograms.programs.exists({
-      subprogram => subprogram.astNodes.head == tree
-    })
-
-    val insertUpdates = {
-      if (TreeUtils.isCommand(tree)) {
-        tree match {
-          case expressionStatementTree: ExpressionStatementTree =>
-            GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Resource).isDefined
-          case _ => false
-        }
-      }
-      else false
-    }
-
-    insertResetsAndCounterUpdates || insertUpdates
-  }
-
-  private def whatToInsert(deltaCounterPairs: Map[Subprogram, DeltaCounterPair])(tree: StatementTree): String = {
-    if (tree == null) return ""
-
-    val subprograms = deltaCounterPairs.keySet
-    val prepend1: String = subprograms.find({
-      subprogram => subprogram.astNodes.head == tree
-    }) match {
-      case Some(subprogram) =>
-        val pair = deltaCounterPairs(subprogram)
-        val deltaPrime = GhostVariableUtils.generateDeltaVariablePrime(pair.delta)
-        // s"$deltaPrime = ($deltaPrime > ${pair.delta}) ? $deltaPrime: ${pair.delta}; ${pair.delta} = 0; ${pair.counter} = ${pair.counter} + 1;"
-        s"$deltaPrime = ${pair.delta}; ${pair.delta} = 0; ${pair.counter} = ${pair.counter} + 1;"
-      case None => ""
-    }
-
-    val prepend2: String = {
-      if (TreeUtils.isCommand(tree)) {
-        tree match {
-          case expressionStatementTree: ExpressionStatementTree =>
-            GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Resource) match {
-              case Some(updateTree) =>
-                // Assume there is only 1 subprogram that contains command `R=R+e`
-                subprograms.find(subprogram => subprogram.commands.contains(tree)) match {
-                  case Some(subprogram) =>
-                    val pair = deltaCounterPairs(subprogram)
-                    s"${pair.delta} = ${pair.delta} + ${updateTree.increment}"
-                  case None => ""
-                }
-              case None => ""
-            }
-          case _ => ""
-        }
-      }
-      else ""
-    }
-
-    s"${appendSemiColon(prepend1)}${appendSemiColon(prepend2)}"
-  }
-
-  def insertGhostVariables(intermediateResult: IntermediateResult): DecompositionResult = {
-    val subprograms: Subprograms = intermediateResult.subprograms
-    val amortizationMode: AmortizationMode = intermediateResult.amortizationMode
-    logger.info(s"Inserting resets and updates to ghost variables... Mode: `$amortizationMode`")
-
-    val deltaCounterPairs: Map[Subprogram, DeltaCounterPair] = {
-      val deltaVariables: Map[Subprogram, String] = {
-        // Eliminate non-deterministic behavior
-        val indexedSubprograms: List[(Subprogram, Int)] = subprograms.programs.toList.sortWith({
-          case (subprogram1, subprogram2) => subprogram1.toString < subprogram2.toString
-        }).zipWithIndex
-        indexedSubprograms.foldLeft(new HashMap[Subprogram, String])({
-          case (acc, (subprogram, index)) =>
-            acc + (subprogram -> GhostVariableUtils.generateName(index.toString, Delta))
-        })
-      }
-      subprograms.programs.foldLeft(new HashMap[Subprogram, DeltaCounterPair])({
-        (acc, subprogram) =>
-          val pair = DeltaCounterPair(deltaVariables(subprogram), counterMap(subprogram.astNodes.head))
-          acc + (subprogram -> pair)
-      })
-    }
-
-    val newMethodBody = {
-      val ghostVariableDeclaration = {
-        val ghostVariables = deltaCounterPairs.values.foldLeft(new HashMap[String, BrboType])({
-          (acc, pair) => acc + (pair.delta -> INT) + (GhostVariableUtils.generateDeltaVariablePrime(pair.delta) -> INT) + (pair.counter -> INT)
-        })
-        val spaces = " " * 4
-        val declarations = ghostVariables
-          .map(pair => BrboType.variableDeclarationAndInitialization(pair._1, pair._2, JAVA_FORMAT))
-          .toList.sortWith(_ < _).mkString(s"\n$spaces")
-        s"$spaces$declarations"
-      }
-      val newMethodBody = InstrumentUtils.instrumentStatementTrees(
-        inputMethod,
-        StatementTreeInstrumentation(
-          Locations(shouldInstrument(subprograms), BEFORE),
-          whatToInsert(deltaCounterPairs)
-        ),
-        indent = 2
-      )
-      // TODO: A very hacky way to insert variable declarations
-      newMethodBody.replaceFirst("""\{""", s"{\n$ghostVariableDeclaration")
-    }
-    val newSourceFile = InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(
-      inputMethod,
-      NewMethodInformation(None, None, None, List("import brbo.benchmarks.Common;"), Some("Common"), isAbstractClass = true, newMethodBody),
-      JAVA_FORMAT,
-      indent = 2
-    )
-    val result = DecompositionResult(newSourceFile, deltaCounterPairs.values.toSet, amortizationMode, inputMethod)
-    if (debug || arguments.getPrintCFG) CFGUtils.printPDF(result.outputMethod.cfg, Some("decomposed-"))
-    result
   }
 
   def merge(subprogram1: Subprogram, subprogram2: Subprogram): Subprogram = {
@@ -234,7 +96,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
           if (last1 >= last2) last1 else last2
         }
         traceOrError(s"Merge - Choose a subsequence from index `$head` to `$last` in minimal enclosing block `$minimalEnclosingBlock1`")
-        return Subprogram(minimalEnclosingBlock1.getStatements.asScala.slice(head, last + 1).toList)
+        return Subprogram(inputMethod, minimalEnclosingBlock1.getStatements.asScala.slice(head, last + 1).toList)
       case _ =>
         getAllCommonEnclosingTrees(subprogram1, subprogram2).last match {
           case blockTree: BlockTree =>
@@ -248,8 +110,8 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
             val endIndex = statements.indexOf(statements2.last)
             assert(startIndex != -1 && endIndex != -1)
             traceOrError(s"Merge - Choose a subsequence from index `$startIndex` to `$endIndex` in common enclosing block `$blockTree`")
-            return Subprogram(statements.slice(startIndex, endIndex + 1))
-          case tree@_ => return Subprogram(List(tree.asInstanceOf[StatementTree]))
+            return Subprogram(inputMethod, statements.slice(startIndex, endIndex + 1))
+          case tree@_ => return Subprogram(inputMethod, List(tree.asInstanceOf[StatementTree]))
         }
     }
 
@@ -349,7 +211,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
         }
     }
 
-    Subprogram(newAstNodes.map(tree => tree.asInstanceOf[StatementTree]))
+    Subprogram(inputMethod, newAstNodes.map(tree => tree.asInstanceOf[StatementTree]))
   }
 
   def mergeIfOverlap(subprograms: Set[Subprogram]): Subprograms = {
@@ -492,84 +354,88 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
     traceOrError(s"Subprogram 2:\n$subprogram2")
     modifiedSet1.intersect(taintSet2.inputs).nonEmpty
   }
+}
 
-  case class Subprogram(astNodes: List[StatementTree]) {
-    assert(astNodes.nonEmpty)
+case class Subprogram(inputMethod: TargetMethod, astNodes: List[StatementTree]) extends Segment {
+  assert(astNodes.nonEmpty)
 
-    override def toString: String = {
-      val nodes = astNodes.map(t => t.toString).mkString("\n")
-      s"Subprogram(\n$nodes\n)"
+  override def toString: String = {
+    val nodes = astNodes.map(t => t.toString).mkString("\n")
+    s"Subprogram(\n$nodes\n)"
+  }
+
+  val innerTrees: Set[StatementTree] = astNodes.flatMap({ astNode => TreeUtils.collectStatementTrees(astNode) }).toSet
+  val commands: List[StatementTree] = TreeUtils.collectCommands(astNodes)
+
+  val minimalEnclosingTree: StatementTree = {
+    if (astNodes.size == 1)
+      astNodes.head
+    else {
+      inputMethod.getPath(astNodes.head).getParentPath.getLeaf match {
+        case blockTree: BlockTree => blockTree
+        case null => throw new Exception(s"No minimal enclosing tree for $this")
+      }
     }
+  }
 
-    val innerTrees: Set[StatementTree] = astNodes.flatMap({ astNode => TreeUtils.collectStatementTrees(astNode) }).toSet
-    val commands: List[StatementTree] = TreeUtils.collectCommands(astNodes)
+  val minimalEnclosingBlock: Option[BlockTree] = {
+    org.checkerframework.javacutil.TreePathUtil.enclosingOfKind(inputMethod.getPath(astNodes.head), Tree.Kind.BLOCK) match {
+      case null => throw new Exception("Unexpected")
+      case blockTree: BlockTree =>
+        if (blockTree.getStatements.contains(astNodes.head)) Some(blockTree)
+        else None
+    }
+  }
+  assert(minimalEnclosingBlock.isEmpty || astNodes.size == 1 || minimalEnclosingTree == minimalEnclosingBlock.get)
+  assert(minimalEnclosingBlock.nonEmpty || minimalEnclosingTree == astNodes.head)
 
-    val minimalEnclosingTree: StatementTree = {
-      if (astNodes.size == 1)
-        astNodes.head
-      else {
-        inputMethod.getPath(astNodes.head).getParentPath.getLeaf match {
-          case blockTree: BlockTree => blockTree
-          case null => throw new Exception(s"No minimal enclosing tree for $this")
+  private val declaredLocalVariables = {
+    innerTrees.foldLeft(new HashSet[String])({
+      (acc, tree) =>
+        tree match {
+          case variableTree: VariableTree => acc + variableTree.getName.toString
+          case _ => acc
         }
-      }
-    }
-
-    val minimalEnclosingBlock: Option[BlockTree] = {
-      org.checkerframework.javacutil.TreePathUtil.enclosingOfKind(inputMethod.getPath(astNodes.head), Tree.Kind.BLOCK) match {
-        case null => throw new Exception("Unexpected")
-        case blockTree: BlockTree =>
-          if (blockTree.getStatements.contains(astNodes.head)) Some(blockTree)
-          else None
-      }
-    }
-    assert(minimalEnclosingBlock.isEmpty || astNodes.size == 1 || minimalEnclosingTree == minimalEnclosingBlock.get)
-    assert(minimalEnclosingBlock.nonEmpty || minimalEnclosingTree == astNodes.head)
-
-    private val declaredLocalVariables = {
-      innerTrees.foldLeft(new HashSet[String])({
-        (acc, tree) =>
-          tree match {
-            case variableTree: VariableTree => acc + variableTree.getName.toString
-            case _ => acc
-          }
-      }).toList.sortWith(_ < _)
-    }
-
-    val javaProgramRepresentation: String = {
-      // Assume all variables have distinct names
-      val parameters =
-        (inputMethod.inputVariables ++ inputMethod.localVariables)
-          .filterKeys(key => !declaredLocalVariables.contains(key))
-          .map({ case (identifier, typ) => BrboType.variableDeclaration(identifier, typ) })
-          .mkString(", ")
-      val methodBody = astNodes.map(tree => s"${tree.toString};").mkString("\n")
-      InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(
-        inputMethod,
-        NewMethodInformation(Some(parameters), None, None, List("import brbo.benchmarks.Common;"), Some("Common"), isAbstractClass = true, newMethodBody = s"{\n$methodBody\n}"),
-        JAVA_FORMAT,
-        indent = 2
-      )
-    }
-
-    val targetMethod: TargetMethod = BasicProcessor.getTargetMethod(inputMethod.fullQualifiedClassName, javaProgramRepresentation)
+    }).toList.sortWith(_ < _)
   }
 
-  case class Subprograms(programs: Set[Subprogram]) {
-    // Any two subprograms should not overlap with each other
-    MathUtils.crossJoin(List(programs, programs)).foreach({
-      programs2 =>
-        val program1 = programs2.head
-        val program2 = programs2.tail.head
-        if (program1 != program2) assert(!overlap(program1, program2), s"Overlapping subprograms:\n$program1\n$program2")
-    })
-
-    override def toString: String = {
-      val subprograms = programs.map(x => x.toString).toList.mkString("\n")
-      s"Subprograms(\n$subprograms\n)"
-    }
+  val javaProgramRepresentation: String = {
+    // Assume all variables have distinct names
+    val parameters =
+      (inputMethod.inputVariables ++ inputMethod.localVariables)
+        .filterKeys(key => !declaredLocalVariables.contains(key))
+        .map({ case (identifier, typ) => BrboType.variableDeclaration(identifier, typ) })
+        .mkString(", ")
+    val methodBody = astNodes.map(tree => s"${tree.toString};").mkString("\n")
+    InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(
+      inputMethod,
+      NewMethodInformation(Some(parameters), None, None, List("import brbo.benchmarks.Common;"), Some("Common"), isAbstractClass = true, newMethodBody = s"{\n$methodBody\n}"),
+      JAVA_FORMAT,
+      indent = 2
+    )
   }
 
-  case class IntermediateResult(subprograms: Subprograms, amortizationMode: AmortizationMode)
+  val targetMethod: TargetMethod = BasicProcessor.getTargetMethod(inputMethod.fullQualifiedClassName, javaProgramRepresentation)
 
+  override def containCommand(tree: StatementTree): Boolean = {
+    assert(TreeUtils.isCommand(tree))
+    commands.contains(tree)
+  }
+
+  override def beginCommand: StatementTree = astNodes.head
+}
+
+case class Subprograms(programs: Set[Subprogram]) {
+  // Any two subprograms should not overlap with each other
+  /*MathUtils.crossJoin(List(programs, programs)).foreach({
+    programs2 =>
+      val program1 = programs2.head
+      val program2 = programs2.tail.head
+      if (program1 != program2) assert(!overlap(program1, program2), s"Overlapping subprograms:\n$program1\n$program2")
+  })*/
+
+  override def toString: String = {
+    val subprograms = programs.map(x => x.toString).toList.mkString("\n")
+    s"Subprograms(\n$subprograms\n)"
+  }
 }

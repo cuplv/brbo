@@ -20,21 +20,8 @@ class ReachingTransfer
     new RegularTransferResult(null, p.getRegularStore)
   }
 
-  // Ignore variable declaration node, because it contains no initializer!
+  // Ignore `VariableDeclarationNode`, because it contains no initializer!
   // E.g., `int x = 0` is represented as a declaration node `int x` and an assignment node `x = 0`
-  /*override def visitVariableDeclaration(n: VariableDeclarationNode, p: TransferInput[ReachingValue, ReachingStore]): TransferResult[ReachingValue, ReachingStore] = {
-    val inputDefinitions = super.visitVariableDeclaration(n, p).getRegularStore.definitions
-    val definedVariable = n.getName
-    val newDefinitions = {
-      val killed = inputDefinitions.filter(value => value.variable == definedVariable)
-      val generated = ReachingValue(Some(n), definedVariable)
-      val result = inputDefinitions + generated
-      logger.error(s"[Variable declaration] Node `$n`\nInput: $inputDefinitions\nKilled: $killed\nGenerated: $generated\nResult: $result")
-      result
-    }
-    new RegularTransferResult(null, ReachingStore(newDefinitions))
-  }*/
-
   override def visitAssignment(n: AssignmentNode, p: TransferInput[ReachingValue, ReachingStore]): TransferResult[ReachingValue, ReachingStore] = {
     val inputDefinitions = super.visitAssignment(n, p).getRegularStore.definitions
     val definedVariable = n.getTarget.toString
