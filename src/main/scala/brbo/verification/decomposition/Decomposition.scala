@@ -72,7 +72,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
   def initializeSubprograms(): Set[Subprogram] = {
     commands.foldLeft(new HashSet[Subprogram])({
       (acc, statement) =>
-        DecompositionUtils.initializeGroups(statement, inputMethod) match {
+        initializeGroups(statement, inputMethod) match {
           case Some((statement, _)) => acc + Subprogram(inputMethod, List(statement))
           case None => acc
         }
@@ -220,7 +220,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
     while (continue) {
       MathUtils.crossJoin2(newSubprograms, newSubprograms)
         .filter(pair => pair._1 != pair._2)
-        .find({ pair => overlap(pair._1, pair._2) })
+        .find({ pair => Decomposition.overlap(pair._1, pair._2) })
       match {
         case Some(pair) =>
           val newSubprogram = merge(pair._1, pair._2)
@@ -231,10 +231,6 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
       }
     }
     Subprograms(newSubprograms)
-  }
-
-  def overlap(subprogram1: Subprogram, subprogram2: Subprogram): Boolean = {
-    subprogram1.innerTrees.intersect(subprogram2.innerTrees).nonEmpty
   }
 
   def environmentModifiedSet(subprogram: Subprogram, subprograms: Subprograms): Set[String] = {
@@ -356,6 +352,21 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
   }
 }
 
+object Decomposition {
+  def overlap(subprogram1: Subprogram, subprogram2: Subprogram): Boolean = {
+    subprogram1.innerTrees.intersect(subprogram2.innerTrees).nonEmpty
+  }
+
+  def ensureNoOverlap(programs: Set[Subprogram]): Unit = {
+    MathUtils.crossJoin(List(programs, programs)).foreach({
+      programs2 =>
+        val program1 = programs2.head
+        val program2 = programs2.tail.head
+        if (program1 != program2) assert(!overlap(program1, program2), s"Overlapping subprograms:\n$program1\n$program2")
+    })
+  }
+}
+
 case class Subprogram(inputMethod: TargetMethod, astNodes: List[StatementTree]) extends Segment {
   assert(astNodes.nonEmpty)
 
@@ -423,16 +434,12 @@ case class Subprogram(inputMethod: TargetMethod, astNodes: List[StatementTree]) 
   }
 
   override def beginCommand: StatementTree = astNodes.head
+
+  override def toTestString: String = s"Subprogram(${astNodes.mkString(", ")})"
 }
 
 case class Subprograms(programs: Set[Subprogram]) {
-  // Any two subprograms should not overlap with each other
-  /*MathUtils.crossJoin(List(programs, programs)).foreach({
-    programs2 =>
-      val program1 = programs2.head
-      val program2 = programs2.tail.head
-      if (program1 != program2) assert(!overlap(program1, program2), s"Overlapping subprograms:\n$program1\n$program2")
-  })*/
+  Decomposition.ensureNoOverlap(programs)
 
   override def toString: String = {
     val subprograms = programs.map(x => x.toString).toList.mkString("\n")

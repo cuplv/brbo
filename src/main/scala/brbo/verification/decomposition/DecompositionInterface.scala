@@ -12,6 +12,7 @@ import brbo.verification.AmortizationMode.AmortizationMode
 import brbo.verification.CounterAxiomGenerator
 import com.sun.source.tree.{ExpressionStatementTree, StatementTree, Tree}
 import org.apache.logging.log4j.{LogManager, Logger}
+import org.checkerframework.dataflow.cfg.node.Node
 
 import scala.collection.immutable.HashMap
 
@@ -45,6 +46,45 @@ abstract class DecompositionInterface(inputMethod: TargetMethod, arguments: Comm
       }
     }
     listOfSubprograms.map({ result => insertGhostVariables(result) })
+  }
+
+  /**
+   *
+   * @param statement    The statement from which we generate an initial subprogram
+   * @param targetMethod The method that encloses the above statement
+   * @return The initial program and its entry node in the CFG
+   */
+  def initializeGroups(statement: StatementTree, targetMethod: TargetMethod): Option[(StatementTree, Node)] = {
+    statement match {
+      case expressionStatementTree: ExpressionStatementTree =>
+        GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Resource) match {
+          case Some(updateTree) =>
+            val updateNode = CFGUtils.getNodesForExpressionStatementTree(expressionStatementTree, targetMethod.cfg)
+
+            updateTree.increment match {
+              /*case literalTree: LiteralTree =>
+                assert(literalTree.getKind == Kind.INT_LITERAL)
+                // The initial subprogram is the minimal enclosing loop when `R` is updated by a constant
+                val subprogram: StatementTree = {
+                  TreeUtils.getMinimalEnclosingLoop(targetMethod.getPath(statement)) match {
+                    case Some(enclosingLoop) => enclosingLoop
+                    case None =>
+                      logger.trace(s"Resource update `$statement` does not have an enclosing loop")
+                      statement
+                  }
+                }.asInstanceOf[StatementTree]
+                val entryNode: Node = CFGUtils.entryOfMinimalEnclosingLoop(updateNode, targetMethod) match {
+                  case Some(entryNode) => entryNode
+                  case None => updateNode
+                }
+                logger.trace(s"Resource update `$statement`'s initial subprogram is `$subprogram`. Entry node is `$entryNode`")
+                Some(subprogram, entryNode)*/
+              case _ => Some(statement, updateNode)
+            }
+          case None => None
+        }
+      case _ => None
+    }
   }
 
   def insertGhostVariables[T <: Segment](intermediateResult: IntermediateResult[T]): DecompositionResult = {

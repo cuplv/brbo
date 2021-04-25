@@ -23,17 +23,30 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
     val groups = initializeGroups()
     val newGroups = mergeGroups(groups)
     val finalGroups = Groups(newGroups.elements.map(group => decideReset(group)))
-    ???
+    IntermediateResult(finalGroups, arguments.getAmortizationMode)
   }
 
-  def noAmortize: IntermediateResult[Group] = ???
+  def noAmortize: IntermediateResult[Group] = {
+    val groups = initializeGroups()
+    val newGroups = groups.elements.map(group => Group(Some(group.updates.head.statement), group.updates))
+    IntermediateResult(Groups(newGroups), arguments.getAmortizationMode)
+  }
 
-  def fullAmortize: IntermediateResult[Group] = ???
+  def fullAmortize: IntermediateResult[Group] = {
+    val updates = {
+      commands.flatMap({ statement => initializeGroups(statement, inputMethod) })
+        .map(pair => Update(pair._1, pair._2))
+        .toSet
+    }
+    val firstCommand = inputMethod.commands.last
+    val group = Group(Some(firstCommand), updates)
+    IntermediateResult(Groups(Set(group)), arguments.getAmortizationMode)
+  }
 
   def initializeGroups(): Groups[Group] = {
     val updateCommands = commands.foldLeft(new HashSet[Group])({
       (acc, statement) =>
-        DecompositionUtils.initializeGroups(statement, inputMethod) match {
+        initializeGroups(statement, inputMethod) match {
           case Some((statement, node)) => acc + Group(None, HashSet(Update(statement, node)))
           case None => acc
         }
@@ -107,7 +120,7 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
       case None =>
     }
 
-    def toTestString: String = s"Group(${resetLocation.toString}, ${updates.toList.map(u => u.toString).sorted})"
+    override def toTestString: String = s"Group(${resetLocation.toString}, ${updates.toList.map(u => u.toString).sorted})"
 
     override def beginCommand: StatementTree = {
       resetLocation match {

@@ -21,16 +21,36 @@ class NewDecompositionUnitTest extends AnyFlatSpec {
     })
   }
 
-  "Deciding reset locations" should "be correct" in {
+  "Selective amortization" should "be correct" in {
     NewDecompositionUnitTest.decomposeSelectiveAmortizationUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val decomposition = new NewDecomposition(targetMethod, DEFAULT_ARGUMENTS)
-        val groups = decomposition.initializeGroups()
-        val newGroups = decomposition.mergeGroups(groups)
-        val newGroups2 = newGroups.elements.map(g => decomposition.decideReset(g))
-        val string = newGroups2.toList.map({ group => group.toTestString }).sorted
-        println(string)
+        val groups = decomposition.selectiveAmortize.groups
+        val string = groups.toTestString
+        assert(StringCompare.ignoreWhitespaces(string, testCase.expectedOutput, testCase.className))
+    })
+  }
+
+  "No amortization" should "be correct" in {
+    NewDecompositionUnitTest.decomposeNoAmortizationUnitTest.foreach({
+      testCase =>
+        val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
+        val decomposition = new NewDecomposition(targetMethod, DEFAULT_ARGUMENTS)
+        val groups = decomposition.noAmortize.groups
+        val string = groups.toTestString
+        assert(StringCompare.ignoreWhitespaces(string, testCase.expectedOutput, testCase.className))
+    })
+  }
+
+  "Full amortization" should "be correct" in {
+    NewDecompositionUnitTest.decomposeFullAmortizationUnitTest.foreach({
+      testCase =>
+        val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
+        val decomposition = new NewDecomposition(targetMethod, DEFAULT_ARGUMENTS)
+        val groups = decomposition.fullAmortize.groups
+        val string = groups.toTestString
+        assert(StringCompare.ignoreWhitespaces(string, testCase.expectedOutput, testCase.className))
     })
   }
 }
@@ -150,10 +170,11 @@ object NewDecompositionUnitTest {
 
   val decomposeSelectiveAmortizationUnitTest: List[TestCaseJavaProgram] = {
     val test01ExpectedOutput =
-      """List(Group(Some(R = R + 1;), List(Update(R = R + 1;,R = (R + 1)))))""".stripMargin
+      """Group(Some(R = R + 1;), List(Update(R = R + 1;,R = (R + 1))))""".stripMargin
 
     val test02ExpectedOutput =
-      """List(Group(Some(R = R + separator;), List(Update(R = R + separator;,R = (R + separator)))), Group(Some(int sb = 0), List(Update(R = R + (start - index);,R = (R + (start - index))), Update(R = R + (text - index);,R = (R + (text - index))))))""".stripMargin
+      """Group(Some(R = R + separator;), List(Update(R = R + separator;,R = (R + separator))))
+        |Group(Some(int sb = 0), List(Update(R = R + (start - index);,R = (R + (start - index))), Update(R = R + (text - index);,R = (R + (text - index)))))""".stripMargin
 
     List[TestCaseJavaProgram](
       TestCaseJavaProgram("Test01", decompositionTest01, test01ExpectedOutput),
@@ -163,10 +184,12 @@ object NewDecompositionUnitTest {
 
   val decomposeNoAmortizationUnitTest: List[TestCaseJavaProgram] = {
     val test01ExpectedOutput =
-      """""".stripMargin
+      """Group(Some(R = R + 1;), List(Update(R = R + 1;,R = (R + 1))))""".stripMargin
 
     val test02ExpectedOutput =
-      """""".stripMargin
+      """Group(Some(R = R + (start - index);), List(Update(R = R + (start - index);,R = (R + (start - index)))))
+        |Group(Some(R = R + (text - index);), List(Update(R = R + (text - index);,R = (R + (text - index)))))
+        |Group(Some(R = R + separator;), List(Update(R = R + separator;,R = (R + separator))))""".stripMargin
 
     List[TestCaseJavaProgram](
       TestCaseJavaProgram("Test01", decompositionTest01, test01ExpectedOutput),
@@ -176,10 +199,10 @@ object NewDecompositionUnitTest {
 
   val decomposeFullAmortizationUnitTest: List[TestCaseJavaProgram] = {
     val test01ExpectedOutput =
-      """""".stripMargin
+      """Group(Some(int R = 0), List(Update(R = R + 1;,R = (R + 1))))""".stripMargin
 
     val test02ExpectedOutput =
-      """""".stripMargin
+      """Group(Some(int R = 0), List(Update(R = R + (start - index);,R = (R + (start - index))), Update(R = R + (text - index);,R = (R + (text - index))), Update(R = R + separator;,R = (R + separator))))""".stripMargin
 
     List[TestCaseJavaProgram](
       TestCaseJavaProgram("Test01", decompositionTest01, test01ExpectedOutput),

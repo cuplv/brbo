@@ -6,4 +6,6 @@ abstract class Segment {
   def beginCommand: StatementTree
 
   def containCommand(tree: StatementTree): Boolean
+
+  def toTestString: String
 }

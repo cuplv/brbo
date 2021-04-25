@@ -4,18 +4,17 @@ import brbo.common.AnalysisResult.{RawResult, aggregateResultsIndividual, aggreg
 import brbo.common._
 import brbo.verification.AmortizationMode.ALL_AMORTIZE
 import brbo.verification.BoundChecking.GlobalInvariants
-import brbo.verification.decomposition.DecompositionResult
+import brbo.verification.decomposition.{Decomposition, DecompositionResult, NewDecomposition}
 import brbo.verification.{BasicProcessor, BoundChecking}
 import com.microsoft.z3.AST
 import org.apache.commons.io.{FileUtils, FilenameUtils}
 import org.apache.logging.log4j.LogManager
+
 import java.io.File
 import java.nio.charset.Charset
 import java.text.SimpleDateFormat
 import java.util.Date
-
 import brbo.benchmarks.GenerateSyntheticPrograms
-import brbo.verification.decomposition.Decomposition
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable.HashSet
@@ -158,7 +157,7 @@ object BrboMain {
         CFGUtils.printPDF(targetMethod.cfg, None)
         logger.info(s"${targetMethod.cfg.toString}")
       }
-      val decomposition: Decomposition = new Decomposition(targetMethod, arguments)
+      val decomposition = new NewDecomposition(targetMethod, arguments)
       Some(decomposition.decompose)
     }
     else {
