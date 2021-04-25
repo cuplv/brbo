@@ -3,7 +3,7 @@ package brbo.verification.decomposition
 import brbo.common.GhostVariableUtils.GhostVariable.Resource
 import brbo.common.{CFGUtils, GhostVariableUtils, TargetMethod}
 import brbo.verification.dependency.reachdef.ReachingValue
-import brbo.verification.dependency.{ControlDependency, DataDependency}
+import brbo.verification.dependency.{ControlDependency, ReachingDefinition}
 import com.sun.source.tree.{ExpressionStatementTree, StatementTree}
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.block.Block.BlockType
@@ -116,47 +116,46 @@ object DecompositionUtils {
     else Some(condition)
   }
 
-  def computeTaintSetControlAndData(targetMethod: TargetMethod, debug: Boolean): Set[String] = {
-    val dataDependency = DataDependency.computeDataDependency(targetMethod)
+  def controlDataDependencyForResources(targetMethod: TargetMethod, debug: Boolean): TaintSet = {
+    val reachingDefinitions = ReachingDefinition.run(targetMethod)
     val controlDependency = {
       val controlDependency = ControlDependency.computeControlDependency(targetMethod)
       ControlDependency.reverseControlDependency(controlDependency)
     }
-    targetMethod.cfg.getAllNodes.asScala
+    val taintSets = targetMethod.cfg.getAllNodes.asScala
       .filter({ node => GhostVariableUtils.extractUpdate(node, Resource).isDefined })
-      .flatMap({ node =>
+      .map({ node =>
         traceOrError(s"Compute taint set for $node", debug)
-        val taintSet = controlDataDependency(node, inputNodeIsExpression = false, dataDependency, controlDependency, new HashSet[Node], debug)
-        taintSet.inputs
+        controlDataDependencyForNode(node, inputNodeIsExpression = false, reachingDefinitions, controlDependency, new HashSet[Node], debug)
       })
       .toSet
+    TaintSet(taintSets.flatMap(set => set.allVariables), taintSets.flatMap(set => set.inputs))
   }
 
-  private def controlDataDependency(inputNode: Node,
-                                    inputNodeIsExpression: Boolean,
-                                    dataDependency: Map[Node, Set[ReachingValue]],
-                                    controlDependency: Map[Block, Set[Block]],
-                                    visited: Set[Node],
-                                    debug: Boolean): TaintSet = {
-    val emptyTaintSet = TaintSet(new HashSet[String], new HashSet[String])
-    if (visited.contains(inputNode)) return emptyTaintSet
+  private def controlDataDependencyForNode(inputNode: Node,
+                                           inputNodeIsExpression: Boolean,
+                                           reachingDefinitions: ReachingDefinition,
+                                           controlDependency: Map[Block, Set[Block]],
+                                           visited: Set[Node],
+                                           debug: Boolean): TaintSet = {
+    if (visited.contains(inputNode)) return TaintSet(new HashSet[String], new HashSet[String])
 
     val usedVariables: Set[String] = CFGUtils.getUsedVariables(inputNode, inputNodeIsExpression)
     traceOrError(s"Used variables: $usedVariables", debug)
 
-    val set1: TaintSet = dataDependency.get(inputNode) match {
+    val set1: TaintSet = reachingDefinitions.get(inputNode) match {
       case Some(definitions) =>
         val newDefinitions = definitions.filter(definition => usedVariables.contains(definition.variable))
         traceOrError(s"Reaching definitions (that are used): $newDefinitions", debug)
         val taintSets = newDefinitions.map({
           definition =>
             definition.node match {
-              case Some(node) => controlDataDependency(node, inputNodeIsExpression = false, dataDependency, controlDependency, visited + inputNode, debug)
-              case None => TaintSet(new HashSet[String], HashSet[String](definition.variable)) // This definition comes from an input variable
+              case Some(node) => controlDataDependencyForNode(node, inputNodeIsExpression = false, reachingDefinitions, controlDependency, visited + inputNode, debug)
+              case None => TaintSet(HashSet[String](definition.variable), HashSet[String](definition.variable)) // This definition comes from an input variable
             }
         })
-        TaintSet(usedVariables ++ taintSets.flatMap(set => set.allVariables), taintSets.flatMap(set => set.inputs))
-      case None => TaintSet(usedVariables, new HashSet[String])
+        TaintSet(taintSets.flatMap(set => set.allVariables), taintSets.flatMap(set => set.inputs))
+      case None => TaintSet(new HashSet[String], new HashSet[String])
     }
 
     val set2: TaintSet = controlDependency.get(inputNode.getBlock) match {
@@ -165,7 +164,7 @@ object DecompositionUtils {
           block =>
             traceOrError(s"Compute taint set for conditional node $inputNode", debug)
             getCondition(inputNode, block, debug) match {
-              case Some(condition) => controlDataDependency(condition, inputNodeIsExpression = true, dataDependency, controlDependency, visited + inputNode, debug)
+              case Some(condition) => controlDataDependencyForNode(condition, inputNodeIsExpression = true, reachingDefinitions, controlDependency, visited + inputNode, debug)
               case None => TaintSet(new HashSet[String], new HashSet[String])
             }
         })
@@ -173,25 +172,25 @@ object DecompositionUtils {
       case None => TaintSet(new HashSet[String], new HashSet[String])
     }
 
-    TaintSet(set1.allVariables ++ set2.allVariables, set1.inputs ++ set2.inputs)
+    TaintSet(usedVariables ++ set1.allVariables ++ set2.allVariables, set1.inputs ++ set2.inputs)
   }
 
   def taintSetPerExecution(resourceUpdateNode: Node,
-                           dataDependency: Map[Node, Set[ReachingValue]],
+                           reachingDefinitions: ReachingDefinition,
                            controlDependency: Map[Block, Set[Block]],
                            visited: Set[Node],
                            debug: Boolean): TaintSet = {
     assert(GhostVariableUtils.extractUpdate(resourceUpdateNode, Resource).isDefined)
     val usedVariables: Set[String] = CFGUtils.getUsedVariables(resourceUpdateNode, isExpression = false).filter(identifier => !GhostVariableUtils.isGhostVariable(identifier, Resource))
-    dataDependency.get(resourceUpdateNode) match {
+    reachingDefinitions.get(resourceUpdateNode) match {
       case Some(definitions) =>
         val newDefinitions = definitions.filter(definition => usedVariables.contains(definition.variable))
         traceOrError(s"Reaching definitions (that are used): $newDefinitions", debug)
         val taintSets = newDefinitions.map({
           definition =>
             definition.node match {
-              case Some(node) => controlDataDependency(node, inputNodeIsExpression = false, dataDependency, controlDependency, visited + resourceUpdateNode, debug)
-              case None => TaintSet(new HashSet[String], HashSet[String](definition.variable)) // This definition comes from an input variable
+              case Some(node) => controlDataDependencyForNode(node, inputNodeIsExpression = false, reachingDefinitions, controlDependency, visited + resourceUpdateNode, debug)
+              case None => TaintSet(HashSet[String](definition.variable), HashSet[String](definition.variable)) // This definition comes from an input variable
             }
         })
         TaintSet(usedVariables ++ taintSets.flatMap(set => set.allVariables), taintSets.flatMap(set => set.inputs))

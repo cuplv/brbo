@@ -6,14 +6,39 @@ import com.microsoft.z3.AST
 import com.sun.source.tree.Tree.Kind
 import com.sun.source.tree._
 import com.sun.source.util.TreePath
-import javax.lang.model.`type`.TypeMirror
 import org.apache.logging.log4j.LogManager
+import org.checkerframework.dataflow.cfg.ControlFlowGraph
+import org.checkerframework.dataflow.cfg.node.Node
 
+import javax.lang.model.`type`.TypeMirror
 import scala.collection.JavaConverters._
 import scala.collection.immutable.{HashMap, HashSet}
 
 object TreeUtils {
   private val logger = LogManager.getLogger("brbo.common.TreeUtils")
+
+  def acceptableTree(tree: StatementTree): Unit = {
+    if (tree == null) return
+
+    tree match {
+      case _ if isCommand(tree) =>
+        tree match {
+          case variableTree: VariableTree => assert(variableTree.getInitializer != null, s"Variable declaration must have initializers: `$tree`")
+          case _ =>
+        }
+      case blockTree: BlockTree => blockTree.getStatements.asScala.foreach(t => acceptableTree(t))
+      case forLoopTree: ForLoopTree =>
+        forLoopTree.getInitializer.asScala.foreach(t => acceptableTree(t))
+        acceptableTree(forLoopTree.getStatement)
+        forLoopTree.getUpdate.asScala.foreach(t => acceptableTree(t))
+      case ifTree: IfTree =>
+        acceptableTree(ifTree.getThenStatement)
+        acceptableTree(ifTree.getElseStatement)
+      // case labeledStatementTree: LabeledStatementTree => acceptableTree(labeledStatementTree.getStatement)
+      case whileLoopTree: WhileLoopTree => acceptableTree(whileLoopTree.getStatement)
+      case _ => throw new Exception(s"Unsupported tree: `$tree`")
+    }
+  }
 
   def getAllInputVariables(methodTree: MethodTree): Map[String, BrboType] = {
     val parameters = methodTree.getParameters.asScala.foldLeft(HashMap[String, TypeMirror]())({
@@ -188,32 +213,11 @@ object TreeUtils {
     if (tree == null) return false
 
     tree match {
-      case _@(_: AssertTree | _: BreakTree | _: ContinueTree | _: EmptyStatementTree |
-              _: ExpressionStatementTree | _: ReturnTree | _: VariableTree) => true
+      case _@(_: AssertTree | _: EmptyStatementTree |
+              _: ExpressionStatementTree | _: ReturnTree | _: VariableTree) =>
+        // Disallow BreakTree and ContinueTree
+        true
       case _ => false
-    }
-  }
-
-  def acceptableTree(tree: StatementTree): Unit = {
-    if (tree == null) return
-
-    tree match {
-      case _ if isCommand(tree) =>
-        tree match {
-          case variableTree: VariableTree => assert(variableTree.getInitializer != null, s"Variable declaration should have initializers: `$tree`")
-          case _ =>
-        }
-      case blockTree: BlockTree => blockTree.getStatements.asScala.foreach(t => acceptableTree(t))
-      case forLoopTree: ForLoopTree =>
-        forLoopTree.getInitializer.asScala.foreach(t => acceptableTree(t))
-        acceptableTree(forLoopTree.getStatement)
-        forLoopTree.getUpdate.asScala.foreach(t => acceptableTree(t))
-      case ifTree: IfTree =>
-        acceptableTree(ifTree.getThenStatement)
-        acceptableTree(ifTree.getElseStatement)
-      // case labeledStatementTree: LabeledStatementTree => acceptableTree(labeledStatementTree.getStatement)
-      case whileLoopTree: WhileLoopTree => acceptableTree(whileLoopTree.getStatement)
-      case _ => throw new Exception(s"Unsupported tree: `$tree`")
     }
   }
 
@@ -308,5 +312,14 @@ object TreeUtils {
 
   def getEnclosingStatementTrees(path: TreePath): List[StatementTree] = {
     getEnclosingTrees(path).tail.tail.tail.map(t => t.asInstanceOf[StatementTree])
+  }
+
+  def getNodesCorrespondingToCommand(controlFlowGraph: ControlFlowGraph, tree: StatementTree): Set[Node] = {
+    assert(isCommand(tree))
+    val nodes = tree match {
+      case _@(_: AssertTree | _: EmptyStatementTree | _: ReturnTree | _: VariableTree) => controlFlowGraph.getNodesCorrespondingToTree(tree)
+      case command: ExpressionStatementTree => controlFlowGraph.getNodesCorrespondingToTree(command.getExpression)
+    }
+    nodes.asScala.toSet
   }
 }

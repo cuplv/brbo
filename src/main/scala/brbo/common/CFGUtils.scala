@@ -5,7 +5,7 @@ import brbo.verification.dependency.BrboNode
 import com.ibm.wala.util.graph.NumberedGraph
 import com.ibm.wala.util.graph.dominators.Dominators
 import com.ibm.wala.util.graph.impl.DelegatingNumberedGraph
-import com.sun.source.tree.{ExpressionStatementTree, StatementTree}
+import com.sun.source.tree.ExpressionStatementTree
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.block.Block

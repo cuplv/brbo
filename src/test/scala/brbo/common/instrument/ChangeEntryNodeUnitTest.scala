@@ -10,7 +10,7 @@ class ChangeEntryNodeUnitTest extends AnyFlatSpec {
       testCase =>
         val inputMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val entryCommand = inputMethod.commands.filter(t => t.toString == "int y = 2").head
-        val newMethod = ChangeEntryNode.changeEntryNode(inputMethod, entryCommand)
+        val newMethod = ChangeEntryNode.changeEntryNode(inputMethod, entryCommand, Set())
         assert(StringCompare.ignoreWhitespaces(newMethod.methodTree.toString, testCase.expectedOutput, testCase.className))
     }
   }

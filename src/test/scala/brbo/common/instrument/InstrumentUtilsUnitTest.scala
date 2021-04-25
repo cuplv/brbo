@@ -72,7 +72,7 @@ object InstrumentUtilsUnitTest {
         |  assert (1 == 1);
         |}""".stripMargin
 
-    val breakTest =
+    /*val breakTest =
       """class BreakTest {
         |    void f(int n) {
         |        while (true) {
@@ -104,7 +104,7 @@ object InstrumentUtilsUnitTest {
         |  }
         |}""".stripMargin
 
-    /*val doWhileTest =
+    val doWhileTest =
       """class DoWhileTest {
         |    void f(int n) {
         |        int i = 0;
@@ -256,8 +256,8 @@ object InstrumentUtilsUnitTest {
 
     HashSet[TestCaseJavaProgram](
       TestCaseJavaProgram("AssertTest", assertTest, assertTestExpected),
-      TestCaseJavaProgram("BreakTest", breakTest, breakTestExpected),
-      TestCaseJavaProgram("ContinueTest", continueTest, continueTestExpected),
+      // TestCaseJavaProgram("BreakTest", breakTest, breakTestExpected),
+      // TestCaseJavaProgram("ContinueTest", continueTest, continueTestExpected),
       // TestCaseJavaProgram("DoWhileTest", doWhileTest, doWhileTestExpected),
       TestCaseJavaProgram("EmptyTest", emptyTest, emptyTestExpected),
       TestCaseJavaProgram("ForLoopTest", forLoopTest, forLoopTestExpected),

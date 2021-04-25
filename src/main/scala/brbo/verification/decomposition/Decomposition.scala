@@ -399,10 +399,10 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
     val modifiedSet = environmentModifiedSet(subprogram, subprograms)
     traceOrError(s"Environment modified set: `$modifiedSet`")
 
-    val taintSet = DecompositionUtils.computeTaintSetControlAndData(subprogram.targetMethod, debug)
+    val taintSet = DecompositionUtils.controlDataDependencyForResources(subprogram.targetMethod, debug)
     traceOrError(s"Taint set `$taintSet` of subprogram\n$subprogram")
 
-    modifiedSet.intersect(taintSet).nonEmpty
+    modifiedSet.intersect(taintSet.inputs).nonEmpty
   }
 
   def findInterference(subprograms: Subprograms): Option[(Subprogram, Subprogram)] = {
@@ -485,12 +485,12 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
     }
 
     val modifiedSet1 = DecompositionUtils.computeModifiedSet(subprogram1.targetMethod)
-    val taintSet2 = DecompositionUtils.computeTaintSetControlAndData(subprogram2.targetMethod, debug)
+    val taintSet2 = DecompositionUtils.controlDataDependencyForResources(subprogram2.targetMethod, debug)
     traceOrError(s"Subprogram 1 modified set: $modifiedSet1")
     traceOrError(s"Subprogram 1:\n$subprogram1")
     traceOrError(s"Subprogram 2 taint set: $taintSet2")
     traceOrError(s"Subprogram 2:\n$subprogram2")
-    modifiedSet1.intersect(taintSet2).nonEmpty
+    modifiedSet1.intersect(taintSet2.inputs).nonEmpty
   }
 
   case class Subprogram(astNodes: List[StatementTree]) {

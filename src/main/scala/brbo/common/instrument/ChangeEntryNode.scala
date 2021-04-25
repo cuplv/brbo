@@ -1,9 +1,10 @@
 package brbo.common.instrument
 
+import brbo.common.GhostVariableUtils.GhostVariable.Resource
 import brbo.common.TypeUtils.BrboType
 import brbo.common.instrument.FileFormat.JAVA_FORMAT
 import brbo.common.instrument.InstrumentUtils.{NewMethodInformation, appendSemiColon}
-import brbo.common.{TargetMethod, TreeUtils}
+import brbo.common.{GhostVariableUtils, TargetMethod, TreeUtils}
 import brbo.verification.BasicProcessor
 import com.sun.source.tree._
 import org.apache.logging.log4j.LogManager
@@ -15,11 +16,14 @@ object ChangeEntryNode {
 
   /**
    *
-   * @param inputMethod A method to be instrumented
-   * @param entryTree   A command in the input method, which will be the entry command of the new method
+   * @param inputMethod      A method to be instrumented
+   * @param entryTree        A command in the input method, which will be the entry command of the new method
+   * @param preservedUpdates Resource updates that are preserved. All other updates are discarded. The goal is
+   *                         to establish the relation between resource updates of a group in the original
+   *                         program, and resource updates in the new program
    * @return A method that is almost the same as the input method, but with a different entry command
    */
-  def changeEntryNode(inputMethod: TargetMethod, entryTree: StatementTree): TargetMethod = {
+  def changeEntryNode(inputMethod: TargetMethod, entryTree: StatementTree, preservedUpdates: Set[StatementTree]): TargetMethod = {
     assert(TreeUtils.isCommand(entryTree))
     val entryTreeAst = treeToAst(entryTree)
 
@@ -62,15 +66,18 @@ object ChangeEntryNode {
 
     val newAst = nextPaths(entryTree)
     val parameters = (inputMethod.inputVariables ++ inputMethod.localVariables).toList.map(pair => BrboType.variableDeclaration(pair._1, pair._2)).sorted.mkString(", ")
+    val newMethodBody = s"{\n${newAst.print(preserveDeclaration = false, preservedUpdates)}\n}"
     val newSourceCode = InstrumentUtils.replaceMethodBodyAndGenerateSourceCode(
       inputMethod,
-      NewMethodInformation(Some(parameters), None, None, Nil, None, isAbstractClass = false, newMethodBody = s"{\n${newAst.print}\n}"),
+      NewMethodInformation(Some(parameters), None, None, Nil, None, isAbstractClass = false, newMethodBody),
       JAVA_FORMAT,
       indent = 2)
     BasicProcessor.getTargetMethod(inputMethod.fullQualifiedClassName, newSourceCode)
   }
 
   def treeToAst(tree: StatementTree): AST = {
+    if (tree == null)
+      return Empty
     tree match {
       case tree if TreeUtils.isCommand(tree) => Command(tree)
       case tree: BlockTree => Block(tree.getStatements.asScala.toList.map(s => treeToAst(s)))
@@ -80,7 +87,7 @@ object ChangeEntryNode {
         val body = tree.getStatement :: tree.getUpdate.asScala.toList
         Block(initializer :+ Loop(tree.getCondition, Block(body.map(s => treeToAst(s)))))
       case tree: WhileLoopTree => Loop(tree.getCondition, treeToAst(tree.getStatement))
-      case _ => throw new Exception("Unexpected")
+      case _ => throw new Exception(s"Unexpected tree: $tree (${tree.getClass})")
     }
   }
 
@@ -97,51 +104,71 @@ object ChangeEntryNode {
         case ite: ITE => ITE(ite.condition, substitute(ite.thenAst, oldAst, newAst), substitute(ite.elseAst, oldAst, newAst))
         case _: Command => ast
         case Return => Return
+        case Empty => Empty
       }
     }
   }
 }
 
 sealed trait AST {
-  def print: String
+  /**
+   *
+   * @param preserveDeclaration If x is a local variable of the original program, then ensure x is never declared again
+   *                            in the body of the new program, by turning on this flag, i.e., not declaring variables
+   *                            in the body of the new program
+   * @param preservedUpdates    Preserve these resource updates and discard all others
+   * @return
+   */
+  def print(preserveDeclaration: Boolean, preservedUpdates: Set[StatementTree]): String
 }
 
 case class Block(statements: List[AST]) extends AST {
-  override def print: String = s"{ ${statements.map(t => t.print).mkString(" ")} }"
+  override def print(preserveDeclaration: Boolean, preservedUpdates: Set[StatementTree]): String = {
+    s"{ ${statements.map(t => t.print(preserveDeclaration, preservedUpdates)).mkString(" ")} }"
+  }
 }
 
 case class Loop(condition: ExpressionTree, body: AST) extends AST {
-  override def print: String = {
+  override def print(preserveDeclaration: Boolean, preservedUpdates: Set[StatementTree]): String = {
     val conditionString = {
       val string = condition.toString
       if (string.startsWith("(") && string.endsWith(")")) string
       else s"($string)"
     }
-    s"while $conditionString ${body.print}"
+    s"while $conditionString ${body.print(preserveDeclaration, preservedUpdates)}"
   }
 }
 
 case class ITE(condition: ExpressionTree, thenAst: AST, elseAst: AST) extends AST {
-  override def print: String = {
+  override def print(preserveDeclaration: Boolean, preservedUpdates: Set[StatementTree]): String = {
     val conditionString = {
       val string = condition.toString
       if (string.startsWith("(") && string.endsWith(")")) string
       else s"($string)"
     }
-    s"if $conditionString ${thenAst.print} else ${elseAst.print}"
+    s"if $conditionString ${thenAst.print(preserveDeclaration, preservedUpdates)} else ${elseAst.print(preserveDeclaration, preservedUpdates)}"
   }
 }
 
 case class Command(statement: StatementTree) extends AST {
   assert(TreeUtils.isCommand(statement))
 
-  override def print: String = {
-    // If x is a local variable of the original program, ensure x is never declared again in the body of the new program,
-    // by not declaring variables in the body of the new program
+  override def print(preserveDeclaration: Boolean, preservedUpdates: Set[StatementTree]): String = {
     val string = {
       statement match {
-        case variableTree: VariableTree => s"${variableTree.getName.toString} = ${variableTree.getInitializer}"
-        case _ => statement.toString
+        case variableTree: VariableTree =>
+          if (preserveDeclaration) statement.toString
+          else s"${variableTree.getName.toString} = ${variableTree.getInitializer}"
+        case _ =>
+          statement match {
+            case expressionStatementTree: ExpressionStatementTree =>
+              if (GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Resource).isDefined) {
+                if (preservedUpdates.contains(statement)) statement.toString
+                else ";"
+              }
+              else statement.toString
+            case _ => statement.toString
+          }
       }
     }
     appendSemiColon(string)
@@ -150,5 +177,9 @@ case class Command(statement: StatementTree) extends AST {
 
 case object Return extends AST {
   // To avoid "unreachable statement" error from javac, we can use `if (true) return;`
-  override def print: String = "if (true) return;"
+  override def print(preserveDeclaration: Boolean, preservedUpdates: Set[StatementTree]): String = "if (true) return;"
+}
+
+case object Empty extends AST {
+  override def print(preserveDeclaration: Boolean, preservedUpdates: Set[StatementTree]): String = ";"
 }

@@ -69,7 +69,10 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.taintSetTests.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val result = DecompositionUtils.computeTaintSetControlAndData(targetMethod, DEFAULT_ARGUMENTS.getDebugMode)
+        val result = {
+          val taintSet = DecompositionUtils.controlDataDependencyForResources(targetMethod, DEFAULT_ARGUMENTS.getDebugMode)
+          s"All: ${taintSet.allVariables.toList.sorted}\nInputs: ${taintSet.inputs.toList.sorted}"
+        }
         assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
     })
   }
@@ -156,7 +159,8 @@ object DecompositionUnitTest {
         |  }
         |}""".stripMargin
     val test01ExpectedOutput =
-      """""".stripMargin
+      """All: List(R, a)
+        |Inputs: List()""".stripMargin
 
     val test02: String =
       """class Test02 {
@@ -169,7 +173,8 @@ object DecompositionUnitTest {
         |  }
         |}""".stripMargin
     val test02ExpectedOutput =
-      """n""".stripMargin
+      """All: List(R, a, n)
+        |Inputs: List(n)""".stripMargin
 
     val test03: String =
       """class Test03 {
@@ -193,7 +198,8 @@ object DecompositionUnitTest {
         |  }
         |}""".stripMargin
     val test03ExpectedOutput =
-      """n""".stripMargin
+      """All: List(R, n, p, q, x)
+        |Inputs: List(n)""".stripMargin
 
     val test04: String =
       """class Test04 {
@@ -214,7 +220,8 @@ object DecompositionUnitTest {
         |  }
         |}""".stripMargin
     val test04ExpectedOutput =
-      """n""".stripMargin
+      """All: List(R, i, j, n)
+        |Inputs: List(n)""".stripMargin
 
     val test05: String =
       """class Test05 {
@@ -242,7 +249,8 @@ object DecompositionUnitTest {
         |  }
         |}""".stripMargin
     val test05ExpectedOutput =
-      """n""".stripMargin
+      """All: List(R, a, b, i, n)
+        |Inputs: List(n)""".stripMargin
 
     List[TestCaseJavaProgram](
       TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),
@@ -271,7 +279,7 @@ object DecompositionUnitTest {
 
   private val decompositionTest02 =
     """class Test02 {
-      |  void f(int text, int templateds, int separator) {
+      |  void f(int text, int templateds, int separator, int n) {
       |    int R = 0;
       |    int sb = 0;
       |    int i = 0;
@@ -279,9 +287,9 @@ object DecompositionUnitTest {
       |      int index = 0;
       |      int start = 0;
       |      int end = 0;
-      |      while (true) {
+      |      while (n > 0) {
       |        start = end + text; // ndInt(end + 1, text);
-      |        if (start == text) break;
+      |        // if (start == text) break;
       |        end = start + text; // ndInt(start + 1, text);
       |        sb += start - index;
       |        R = R + (start - index);
@@ -310,9 +318,8 @@ object DecompositionUnitTest {
         |int index = 0
         |int start = 0
         |int end = 0
-        |while (true) {
+        |while (n > 0) {
         |    start = end + text;
-        |    if (start == text) break;
         |    end = start + text;
         |    sb += start - index;
         |    R = R + (start - index);
@@ -375,9 +382,8 @@ object DecompositionUnitTest {
         |    int index = 0;
         |    int start = 0;
         |    int end = 0;
-        |    while (true) {
+        |    while (n > 0) {
         |        start = end + text;
-        |        if (start == text) break;
         |        end = start + text;
         |        sb += start - index;
         |        R = R + (start - index);

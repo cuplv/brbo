@@ -1,8 +1,8 @@
 package brbo.verification.decomposition
 
-import brbo.{StringCompare, TestCaseJavaProgram}
 import brbo.common.CommandLineArguments.DEFAULT_ARGUMENTS
 import brbo.verification.BasicProcessor
+import brbo.{StringCompare, TestCaseJavaProgram}
 import org.apache.logging.log4j.LogManager
 import org.scalatest.flatspec.AnyFlatSpec
 
@@ -16,15 +16,22 @@ class NewDecompositionUnitTest extends AnyFlatSpec {
         val decomposition = new NewDecomposition(targetMethod, DEFAULT_ARGUMENTS)
         val groups = decomposition.initializeGroups()
         val newGroups = decomposition.mergeGroups(groups)
-        val string = newGroups.elements.toList.map({
-          group => s"Group(${group.resetLocation.toString}, ${group.updates.toList.map(u => u.toString).sorted})"
-        }).sorted
+        val string = newGroups.elements.toList.map({ group => group.toTestString }).sorted
         assert(StringCompare.ignoreWhitespaces(string, testCase.expectedOutput, testCase.className))
     })
   }
 
   "Deciding reset locations" should "be correct" in {
-
+    NewDecompositionUnitTest.decomposeSelectiveAmortizationUnitTest.foreach({
+      testCase =>
+        val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
+        val decomposition = new NewDecomposition(targetMethod, DEFAULT_ARGUMENTS)
+        val groups = decomposition.initializeGroups()
+        val newGroups = decomposition.mergeGroups(groups)
+        val newGroups2 = newGroups.elements.map(g => decomposition.decideReset(g))
+        val string = newGroups2.toList.map({ group => group.toTestString }).sorted
+        println(string)
+    })
   }
 }
 
@@ -96,6 +103,87 @@ object NewDecompositionUnitTest {
       TestCaseJavaProgram("Test02", test02, test02ExpectedOutput),
       TestCaseJavaProgram("Test03", test03, test03ExpectedOutput),
       TestCaseJavaProgram("Test04", test04, test04ExpectedOutput),
+    )
+  }
+
+  private val decompositionTest01 =
+    """class Test01 {
+      |  void f(int n, int m) {
+      |    int R = 0;
+      |    int i = 0;
+      |    while (i < n) {
+      |      int j = 0;
+      |      while (j < m) {
+      |        j++;
+      |        R = R + 1;
+      |      }
+      |      i++;
+      |    }
+      |  }
+      |}""".stripMargin
+
+  private val decompositionTest02 =
+    """class Test02 {
+      |  void f(int text, int templateds, int separator, int n) {
+      |    int R = 0;
+      |    int sb = 0;
+      |    int i = 0;
+      |    while (i < templateds) {
+      |      int index = 0;
+      |      int start = 0;
+      |      int end = 0;
+      |      while (n > 0) {
+      |        start = end + text; // ndInt(end + 1, text);
+      |        end = start + text; // ndInt(start + 1, text);
+      |        sb += start - index;
+      |        R = R + (start - index);
+      |        index = end;
+      |      }
+      |      sb += text - index;
+      |      R = R + (text - index);
+      |      sb += separator;
+      |      R = R + separator;
+      |      i++;
+      |    }
+      |  }
+      |}""".stripMargin
+
+  val decomposeSelectiveAmortizationUnitTest: List[TestCaseJavaProgram] = {
+    val test01ExpectedOutput =
+      """List(Group(Some(R = R + 1;), List(Update(R = R + 1;,R = (R + 1)))))""".stripMargin
+
+    val test02ExpectedOutput =
+      """List(Group(Some(R = R + separator;), List(Update(R = R + separator;,R = (R + separator)))), Group(Some(int sb = 0), List(Update(R = R + (start - index);,R = (R + (start - index))), Update(R = R + (text - index);,R = (R + (text - index))))))""".stripMargin
+
+    List[TestCaseJavaProgram](
+      TestCaseJavaProgram("Test01", decompositionTest01, test01ExpectedOutput),
+      TestCaseJavaProgram("Test02", decompositionTest02, test02ExpectedOutput),
+    )
+  }
+
+  val decomposeNoAmortizationUnitTest: List[TestCaseJavaProgram] = {
+    val test01ExpectedOutput =
+      """""".stripMargin
+
+    val test02ExpectedOutput =
+      """""".stripMargin
+
+    List[TestCaseJavaProgram](
+      TestCaseJavaProgram("Test01", decompositionTest01, test01ExpectedOutput),
+      TestCaseJavaProgram("Test02", decompositionTest02, test02ExpectedOutput),
+    )
+  }
+
+  val decomposeFullAmortizationUnitTest: List[TestCaseJavaProgram] = {
+    val test01ExpectedOutput =
+      """""".stripMargin
+
+    val test02ExpectedOutput =
+      """""".stripMargin
+
+    List[TestCaseJavaProgram](
+      TestCaseJavaProgram("Test01", decompositionTest01, test01ExpectedOutput),
+      TestCaseJavaProgram("Test02", decompositionTest02, test02ExpectedOutput),
     )
   }
 }
