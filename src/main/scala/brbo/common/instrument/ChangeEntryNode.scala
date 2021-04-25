@@ -36,7 +36,6 @@ object ChangeEntryNode {
       if (enclosingTrees.size == 1) return Return
 
       val enclosingTree = enclosingTrees(enclosingTrees.size - 2)
-      val enclosingTreeAst = treeToAst(enclosingTree)
       enclosingTree match {
         case tree: BlockTree =>
           var prepend: List[AST] = Nil
@@ -53,7 +52,7 @@ object ChangeEntryNode {
           Block(prepend :+ nextPaths(tree))
         case tree: IfTree => nextPaths(tree)
         case tree: WhileLoopTree =>
-          Block(List(substitute(enclosingTreeAst, entryTreeAst, Return), nextPaths(tree)))
+          Block(List(substitute(treeToAst(enclosingTree), entryTreeAst, Return), nextPaths(tree)))
         case tree: ForLoopTree =>
           val loopBody = Loop(tree.getCondition, Block(treeToAst(tree.getStatement) :: tree.getUpdate.asScala.toList.map(t => treeToAst(t))))
           Block(List(substitute(loopBody, entryTreeAst, Return), nextPaths(tree)))

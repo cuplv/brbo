@@ -6,32 +6,20 @@ import brbo.common.TypeUtils.BrboType
 import brbo.common.TypeUtils.BrboType.{BrboType, INT}
 import brbo.common._
 import brbo.common.instrument.FileFormat.JAVA_FORMAT
-import brbo.common.instrument.{InstrumentUtils, StatementTreeInstrumentation}
 import brbo.common.instrument.InstrumentUtils.{NewMethodInformation, appendSemiColon}
+import brbo.common.instrument.{InstrumentUtils, StatementTreeInstrumentation}
 import brbo.verification.AmortizationMode.{AmortizationMode, FULL_AMORTIZE, NO_AMORTIZE, SELECTIVE_AMORTIZE}
-import brbo.verification.{BasicProcessor, CounterAxiomGenerator}
+import brbo.verification.BasicProcessor
 import com.sun.source.tree._
-import org.apache.logging.log4j.LogManager
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable.{HashMap, HashSet}
 
-class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) {
-  private val debug = arguments.getDebugMode
-  private val logger = LogManager.getLogger(classOf[Decomposition])
+class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) extends DecompositionInterface(inputMethod, arguments) {
 
-  private val commands = inputMethod.commands
-
-  private val counterMap = CounterAxiomGenerator.generateCounterMap(inputMethod.methodTree.getBody)
-
-  private def traceOrError(message: String): Unit = {
-    if (debug) logger.error(message)
-    else logger.trace(message)
-  }
-
-  def decompose(commandLineArguments: CommandLineArguments): List[DecompositionResult] = {
+  override def decompose(): List[DecompositionResult] = {
     val listOfSubprograms: List[IntermediateResult] = {
-      val amortizationMode = commandLineArguments.getAmortizationMode
+      val amortizationMode = arguments.getAmortizationMode
       logger.info(s"Decomposing... Mode: `$amortizationMode`")
       amortizationMode match {
         case brbo.verification.AmortizationMode.NO_AMORTIZE =>
@@ -106,7 +94,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
   def initializeSubprograms(): Set[Subprogram] = {
     commands.foldLeft(new HashSet[Subprogram])({
       (acc, statement) =>
-        DecompositionUtils.initializeGroupFromStatement(statement, inputMethod) match {
+        DecompositionUtils.initializeGroups(statement, inputMethod) match {
           case Some((statement, _)) => acc + Subprogram(List(statement))
           case None => acc
         }
@@ -227,19 +215,6 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
     val result = DecompositionResult(newSourceFile, deltaCounterPairs.values.toSet, amortizationMode, inputMethod)
     if (debug || arguments.getPrintCFG) CFGUtils.printPDF(result.outputMethod.cfg, Some("decomposed-"))
     result
-  }
-
-  /**
-   *
-   * @param subprogram The subprogram to be enlarged
-   * @return A new subprogram such that
-   *         - It encloses the input subprogram
-   *         - It does not overlap with other subprograms
-   *         - No interference: It does not interfere with itself
-   */
-  def enlargeNoInterference(subprogram: Subprogram, subprograms: Subprograms): Subprograms = {
-    assert(subprograms.programs.contains(subprogram))
-    ???
   }
 
   def merge(subprogram1: Subprogram, subprogram2: Subprogram): Subprogram = {
@@ -541,7 +516,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
     }
 
     val minimalEnclosingBlock: Option[BlockTree] = {
-      org.checkerframework.javacutil.TreeUtils.enclosingOfKind(inputMethod.getPath(astNodes.head), Tree.Kind.BLOCK) match {
+      org.checkerframework.javacutil.TreePathUtil.enclosingOfKind(inputMethod.getPath(astNodes.head), Tree.Kind.BLOCK) match {
         case null => throw new Exception("Unexpected")
         case blockTree: BlockTree =>
           if (blockTree.getStatements.contains(astNodes.head)) Some(blockTree)

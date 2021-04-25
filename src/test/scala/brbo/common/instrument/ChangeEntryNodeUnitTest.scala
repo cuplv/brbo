@@ -5,7 +5,7 @@ import brbo.verification.BasicProcessor
 import org.scalatest.flatspec.AnyFlatSpec
 
 class ChangeEntryNodeUnitTest extends AnyFlatSpec {
-  "Changing entry nodes" should "succeed" in {
+  "Changing entry nodes of programs" should "succeed" in {
     ChangeEntryNodeUnitTest.changeEntryNodeUnitTest.foreach {
       testCase =>
         val inputMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)

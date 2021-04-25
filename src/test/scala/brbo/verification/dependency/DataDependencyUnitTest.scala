@@ -12,7 +12,12 @@ class DataDependencyUnitTest extends AnyFlatSpec {
     DataDependencyUnitTest.dataDependencyUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        assert(StringCompare.ignoreWhitespaces(DataDependency.computeDependencySet(targetMethod).toString(), testCase.expectedOutput, testCase.className))
+        val dataDependency = DataDependency.computeDataDependency(targetMethod)
+        val string = dataDependency.toList.map({
+          case (node, values) =>
+            s"${node.toString} -> (${values.toList.sortWith({ case (v1, v2) => v1.toString < v2.toString }).mkString(", ")})"
+        }).sorted
+        assert(StringCompare.ignoreWhitespaces(string, testCase.expectedOutput, testCase.className))
     })
   }
 }
@@ -30,7 +35,18 @@ object DataDependencyUnitTest {
         |  }
         |}""".stripMargin
     val test01ExpectedOutput =
-      """Set()""".stripMargin
+      """(R + a) -> (`R` in `R = 0`, `a` in `a = (a + 1)`, `l` (input), `m` (input), `n` (input))
+        |(a + 1) -> (`R` in `R = 0`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |0 -> (`R` in `R`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |1 -> (`R` in `R = 0`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |R -> (`R` in `R = 0`, `a` in `a = (a + 1)`, `l` (input), `m` (input), `n` (input))
+        |R -> (`a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |R = (R + a) -> (`R` in `R = 0`, `a` in `a = (a + 1)`, `l` (input), `m` (input), `n` (input))
+        |R = 0 -> (`R` in `R`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |a -> (`R` in `R = 0`, `a` in `a = (a + 1)`, `l` (input), `m` (input), `n` (input))
+        |a -> (`l` (input), `m` (input), `n` (input))
+        |a = (a + 1) -> (`R` in `R = 0`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |a = 0 -> (`a` in `a`, `l` (input), `m` (input), `n` (input))""".stripMargin
 
     val test02: String =
       """class Test02 {
@@ -43,7 +59,17 @@ object DataDependencyUnitTest {
         |  }
         |}""".stripMargin
     val test02ExpectedOutput =
-      """Set()""".stripMargin
+      """(R + a) -> (`R` in `R = 0`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |(a < n) -> (`R` in `R = 0`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |0 -> (`R` in `R`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |R -> (`R` in `R = 0`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |R -> (`a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |R = (R + a) -> (`R` in `R = 0`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |R = 0 -> (`R` in `R`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |a -> (`R` in `R = 0`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |a -> (`l` (input), `m` (input), `n` (input))
+        |a = 0 -> (`a` in `a`, `l` (input), `m` (input), `n` (input))
+        |n -> (`R` in `R = 0`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))""".stripMargin
 
     val test03: String =
       """class Test03 {
@@ -57,7 +83,19 @@ object DataDependencyUnitTest {
         |  }
         |}""".stripMargin
     val test03ExpectedOutput =
-      """Set(n)""".stripMargin
+      """(R + a) -> (`R` in `R = 0`, `a` in `a = (a + n)`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |(a + n) -> (`R` in `R = 0`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |(n > 0) -> (`R` in `R = 0`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |0 -> (`R` in `R = 0`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |R -> (`R` in `R = 0`, `a` in `a = (a + n)`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |R -> (`a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |R = (R + a) -> (`R` in `R = 0`, `a` in `a = (a + n)`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |R = 0 -> (`R` in `R`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |a -> (`R` in `R = 0`, `a` in `a = (a + n)`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |a -> (`l` (input), `m` (input), `n` (input))
+        |a = (a + n) -> (`R` in `R = 0`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |a = 0 -> (`a` in `a`, `l` (input), `m` (input), `n` (input))
+        |n -> (`R` in `R = 0`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))""".stripMargin
 
     val test04: String =
       """class Test04 {
@@ -70,7 +108,18 @@ object DataDependencyUnitTest {
         |  }
         |}""".stripMargin
     val test04ExpectedOutput =
-      """Set(n)""".stripMargin
+      """(R + a) -> (`R` in `R = 0`, `a` in `a = (a + n)`, `l` (input), `m` (input), `n` (input))
+        |(a + n) -> (`R` in `R = 0`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |0 -> (`R` in `R`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |R -> (`R` in `R = 0`, `a` in `a = (a + n)`, `l` (input), `m` (input), `n` (input))
+        |R -> (`a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |R = (R + a) -> (`R` in `R = 0`, `a` in `a = (a + n)`, `l` (input), `m` (input), `n` (input))
+        |R = 0 -> (`R` in `R`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |a -> (`R` in `R = 0`, `a` in `a = (a + n)`, `l` (input), `m` (input), `n` (input))
+        |a -> (`l` (input), `m` (input), `n` (input))
+        |a = (a + n) -> (`R` in `R = 0`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))
+        |a = 0 -> (`a` in `a`, `l` (input), `m` (input), `n` (input))
+        |n -> (`R` in `R = 0`, `a` in `a = 0`, `l` (input), `m` (input), `n` (input))""".stripMargin
 
     val test05: String =
       """class Test05 {
@@ -98,14 +147,14 @@ object DataDependencyUnitTest {
         |  }
         |}""".stripMargin
     val test05ExpectedOutput =
-      """Set()""".stripMargin
+      """""".stripMargin
 
     List[TestCaseJavaProgram](
       TestCaseJavaProgram("Test01", test01, test01ExpectedOutput),
       TestCaseJavaProgram("Test02", test02, test02ExpectedOutput),
       TestCaseJavaProgram("Test03", test03, test03ExpectedOutput),
       TestCaseJavaProgram("Test04", test04, test04ExpectedOutput),
-      TestCaseJavaProgram("Test05", test05, test05ExpectedOutput),
+      // TestCaseJavaProgram("Test05", test05, test05ExpectedOutput),
     )
   }
 }

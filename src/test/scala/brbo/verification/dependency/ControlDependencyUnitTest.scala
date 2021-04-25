@@ -44,7 +44,7 @@ object ControlDependencyUnitTest {
         |  }
         |}""".stripMargin
     val test01ExpectedOutput = {
-      val start = 243
+      val start = 957
       s"""$start -> List()
          |${start + 2} -> List()
          |${start + 3} -> List()""".stripMargin
@@ -61,7 +61,7 @@ object ControlDependencyUnitTest {
         |  }
         |}""".stripMargin
     val test02ExpectedOutput = {
-      val start = 248
+      val start = 962
       s"""$start -> List()
          |${start + 2} -> List()
          |${start + 3} -> List()
@@ -91,7 +91,7 @@ object ControlDependencyUnitTest {
         |  }
         |}""".stripMargin
     val test03ExpectedOutput = {
-      val start = 260
+      val start = 974
       s"""$start -> List()
          |${start + 2} -> List()
          |${start + 3} -> List()

@@ -1,10 +1,10 @@
 package brbo.verification.decomposition
 
 import brbo.common.GhostVariableUtils.GhostVariable.Resource
-import brbo.common.{CFGUtils, GhostVariableUtils, TargetMethod, TreeUtils}
+import brbo.common.{CFGUtils, GhostVariableUtils, TargetMethod}
 import brbo.verification.dependency.reachdef.ReachingValue
 import brbo.verification.dependency.{ControlDependency, DataDependency}
-import com.sun.source.tree.{ExpressionStatementTree, ExpressionTree, StatementTree}
+import com.sun.source.tree.{ExpressionStatementTree, StatementTree}
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.block.Block.BlockType
 import org.checkerframework.dataflow.cfg.block.{Block, ConditionalBlock}
@@ -28,12 +28,12 @@ object DecompositionUtils {
    * @param targetMethod The method that encloses the above statement
    * @return The initial program and its entry node in the CFG
    */
-  def initializeGroupFromStatement(statement: StatementTree, targetMethod: TargetMethod): Option[(StatementTree, Node)] = {
+  def initializeGroups(statement: StatementTree, targetMethod: TargetMethod): Option[(StatementTree, Node)] = {
     statement match {
       case expressionStatementTree: ExpressionStatementTree =>
         GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Resource) match {
           case Some(updateTree) =>
-            val updateNode = CFGUtils.getNodesCorrespondingToExpressionStatementTree(statement, targetMethod.cfg)
+            val updateNode = CFGUtils.getNodesForExpressionStatementTree(expressionStatementTree, targetMethod.cfg)
 
             updateTree.increment match {
               /*case literalTree: LiteralTree =>
@@ -71,138 +71,6 @@ object DecompositionUtils {
           }
       })
       .filter(identifier => !GhostVariableUtils.isGhostVariable(identifier, Resource))
-  }
-
-  /**
-   *
-   * @param targetMethod The method to compute a taint set
-   * @return Compute the variables that any `r+=e` in the input method data depends on
-   */
-  @deprecated
-  def computeTaintSet(targetMethod: TargetMethod, debug: Boolean): Set[String] = {
-    val dataDependency = DataDependency.computeDataDependency(targetMethod)
-    val controlDependency = {
-      val controlDependency = ControlDependency.computeControlDependency(targetMethod)
-      ControlDependency.reverseControlDependency(controlDependency)
-    }
-
-    val taintSet = TreeUtils.collectCommands(targetMethod.methodTree.getBody).flatMap({
-      statement =>
-        initializeGroupFromStatement(statement, targetMethod) match {
-          case Some((initialSubprogram, entryNode)) =>
-            traceOrError(s"Compute taint set for `$initialSubprogram`", debug)
-            val conditionTrees = TreeUtils.collectConditionTreesWithoutBrackets(initialSubprogram)
-
-            val correspondingNode = CFGUtils.getNodesCorrespondingToExpressionStatementTree(statement, targetMethod.cfg)
-            traceOrError(s"Expression Tree `$statement` corresponds to node `$correspondingNode`", debug)
-
-            // Treat `r+=e` when `e` is constant differently from `r+=e` when `e` is constant
-            val dataDependentVariables: Set[String] = GhostVariableUtils.extractUpdate(correspondingNode, Resource) match {
-              case Some(update) =>
-                update.increment match {
-                  case updateNode: ValueLiteralNode =>
-                    traceOrError(s"The update in `$statement` is constant", debug)
-                    updateNode match {
-                      case _: IntegerLiteralNode =>
-                        computeTransitiveControlDependency(correspondingNode, controlDependency, new HashSet[Node], debug).flatMap({
-                          conditionNode =>
-                            val conditionTree = conditionNode.getTree.asInstanceOf[ExpressionTree]
-                            traceOrError(s"The condition node is `$conditionNode`", debug)
-                            logger.trace(s"The condition tree is `$conditionTree` (hash code: `${conditionTree.hashCode()}`)")
-                            conditionTrees.foreach(t => logger.trace(s"Condition tree `$t` (hash code: `${t.hashCode()}`)"))
-                            if (conditionTrees.contains(conditionTree)) {
-                              CFGUtils.getUsedVariables(conditionNode)
-                            }
-                            else new HashSet[String]
-                        })
-                      case _ => throw new Exception(s"Unsupported literal node `$updateNode`")
-                    }
-                  case _ =>
-                    traceOrError(s"The update in statement `$statement` is not constant", debug)
-                    CFGUtils.getUsedVariables(correspondingNode.asInstanceOf[AssignmentNode].getExpression)
-                }
-              case None => throw new Exception("Unexpected")
-            }
-            traceOrError(s"Data dependent variables for AST `$statement`'s initial program are `$dataDependentVariables`", debug)
-
-            // Compute transitive data dependency for the above variables, starting from the entry node of initial subprogram
-            computeTransitiveDataDependencyInputsOnly(dataDependentVariables, entryNode, dataDependency, debug)
-          case None => new HashSet[String]
-        }
-    })
-    taintSet.filter(identifier => !GhostVariableUtils.isGhostVariable(identifier, Resource)).toSet
-  }
-
-  @deprecated
-  private def computeTransitiveDataDependencyInputsOnly(seedVariables: Set[String],
-                                                        initialLocation: Node,
-                                                        dataDependency: Map[Node, Set[ReachingValue]],
-                                                        debug: Boolean): Set[String] = {
-    dataDependency.get(initialLocation) match {
-      case Some(definitions) =>
-        val newDefinitions = definitions.filter(definition => seedVariables.contains(definition.variable))
-        newDefinitions.flatMap({
-          definition =>
-            definition.node match {
-              case Some(n) =>
-                computeTransitiveDataDependencyInputsOnlyHelper(n, dataDependency, HashSet[Node](initialLocation), debug)
-              case None => HashSet[String](definition.variable) // This definition comes from an input variable
-            }
-        })
-      case None => new HashSet[String]
-    }
-  }
-
-  @deprecated
-  private def computeTransitiveDataDependencyInputsOnlyHelper(node: Node,
-                                                              dataDependency: Map[Node, Set[ReachingValue]],
-                                                              visited: Set[Node],
-                                                              debug: Boolean): Set[String] = {
-    if (visited.contains(node) || node == null) return new HashSet[String]
-    traceOrError(s"Compute data dependency for node `$node`", debug)
-
-    val usedVariables: Set[String] = node match {
-      case assignmentNode: AssignmentNode => CFGUtils.getUsedVariables(assignmentNode.getExpression)
-      case _: VariableDeclarationNode => new HashSet[String]
-      case _ => throw new Exception(s"Expecting assignment or variable declaration node `$node` (Type: `${node.getClass}`)")
-    }
-    traceOrError(s"Used variables: $usedVariables", debug)
-
-    dataDependency.get(node) match {
-      case Some(definitions) =>
-        val newDefinitions = definitions.filter(definition => usedVariables.contains(definition.variable))
-        traceOrError(s"Reaching definitions: $newDefinitions", debug)
-        newDefinitions.flatMap({
-          definition =>
-            definition.node match {
-              case Some(n) => computeTransitiveDataDependencyInputsOnlyHelper(n, dataDependency, visited + node, debug)
-              case None => HashSet[String](definition.variable) // This definition comes from an input variable
-            }
-        })
-      case None => new HashSet[String]
-    }
-  }
-
-  @deprecated
-  private def computeTransitiveControlDependency(node: Node,
-                                                 controlDependency: Map[Block, Set[Block]],
-                                                 visited: Set[Node],
-                                                 debug: Boolean): Set[Node] = {
-    assert(node != null)
-    if (visited.contains(node)) return new HashSet[Node]
-    traceOrError(s"Compute transitive control dependency for node `$node`", debug)
-
-    controlDependency.get(node.getBlock) match {
-      case Some(blocks) =>
-        blocks.flatMap({
-          block =>
-            getCondition(node, block, debug) match {
-              case Some(condition2) => computeTransitiveControlDependency(condition2, controlDependency, visited + node, debug) + condition2
-              case None => new HashSet[Node]
-            }
-        })
-      case None => new HashSet[Node]
-    }
   }
 
   /**
@@ -258,58 +126,83 @@ object DecompositionUtils {
       .filter({ node => GhostVariableUtils.extractUpdate(node, Resource).isDefined })
       .flatMap({ node =>
         traceOrError(s"Compute taint set for $node", debug)
-        computeTaintSetControlAndDataHelper(node, isExpression = false, dataDependency, controlDependency, new HashSet[Node], debug)
+        val taintSet = controlDataDependency(node, inputNodeIsExpression = false, dataDependency, controlDependency, new HashSet[Node], debug)
+        taintSet.inputs
       })
       .toSet
   }
 
-  private def computeTaintSetControlAndDataHelper(inputNode: Node,
-                                                  isExpression: Boolean,
-                                                  dataDependency: Map[Node, Set[ReachingValue]],
-                                                  controlDependency: Map[Block, Set[Block]],
-                                                  visited: Set[Node],
-                                                  debug: Boolean): Set[String] = {
-    if (visited.contains(inputNode)) return new HashSet[String]
+  private def controlDataDependency(inputNode: Node,
+                                    inputNodeIsExpression: Boolean,
+                                    dataDependency: Map[Node, Set[ReachingValue]],
+                                    controlDependency: Map[Block, Set[Block]],
+                                    visited: Set[Node],
+                                    debug: Boolean): TaintSet = {
+    val emptyTaintSet = TaintSet(new HashSet[String], new HashSet[String])
+    if (visited.contains(inputNode)) return emptyTaintSet
 
-    val usedVariables: Set[String] = {
-      if (isExpression) CFGUtils.getUsedVariables(inputNode)
-      else {
-        inputNode match {
-          case assignmentNode: AssignmentNode => CFGUtils.getUsedVariables(assignmentNode.getExpression)
-          case _: VariableDeclarationNode => new HashSet[String]
-          case _ => throw new Exception(s"Expect assignment or variable declaration node `$inputNode` (Type: `${inputNode.getClass}`)")
-        }
-      }
-    }
+    val usedVariables: Set[String] = CFGUtils.getUsedVariables(inputNode, inputNodeIsExpression)
     traceOrError(s"Used variables: $usedVariables", debug)
 
-    val set1: Set[String] = dataDependency.get(inputNode) match {
+    val set1: TaintSet = dataDependency.get(inputNode) match {
       case Some(definitions) =>
         val newDefinitions = definitions.filter(definition => usedVariables.contains(definition.variable))
         traceOrError(s"Reaching definitions (that are used): $newDefinitions", debug)
-        newDefinitions.flatMap({
+        val taintSets = newDefinitions.map({
           definition =>
             definition.node match {
-              case Some(node) => computeTaintSetControlAndDataHelper(node, isExpression = false, dataDependency, controlDependency, visited + inputNode, debug)
-              case None => HashSet[String](definition.variable) // This definition comes from an input variable
+              case Some(node) => controlDataDependency(node, inputNodeIsExpression = false, dataDependency, controlDependency, visited + inputNode, debug)
+              case None => TaintSet(new HashSet[String], HashSet[String](definition.variable)) // This definition comes from an input variable
             }
         })
-      case None => new HashSet[String]
+        TaintSet(usedVariables ++ taintSets.flatMap(set => set.allVariables), taintSets.flatMap(set => set.inputs))
+      case None => TaintSet(usedVariables, new HashSet[String])
     }
 
-    val set2: Set[String] = controlDependency.get(inputNode.getBlock) match {
+    val set2: TaintSet = controlDependency.get(inputNode.getBlock) match {
       case Some(blocks) =>
-        blocks.flatMap({
+        val taintSets = blocks.map({
           block =>
             traceOrError(s"Compute taint set for conditional node $inputNode", debug)
             getCondition(inputNode, block, debug) match {
-              case Some(condition) => computeTaintSetControlAndDataHelper(condition, isExpression = true, dataDependency, controlDependency, visited + inputNode, debug)
-              case None => new HashSet[String]
+              case Some(condition) => controlDataDependency(condition, inputNodeIsExpression = true, dataDependency, controlDependency, visited + inputNode, debug)
+              case None => TaintSet(new HashSet[String], new HashSet[String])
             }
         })
-      case None => new HashSet[String]
+        TaintSet(taintSets.flatMap(set => set.allVariables), taintSets.flatMap(set => set.inputs))
+      case None => TaintSet(new HashSet[String], new HashSet[String])
     }
 
-    set1 ++ set2
+    TaintSet(set1.allVariables ++ set2.allVariables, set1.inputs ++ set2.inputs)
+  }
+
+  def taintSetPerExecution(resourceUpdateNode: Node,
+                           dataDependency: Map[Node, Set[ReachingValue]],
+                           controlDependency: Map[Block, Set[Block]],
+                           visited: Set[Node],
+                           debug: Boolean): TaintSet = {
+    assert(GhostVariableUtils.extractUpdate(resourceUpdateNode, Resource).isDefined)
+    val usedVariables: Set[String] = CFGUtils.getUsedVariables(resourceUpdateNode, isExpression = false).filter(identifier => !GhostVariableUtils.isGhostVariable(identifier, Resource))
+    dataDependency.get(resourceUpdateNode) match {
+      case Some(definitions) =>
+        val newDefinitions = definitions.filter(definition => usedVariables.contains(definition.variable))
+        traceOrError(s"Reaching definitions (that are used): $newDefinitions", debug)
+        val taintSets = newDefinitions.map({
+          definition =>
+            definition.node match {
+              case Some(node) => controlDataDependency(node, inputNodeIsExpression = false, dataDependency, controlDependency, visited + resourceUpdateNode, debug)
+              case None => TaintSet(new HashSet[String], HashSet[String](definition.variable)) // This definition comes from an input variable
+            }
+        })
+        TaintSet(usedVariables ++ taintSets.flatMap(set => set.allVariables), taintSets.flatMap(set => set.inputs))
+      case None => TaintSet(usedVariables, new HashSet[String])
+    }
   }
 }
+
+/**
+ *
+ * @param allVariables Local and input variables that taint resource updates
+ * @param inputs       Input variables that taint resource updates
+ */
+case class TaintSet(allVariables: Set[String], inputs: Set[String])

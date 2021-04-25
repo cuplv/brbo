@@ -159,7 +159,7 @@ object BrboMain {
         logger.info(s"${targetMethod.cfg.toString}")
       }
       val decomposition: Decomposition = new Decomposition(targetMethod, arguments)
-      Some(decomposition.decompose(arguments))
+      Some(decomposition.decompose)
     }
     else {
       logger.info(s"Skipping bound checking for file `$sourceFilePath`")

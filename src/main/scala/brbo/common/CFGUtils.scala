@@ -72,24 +72,35 @@ object CFGUtils {
     visited.contains(to)
   }
 
-  def getUsedVariables(n: Node): Set[String] = {
+  def getUsedVariablesFromExpression(n: Node): Set[String] = {
     n match {
       case n: LocalVariableNode => HashSet(n.getName)
-      case n: UnaryOperationNode => getUsedVariables(n.getOperand)
+      case n: UnaryOperationNode => getUsedVariablesFromExpression(n.getOperand)
       case n: TernaryExpressionNode =>
-        getUsedVariables(n.getConditionOperand) ++ getUsedVariables(n.getThenOperand) ++ getUsedVariables(n.getElseOperand)
+        getUsedVariablesFromExpression(n.getConditionOperand) ++ getUsedVariablesFromExpression(n.getThenOperand) ++ getUsedVariablesFromExpression(n.getElseOperand)
       case n: BinaryOperationNode =>
-        getUsedVariables(n.getLeftOperand) ++ getUsedVariables(n.getRightOperand)
+        getUsedVariablesFromExpression(n.getLeftOperand) ++ getUsedVariablesFromExpression(n.getRightOperand)
       case _: ValueLiteralNode => new HashSet[String]
       case methodInvocationNode: MethodInvocationNode =>
-        val usedVariables = methodInvocationNode.getArguments.asScala.flatMap(node => getUsedVariables(node)).toSet
+        val usedVariables = methodInvocationNode.getArguments.asScala.flatMap(node => getUsedVariablesFromExpression(node)).toSet
         logger.trace(s"Used variables in method invocation node `$methodInvocationNode` are `$usedVariables`")
         usedVariables
-      case typeCastNode: TypeCastNode => getUsedVariables(typeCastNode.getOperand)
+      case typeCastNode: TypeCastNode => getUsedVariablesFromExpression(typeCastNode.getOperand)
       case methodAccessNode: MethodAccessNode =>
         logger.trace(s"Used variables in method access node `$methodAccessNode` are empty")
         new HashSet[String]
       case _ => throw new Exception(s"Get used variables - Node `$n` (type: `${n.getClass}`) is not yet supported")
+    }
+  }
+
+  def getUsedVariables(n: Node, isExpression: Boolean): Set[String] = {
+    if (isExpression) CFGUtils.getUsedVariablesFromExpression(n)
+    else {
+      n match {
+        case assignmentNode: AssignmentNode => CFGUtils.getUsedVariablesFromExpression(assignmentNode.getExpression)
+        case _: VariableDeclarationNode => new HashSet[String]
+        case _ => throw new Exception(s"Expect assignment or variable declaration node `$n` (Type: `${n.getClass}`)")
+      }
     }
   }
 
@@ -104,8 +115,8 @@ object CFGUtils {
    * @return The node that corresponds to an expression statement tree
    *         Check CFGTranslationPhaseOne to see which trees may serve as a key
    */
-  def getNodesCorrespondingToExpressionStatementTree(tree: StatementTree, cfg: ControlFlowGraph): Node = {
-    val nodes = cfg.getNodesCorrespondingToTree(tree.asInstanceOf[ExpressionStatementTree].getExpression).asScala
+  def getNodesForExpressionStatementTree(tree: ExpressionStatementTree, cfg: ControlFlowGraph): Node = {
+    val nodes = cfg.getNodesCorrespondingToTree(tree.getExpression).asScala
     assert(nodes.size == 1)
     nodes.head
   }
