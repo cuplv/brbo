@@ -7,6 +7,7 @@ abstract public class Replace extends Common {
     if (text <= 0 || searchString <= 0 || max <= 0 || replacement <= 0) {
       return;
     }
+    int dummy = 0;
     int start = 0;
     int end = ndBool() ? -1 : ndInt2(start, text - 1);
     if (end == -1) {
