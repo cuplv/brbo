@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract public class GetFormattedExceptionMessage extends Common {
   void f(int baseMessage, int contextValues) {
-    if (baseMessage <= 0 || contextValues <= 0)
+    if (baseMessage <= 0 || contextValues <= 0) {
       return;
+    }
     int buffer = 0;
     int R = 0;
     mostPreciseBound(R <= 3 + 6 * contextValues);

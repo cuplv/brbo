@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract public class SimpleQuote extends Common {
   void f(int value) {
-    if (value <= 0)
+    if (value <= 0) {
       return;
+    }
     int sb = 0;
     int R = 0;
     mostPreciseBound(R <= value * 2 + 1);

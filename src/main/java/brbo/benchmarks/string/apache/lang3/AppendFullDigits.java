@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract public class AppendFullDigits extends Common {
   void f(int value, int minFieldWidth) {
-    if (minFieldWidth <= 0)
+    if (minFieldWidth <= 0) {
       return;
+    }
     int buffer = 0;
     int R = 0;
     mostPreciseBound(R <= minFieldWidth);
@@ -30,32 +31,38 @@ abstract public class AppendFullDigits extends Common {
         buffer++;
         R = R + 1;
       }
-      else if (nDigits == 3) {
-        if (value >= 100) {
-          buffer++;
-          R = R + 1;
-        }
-        else {
-          buffer++;
-          R = R + 1;
-        }
-      }
-      else if (nDigits == 2) {
-        if (value >= 10) {
-          buffer++;
-          R = R + 1;
-        }
-        else {
-          buffer++;
-          R = R + 1;
-        }
-      }
-      else if (nDigits == 1) {
-        buffer++;
-        R = R + 1;
-      }
       else {
-        ;
+        if (nDigits == 3) {
+          if (value >= 100) {
+            buffer++;
+            R = R + 1;
+          }
+          else {
+            buffer++;
+            R = R + 1;
+          }
+        }
+        else {
+          if (nDigits == 2) {
+            if (value >= 10) {
+              buffer++;
+              R = R + 1;
+            }
+            else {
+              buffer++;
+              R = R + 1;
+            }
+          }
+          else {
+            if (nDigits == 1) {
+              buffer++;
+              R = R + 1;
+            }
+            else {
+              ;
+            }
+          }
+        }
       }
     }
     else {

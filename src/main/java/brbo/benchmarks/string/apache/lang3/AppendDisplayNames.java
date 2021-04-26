@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract public class AppendDisplayNames extends Common {
   void f(int sorted) {
-    if (sorted <= 0)
+    if (sorted <= 0) {
       return;
+    }
     int sb = 0;
     int R = 0;
     mostPreciseBound(R <= sorted + 2 * sorted);

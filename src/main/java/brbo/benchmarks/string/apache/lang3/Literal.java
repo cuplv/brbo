@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract public class Literal extends Common {
   void f(int pattern) {
-    if (pattern <= 0)
+    if (pattern <= 0) {
       return;
+    }
     int sb = 0;
     int R = 0;
     mostPreciseBound(R <= pattern);
@@ -14,8 +15,10 @@ abstract public class Literal extends Common {
     while (currentIdx < pattern) {
       if (ndBool()) {
         break;
-      } else if (ndBool()) {
-        continue;
+      } else {
+        if (ndBool()) {
+          continue;
+        }
       }
       ++currentIdx;
       sb++;

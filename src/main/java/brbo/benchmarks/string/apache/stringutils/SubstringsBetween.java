@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract public class SubstringsBetween extends Common {
   void f(int str, int open, int close) {
-    if (str <= 0 || open <= 0 || close <= 0)
+    if (str <= 0 || open <= 0 || close <= 0) {
       return;
+    }
     int R = 0;
     mostPreciseBound(R <= str);
     lessPreciseBound(R <= MAX * str + MAX);

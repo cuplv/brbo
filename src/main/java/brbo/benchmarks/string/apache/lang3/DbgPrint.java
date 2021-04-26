@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract public class DbgPrint extends Common {
   void f(int src) {
-    if (src <= 0)
+    if (src <= 0) {
       return;
+    }
     int sb = 0;
     int R = 0;
     mostPreciseBound(R <= src);

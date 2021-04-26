@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract public class SplitByWholeSeparatorWorker extends Common {
   void f(int str, int separator, int max, boolean preserveAllTokens) {
-    if (str <= 0 || separator <= 0 || max <= 0)
+    if (str <= 0 || separator <= 0 || max <= 0) {
       return;
+    }
     int R = 0;
     mostPreciseBound(R <= str);
     lessPreciseBound(R <= MAX * str + MAX);

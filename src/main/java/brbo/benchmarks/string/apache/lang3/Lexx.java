@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract public class Lexx extends Common {
   void f(int format) {
-    if (format <= 0)
+    if (format <= 0) {
       return;
+    }
     int buffer = 0;
     int R = 0;
     mostPreciseBound(R <= format);

@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract public class AppendRecursiveTypes extends Common {
   void f(int argumentTypes, int recursiveTypeIndexes) {
-    if (argumentTypes <= 0 || recursiveTypeIndexes <= 0)
+    if (argumentTypes <= 0 || recursiveTypeIndexes <= 0) {
       return;
+    }
     int builder = 0;
     int R = 0;
     mostPreciseBound(R <= recursiveTypeIndexes + 1 + argumentTypes * 3);

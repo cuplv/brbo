@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract public class ParseToken extends Common {
   void f(int pattern) {
-    if (pattern <= 0)
+    if (pattern <= 0) {
       return;
+    }
     int buf = 0;
     int R = 0;
     mostPreciseBound(R <= pattern + 1);
@@ -35,13 +36,15 @@ abstract public class ParseToken extends Common {
             R = R + 1;
           }
         }
-        else if (ndBool()) {
-          i--;
-          break;
-        }
         else {
-          buf++;
-          R = R + 1;
+          if (ndBool()) {
+            i--;
+            break;
+          }
+          else {
+            buf++;
+            R = R + 1;
+          }
         }
       }
     }

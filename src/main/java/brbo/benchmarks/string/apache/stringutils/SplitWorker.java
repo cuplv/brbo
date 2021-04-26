@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract public class SplitWorker extends Common {
   void f(int str, boolean preserveAllTokens) {
-    if (str <= 0)
+    if (str <= 0) {
       return;
+    }
     int R = 0;
     mostPreciseBound(R <= str);
     lessPreciseBound(R <= MAX * str + MAX);

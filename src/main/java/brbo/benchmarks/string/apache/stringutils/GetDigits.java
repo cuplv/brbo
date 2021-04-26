@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract public class GetDigits extends Common {
   void f(int str) {
-    if (str <= 0)
+    if (str <= 0) {
       return;
+    }
     int R = 0;
     mostPreciseBound(R <= str);
     lessPreciseBound(R <= MAX * str);

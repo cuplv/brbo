@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract public class Spacer extends Common {
   void f(int spaces) {
-    if (spaces <= 0)
+    if (spaces <= 0) {
       return;
+    }
     int sb = 0;
     int R = 0;
     mostPreciseBound(R <= spaces);

@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract public class DurationFormat extends Common {
   void f(int tokens, int years, int months) {
-    if (tokens <= 0 || years <= 0 || months <= 0)
+    if (tokens <= 0 || years <= 0 || months <= 0) {
       return;
+    }
     int buffer = 0;
     int R = 0;
     mostPreciseBound(R <= tokens + tokens * (years + months));
@@ -25,9 +26,11 @@ abstract public class DurationFormat extends Common {
         if (ndBool()) {
           buffer += years;
           R = R + years;
-        } else if (ndBool()) {
-          buffer += months;
-          R = R + months;
+        } else {
+          if (ndBool()) {
+            buffer += months;
+            R = R + months;
+          }
         }
       }
     }

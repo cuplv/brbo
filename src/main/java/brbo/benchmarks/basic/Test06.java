@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract class Test06 extends Common {
   void f(int n, int m) {
-    if (n <= 0 || m <= 0)
+    if (n <= 0 || m <= 0) {
       return;
+    }
     int R = 0;
     mostPreciseBound(R <= 2 * n + m);
     lessPreciseBound(R <= 8 * n + m);

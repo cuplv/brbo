@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract public class AppendQuotedString extends Common {
   void f(int pattern, int pos) {
-    if (pattern <= 0 || pos <= 0 || pattern < pos)
+    if (pattern <= 0 || pos <= 0 || pattern < pos) {
       return;
+    }
     int appendTo = 0;
     int R = 0;
     mostPreciseBound(R <= pattern);

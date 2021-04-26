@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract public class GetShortClassName extends Common {
   void f(int className) {
-    if (className <= 0)
+    if (className <= 0) {
       return;
+    }
     int arrayPrefix = 0;
     int R = 0;
     mostPreciseBound(R <= 2 * className);

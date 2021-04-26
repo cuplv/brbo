@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract public class Squeeze extends Common {
   void f(int str) {
-    if (str <= 0)
+    if (str <= 0) {
       return;
+    }
     int buffer = 0;
     int R = 0;
     mostPreciseBound(R <= str);

@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract public class AppendAllTo extends Common {
   void f(int sep, int types) {
-    if (sep <= 0 || types <= 0)
+    if (sep <= 0 || types <= 0) {
       return;
+    }
     int builder = 0;
     int R = 0;
     mostPreciseBound(R <= types * sep + types + 1);

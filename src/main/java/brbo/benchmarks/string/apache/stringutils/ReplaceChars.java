@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract public class ReplaceChars extends Common {
   void f(int str, int searchChars, int replaceChars) {
-    if (str <= 0 || searchChars <= 0 || replaceChars <= 0)
+    if (str <= 0 || searchChars <= 0 || replaceChars <= 0) {
       return;
+    }
     boolean modified = false;
     int buf = 0;
     int R = 0;

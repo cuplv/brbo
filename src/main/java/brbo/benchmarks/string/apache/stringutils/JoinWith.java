@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract public class JoinWith extends Common {
   void f(int separator, int n) {
-    if (separator <= 0 || n <= 0)
+    if (separator <= 0 || n <= 0) {
       return;
+    }
     int R = 0;
     mostPreciseBound(R <= n * separator + n);
     lessPreciseBound(R <= MAX * n * n +

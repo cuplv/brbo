@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 public abstract class TemplateEngine2 extends Common {
   void replaceTagsBuilder(int text, int templateds, int separator) {
-    if (text <= 0 || templateds <= 0 || separator <= 0)
+    if (text <= 0 || templateds <= 0 || separator <= 0) {
       return;
+    }
     int R = 0;
     mostPreciseBound(R <= text * templateds + separator * templateds);
     lessPreciseBound(R <= MAX * text * templateds +
