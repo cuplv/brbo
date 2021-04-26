@@ -1,6 +1,7 @@
 package brbo.common
 
 import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT}
+import brbo.common.cfg.UniqueNode
 import brbo.verification.BoundChecking
 import com.microsoft.z3.AST
 import com.sun.source.tree.Tree.Kind
@@ -142,14 +143,14 @@ object TreeUtils {
     }
   }
 
-  def collectCommands(statement: StatementTree): List[StatementTree] = {
+  def collectCommands(statement: StatementTree): Set[StatementTree] = {
     def throwException(message: String): Nothing = {
       throw new Exception(s"$message in AST: $statement")
     }
 
-    if (statement == null) return Nil
+    if (statement == null) return HashSet()
     statement match {
-      case _ if isCommand(statement) => statement :: Nil
+      case _ if isCommand(statement) => HashSet(statement)
       case tree: BlockTree => collectCommands(tree.getStatements.asScala)
       case _: ClassTree => throwException("Unexpected class tree")
       case _: DoWhileLoopTree => throwException("Not yet support do while loop tree") // collectCommands(tree.getStatement)
@@ -157,7 +158,7 @@ object TreeUtils {
       case tree: ForLoopTree =>
         val statements = tree.getInitializer.asScala.toList ::: tree.getStatement :: tree.getUpdate.asScala.toList
         collectCommands(statements)
-      case tree: IfTree => collectCommands(tree.getThenStatement) ::: collectCommands(tree.getElseStatement) ::: Nil
+      case tree: IfTree => collectCommands(tree.getThenStatement) ++ collectCommands(tree.getElseStatement)
       // case tree: LabeledStatementTree => collectCommands(tree.getStatement)
       case _: SwitchTree => throwException("Not yet support switch tree")
       case _: SynchronizedTree => throwException("Not yet support synchronized tree")
@@ -167,9 +168,9 @@ object TreeUtils {
     }
   }
 
-  def collectCommands(statements: Iterable[StatementTree]): List[StatementTree] = {
-    statements.foldLeft(List[StatementTree]())({
-      (acc, statement) => collectCommands(statement) ::: acc
+  def collectCommands(statements: Iterable[StatementTree]): Set[StatementTree] = {
+    statements.foldLeft(HashSet[StatementTree]())({
+      (acc, statement) => acc ++ collectCommands(statement)
     })
   }
 
@@ -296,7 +297,7 @@ object TreeUtils {
     getEnclosingTrees(path).tail.tail.tail.map(t => t.asInstanceOf[StatementTree])
   }
 
-  def getNodesCorrespondingToCommand(controlFlowGraph: ControlFlowGraph, tree: StatementTree): Set[Node] = {
+  def getNodesCorrespondingToCommand(controlFlowGraph: ControlFlowGraph, tree: StatementTree): Set[UniqueNode] = {
     assert(isCommand(tree))
     val nodes = tree match {
       case _@(_: AssertTree | _: EmptyStatementTree | _: ReturnTree | _: VariableTree | _: ContinueTree | _: BreakTree) =>
@@ -305,6 +306,15 @@ object TreeUtils {
         else set
       case command: ExpressionStatementTree => controlFlowGraph.getNodesCorrespondingToTree(command.getExpression)
     }
-    nodes.asScala.toSet
+    nodes.asScala.map(node => UniqueNode(node)).toSet
+  }
+
+  def findFirstCommand(methodTree: MethodTree): Option[StatementTree] = {
+    if (methodTree.getBody == null) {
+      None
+    }
+    else {
+      methodTree.getBody.getStatements.asScala.find(s => isCommand(s))
+    }
   }
 }

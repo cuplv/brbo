@@ -24,7 +24,7 @@ class ReachingDefinitionUnitTest extends AnyFlatSpec {
                 case Some(definitions) => definitions.toList.sortWith({ case (v1, v2) => v1.toString < v2.toString }).mkString(", ")
                 case None => ""
               }
-              val care = targetMethod.commands.exists({
+              val care = targetMethod.sortedCommands.exists({
                 command =>
                   if (command == node.getTree) true
                   else {
@@ -80,8 +80,9 @@ object ReachingDefinitionUnitTest {
         |  {
         |    int a = 0;
         |    int R = 0;
-        |    if (a < n)
+        |    if (a < n) {
         |      R = R + a;
+        |    }
         |  }
         |}""".stripMargin
     val test02ExpectedOutput =
@@ -106,8 +107,9 @@ object ReachingDefinitionUnitTest {
         |  {
         |    int a = 0;
         |    int R = 0;
-        |    while (n > 0)
+        |    while (n > 0) {
         |      a = a + n;
+        |    }
         |    R = R + a;
         |  }
         |}""".stripMargin
@@ -229,12 +231,12 @@ object ReachingDefinitionUnitTest {
         |                    R = R + (start - index);
         |                    index = end;
         |                }
-        |                if (true) return;
+        |                if (true) { return; }
         |                R = R + (text - index);
         |                sb += separator;
         |            }
         |            {
-        |                if (true) return;
+        |                if (true) { return; }
         |            }
         |        }
         |    }

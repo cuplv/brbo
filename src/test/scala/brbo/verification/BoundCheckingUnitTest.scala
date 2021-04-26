@@ -43,7 +43,7 @@ object BoundCheckingUnitTest {
     """class Test01 {
       |  void f(int n)
       |  {
-      |    if (n <= 0) return;
+      |    if (n <= 0) { return; }
       |    int D100 = 0;
       |    int D100p = 0;
       |    int C1 = 0;
@@ -65,7 +65,7 @@ object BoundCheckingUnitTest {
     """class Test02 {
       |  void f(int n, int m)
       |  {
-      |    if (n <= 0 || m <= 0) return;
+      |    if (n <= 0 || m <= 0) { return; }
       |    int R = 0;
       |    int C1 = 0;
       |    int D100p = 0;
@@ -90,7 +90,7 @@ object BoundCheckingUnitTest {
     """class Test03 {
       |  void f(int n)
       |  {
-      |    if (n <= 0) return;
+      |    if (n <= 0) { return; }
       |    int R = 0;
       |    int C1 = 0;
       |    int D100 = 0;
@@ -111,7 +111,7 @@ object BoundCheckingUnitTest {
     """class Test04 {
       |  void f(int n)
       |  {
-      |    if (n <= 0) return;
+      |    if (n <= 0) { return; }
       |    int R = 0;
       |    int C1 = 0;
       |    int D100 = 0;
@@ -131,7 +131,7 @@ object BoundCheckingUnitTest {
     """class Test05 {
       |  void f(int n)
       |  {
-      |    if (n <= 0) return;
+      |    if (n <= 0) { return; }
       |    int R = 0;
       |    int C1 = 0;
       |    int D100 = 0;

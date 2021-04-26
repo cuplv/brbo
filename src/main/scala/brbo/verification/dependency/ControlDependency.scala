@@ -1,6 +1,7 @@
 package brbo.verification.dependency
 
-import brbo.common.{CFGUtils, TargetMethod}
+import brbo.common.TargetMethod
+import brbo.common.cfg.CFGUtils
 import com.ibm.wala.util.graph.NumberedGraph
 import com.ibm.wala.util.graph.dominators.DominanceFrontiers
 import org.apache.logging.log4j.LogManager

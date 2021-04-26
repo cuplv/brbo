@@ -168,8 +168,9 @@ object DecompositionUnitTest {
         |  {
         |    int a = 0;
         |    int R = 0;
-        |    if (a < n)
+        |    if (a < n) {
         |      R = R + a;
+        |    }
         |  }
         |}""".stripMargin
     val test02ExpectedOutput =
@@ -657,13 +658,16 @@ object DecompositionUnitTest {
         |  {
         |    int d = 0;
         |    int R = 0;
-        |    if (d < n)
+        |    if (d < n) {
         |      R = R + d;
+        |    }
         |  }
         |}""".stripMargin
     val test04ExpectedOutput =
       """Subprogram(
-        |if (d < n) R = R + d;
+        |{
+        |    R = R + d;
+        |}
         |)""".stripMargin
 
     val test05 =
@@ -672,15 +676,19 @@ object DecompositionUnitTest {
         |  {
         |    int e = 0;
         |    int R = 0;
-        |    if (e < n)
+        |    if (e < n) {
         |      R = R + e;
-        |    else
+        |    }
+        |    else {
         |      e = e + 2;
+        |    }
         |  }
         |}""".stripMargin
     val test05ExpectedOutput =
       """Subprogram(
-        |if (e < n) R = R + e; else e = e + 2;
+        |{
+        |    R = R + e;
+        |}
         |)""".stripMargin
 
     val test06 =
@@ -689,13 +697,16 @@ object DecompositionUnitTest {
         |  {
         |    int f = 0;
         |    int R = 0;
-        |    for (int i = 0; i < n; i++)
+        |    for (int i = 0; i < n; i++) {
         |      R = R + f;
+        |    }
         |  }
         |}""".stripMargin
     val test06ExpectedOutput =
       """Subprogram(
-        |for (int i = 0; i < n; i++) R = R + f;
+        |{
+        |    R = R + f;
+        |}
         |)""".stripMargin
 
     List[TestCaseJavaProgram](

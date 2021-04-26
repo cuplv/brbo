@@ -35,16 +35,17 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
 
   def fullAmortize: IntermediateResult[Group] = {
     val updates = {
-      commands.flatMap({ statement => initializeGroups(statement, inputMethod) })
+      sortedCommands.flatMap({ statement => initializeGroups(statement, inputMethod) })
         .map(pair => Update(pair._1, pair._2))
     }
-    val firstCommand = inputMethod.commands.last
-    val group = Group(Some(firstCommand), updates)
+    val firstCommand = TreeUtils.findFirstCommand(inputMethod.methodTree)
+    assert(firstCommand.isDefined)
+    val group = Group(firstCommand, updates)
     IntermediateResult(Groups(Set(group)), FULL_AMORTIZE)
   }
 
   def initializeGroups(): Groups[Group] = {
-    val updateCommands = commands.foldLeft(new HashSet[Group])({
+    val updateCommands = sortedCommands.foldLeft(new HashSet[Group])({
       (acc, statement) =>
         initializeGroups(statement, inputMethod) match {
           case Some((statement, node)) => acc + Group(None, List(Update(statement, node)))
@@ -85,48 +86,53 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
   def decideReset(group: Group): Group = {
     val updateNodes = group.updates.map(u => u.node) // Two Nodes can be .equals but represent different CFG nodes
 
-    val allResets = inputMethod.commands.filter({
-      command =>
+    val allResets = inputMethod.commandsNodesMap.filter({
+      case (candidateReset, resetNodes) =>
         // For each command in the input program that dominates all update commands in the group, construct a new program
-        val resetNodes = TreeUtils.getNodesCorrespondingToCommand(inputMethod.cfg, command)
         if (resetNodes.isEmpty) {
           false
         }
         else {
           val dominate = resetNodes.forall({
-            resetNode => updateNodes.forall(updateNode => dominator.isDominatedBy(updateNode, resetNode))
+            resetNode => updateNodes.forall(updateNode => dominator.isDominatedBy(updateNode, resetNode.node))
           })
 
-          if (!dominate) false
+          if (!dominate) {
+            false
+          }
           else {
-            val newMethod = ChangeEntryNode.changeEntryNode(inputMethod, command, group.updates.map(u => u.statement).toSet, testMode = false)
+            val newMethod = ChangeEntryNode.changeEntryNode(inputMethod, candidateReset, group.updates.map(u => u.statement).toSet, testMode = false)
             val taintSet = DecompositionUtils.controlDataDependencyForResources(newMethod, debug = false)
-            logger.trace(s"Command: $command. Inputs: ${taintSet.inputs}. Program:\n${newMethod.methodTree}")
+            logger.trace(s"Command: $candidateReset. Inputs: ${taintSet.inputs}. Program:\n${newMethod.methodTree}")
             taintSet.inputs
               .filter(identifier => !GhostVariableUtils.isGhostVariable(identifier, Resource))
               .forall(identifier => inputMethod.inputVariables.contains(identifier))
           }
         }
     })
-    /*val pairs = allResets.map(reset => (reset, TreeUtils.getNodesCorrespondingToCommand(inputMethod.cfg, reset)))
-    pairs.find({
-      case (_, resetNodes) =>
-        if (resetNodes.isEmpty) false
-        else {
-          resetNodes.forall({
-            resetNode =>
-              updateNodes.forall(updateNode => dominator.isDominatedBy(updateNode, resetNode))
-          })
-        }
-    })*/
-    if (allResets.nonEmpty) {
-      val resetCommand = allResets.head
-      logger.info(s"Decide reset at `$resetCommand (${resetCommand.hashCode()})` for: ${group.updates.map(u => s"${u.statement} (${u.statement.hashCode()})")}")
-      Group(Some(resetCommand), group.updates)
+
+    val allResetNodes = allResets.values.flatten
+    val resetCommand: StatementTree = {
+      allResets.find({
+        case (_, resetNodes) =>
+          if (resetNodes.isEmpty) {
+            false
+          }
+          else {
+            resetNodes.forall({
+              resetNode =>
+                allResetNodes.forall(anotherResetNode => dominator.isDominatedBy(resetNode.node, anotherResetNode.node))
+            })
+          }
+      }) match {
+        case Some((resetCommand, _)) => resetCommand
+        case None =>
+          if (allResets.nonEmpty) allResets.head._1
+          else throw new Exception("Unexpected")
+      }
     }
-    else {
-      throw new Exception("Unexpected")
-    }
+    logger.info(s"Decide reset at `$resetCommand (${resetCommand.hashCode()})` for: ${group.updates.map(u => s"${u.statement} (${u.statement.hashCode()})")}")
+    Group(Some(resetCommand), group.updates)
   }
 
   case class Update(statement: StatementTree, node: Node)
@@ -141,7 +147,7 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
       case None =>
     }
 
-    override def toTestString: String = s"Group(${resetLocation.toString}, ${updates.toList.map(u => u.toString).sorted})"
+    override def toTestString: String = s"Group(${resetLocation.toString}, ${updates.map(u => u.toString).sorted})"
 
     override def beginCommand: StatementTree = {
       resetLocation match {

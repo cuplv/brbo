@@ -1,7 +1,8 @@
 package brbo.verification.decomposition
 
 import brbo.common.GhostVariableUtils.GhostVariable.Resource
-import brbo.common.{CFGUtils, GhostVariableUtils, TargetMethod}
+import brbo.common.cfg.CFGUtils
+import brbo.common.{GhostVariableUtils, TargetMethod}
 import brbo.verification.dependency.{ControlDependency, ReachingDefinition}
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.block.Block.BlockType

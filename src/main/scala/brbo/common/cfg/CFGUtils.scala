@@ -1,6 +1,7 @@
-package brbo.common
+package brbo.common.cfg
 
 import brbo.BrboMain
+import brbo.common.TargetMethod
 import brbo.verification.dependency.BrboNode
 import com.ibm.wala.util.graph.NumberedGraph
 import com.ibm.wala.util.graph.dominators.Dominators
@@ -14,8 +15,9 @@ import org.checkerframework.dataflow.cfg.visualize.DOTCFGVisualizer
 
 import java.io.IOException
 import java.util
-import scala.collection.JavaConverters._
 import scala.collection.immutable.{HashMap, HashSet}
+
+import scala.collection.JavaConverters._
 
 object CFGUtils {
   private val logger = LogManager.getLogger("brbo.common.CFGUtils")
@@ -211,5 +213,17 @@ object CFGUtils {
         }
       case None => throw new Exception(s"Node `$node` should exist in the CFG of method `${targetMethod.methodTree.getName}`")
     }
+  }
+
+  def nodeUniqueIdentifier(node: Node): String = nodeToString(node)
+
+  def nodeToString(node: Node): String = {
+    s"$node (${node.hashCode()}, ${node.getUid}, ${node.getClassAndUid})"
+  }
+
+  def getNodeIndexInBlock(node: Node): Int = {
+    val index = node.getBlock.getNodes.asScala.map(n => nodeUniqueIdentifier(n)).indexOf(nodeUniqueIdentifier(node))
+    assert(index != -1)
+    index
   }
 }

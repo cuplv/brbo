@@ -19,7 +19,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
 
   def noAmortize: IntermediateResult[Subprogram] = {
     logger.info(s"Decompose mode: `${brbo.verification.AmortizationMode.NO_AMORTIZE}`")
-    val subprograms = commands.foldLeft(new HashSet[Subprogram])({
+    val subprograms = sortedCommands.foldLeft(new HashSet[Subprogram])({
       (acc, command) =>
         command match {
           case expressionStatementTree: ExpressionStatementTree =>
@@ -70,7 +70,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
   }
 
   def initializeSubprograms(): Set[Subprogram] = {
-    commands.foldLeft(new HashSet[Subprogram])({
+    sortedCommands.foldLeft(new HashSet[Subprogram])({
       (acc, statement) =>
         initializeGroups(statement, inputMethod) match {
           case Some((statement, _)) => acc + Subprogram(inputMethod, List(statement))
@@ -376,7 +376,7 @@ case class Subprogram(inputMethod: TargetMethod, astNodes: List[StatementTree]) 
   }
 
   val innerTrees: Set[StatementTree] = astNodes.flatMap({ astNode => TreeUtils.collectStatementTrees(astNode) }).toSet
-  val commands: List[StatementTree] = TreeUtils.collectCommands(astNodes)
+  val commands: Set[StatementTree] = TreeUtils.collectCommands(astNodes)
 
   val minimalEnclosingTree: StatementTree = {
     if (astNodes.size == 1)

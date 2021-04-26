@@ -56,8 +56,9 @@ object ControlDependencyUnitTest {
         |  {
         |    int a = 0;
         |    int R = 0;
-        |    if (a < n)
+        |    if (a < n) {
         |      R = R + a;
+        |    }
         |  }
         |}""".stripMargin
     val test02ExpectedOutput = {

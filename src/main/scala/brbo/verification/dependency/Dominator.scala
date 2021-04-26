@@ -1,6 +1,7 @@
 package brbo.verification.dependency
 
-import brbo.common.{CFGUtils, TargetMethod}
+import brbo.common.TargetMethod
+import brbo.common.cfg.CFGUtils
 import com.ibm.wala.util.graph.NumberedGraph
 import com.ibm.wala.util.graph.dominators.Dominators
 import org.checkerframework.dataflow.cfg.block.Block
@@ -19,9 +20,8 @@ class Dominator(targetMethod: TargetMethod) {
       dominators.isDominatedBy(getBrboNode(block1), getBrboNode(block2))
     }
     else {
-      val index1 = block1.getNodes.indexOf(node1)
-      val index2 = block1.getNodes.indexOf(node2)
-      assert(index1 != -1 && index2 != -1)
+      val index1 = CFGUtils.getNodeIndexInBlock(node1)
+      val index2 = CFGUtils.getNodeIndexInBlock(node2)
       index1 >= index2
     }
   }

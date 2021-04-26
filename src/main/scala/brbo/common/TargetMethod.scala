@@ -1,7 +1,8 @@
 package brbo.common
 
-import brbo.common.CFGUtils.deepCopyGraph
+import brbo.common.cfg.CFGUtils.deepCopyGraph
 import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT, VOID}
+import brbo.common.cfg.UniqueNode
 import brbo.verification.dependency.BrboNode
 import com.ibm.wala.util.graph.NumberedGraph
 import com.sun.source.tree.{MethodTree, StatementTree, Tree}
@@ -9,7 +10,7 @@ import com.sun.source.util.TreePath
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
 
-import scala.collection.immutable.HashMap
+import scala.collection.immutable.{HashMap, HashSet}
 
 /**
  *
@@ -63,5 +64,10 @@ case class TargetMethod(fullQualifiedClassName: String,
     }
   }
 
-  val commands: List[StatementTree] = TreeUtils.collectCommands(methodTree.getBody)
+  val sortedCommands: List[StatementTree] = TreeUtils.collectCommands(methodTree.getBody).toList.sortWith({ case (c1, c2) => c1.toString < c2.toString})
+  val commandsNodesMap: Map[StatementTree, Set[UniqueNode]] = {
+    sortedCommands.foldLeft(new HashMap[StatementTree, Set[UniqueNode]])({
+      (acc, command) => acc + (command -> TreeUtils.getNodesCorrespondingToCommand(cfg, command))
+    })
+  }
 }

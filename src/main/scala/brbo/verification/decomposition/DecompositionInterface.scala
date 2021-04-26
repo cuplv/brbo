@@ -5,6 +5,7 @@ import brbo.common.GhostVariableUtils.GhostVariable.{Delta, Resource}
 import brbo.common.TypeUtils.BrboType
 import brbo.common.TypeUtils.BrboType.{BrboType, INT}
 import brbo.common._
+import brbo.common.cfg.CFGUtils
 import brbo.common.instrument.FileFormat.JAVA_FORMAT
 import brbo.common.instrument.InstrumentUtils.{NewMethodInformation, appendSemiColon}
 import brbo.common.instrument.{InstrumentUtils, StatementTreeInstrumentation}
@@ -20,7 +21,7 @@ abstract class DecompositionInterface(inputMethod: TargetMethod, arguments: Comm
   protected val debug: Boolean = arguments.getDebugMode
   protected val logger: Logger = LogManager.getLogger(classOf[Decomposition])
 
-  protected val commands: List[StatementTree] = inputMethod.commands
+  protected val sortedCommands: List[StatementTree] = inputMethod.sortedCommands
 
   protected val counterMap: Map[Tree, String] = CounterAxiomGenerator.generateCounterMap(inputMethod.methodTree.getBody)
 

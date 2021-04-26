@@ -1,10 +1,12 @@
 package brbo
 
+import brbo.benchmarks.GenerateSyntheticPrograms
 import brbo.common.AnalysisResult.{RawResult, aggregateResultsIndividual, aggregateResultsSummary}
 import brbo.common._
+import brbo.common.cfg.CFGUtils
 import brbo.verification.AmortizationMode.ALL_AMORTIZE
 import brbo.verification.BoundChecking.GlobalInvariants
-import brbo.verification.decomposition.{Decomposition, DecompositionResult, NewDecomposition}
+import brbo.verification.decomposition.{DecompositionResult, NewDecomposition}
 import brbo.verification.{BasicProcessor, BoundChecking}
 import com.microsoft.z3.AST
 import org.apache.commons.io.{FileUtils, FilenameUtils}
@@ -14,8 +16,6 @@ import java.io.File
 import java.nio.charset.Charset
 import java.text.SimpleDateFormat
 import java.util.Date
-import brbo.benchmarks.GenerateSyntheticPrograms
-
 import scala.collection.JavaConverters._
 import scala.collection.immutable.HashSet
 

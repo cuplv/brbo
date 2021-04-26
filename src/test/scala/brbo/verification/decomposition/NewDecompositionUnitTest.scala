@@ -174,7 +174,7 @@ object NewDecompositionUnitTest {
 
     val test02ExpectedOutput =
       """Group(Some(R = R + separator;), List(Update(R = R + separator;,R = (R + separator))))
-        |Group(Some(int sb = 0), List(Update(R = R + (start - index);,R = (R + (start - index))), Update(R = R + (text - index);,R = (R + (text - index)))))""".stripMargin
+        |Group(Some(int R = 0), List(Update(R = R + (start - index);,R = (R + (start - index))), Update(R = R + (text - index);,R = (R + (text - index)))))""".stripMargin
 
     List[TestCaseJavaProgram](
       TestCaseJavaProgram("Test01", decompositionTest01, test01ExpectedOutput),
