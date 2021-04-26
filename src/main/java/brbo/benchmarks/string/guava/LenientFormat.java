@@ -4,8 +4,9 @@ import brbo.benchmarks.Common;
 
 abstract public class LenientFormat extends Common {
   void f(int template, int args) {
-    if (template <= 0 || args <= 0)
+    if (template <= 0 || args <= 0) {
       return;
+    }
     int builder = 0;
     int R = 0;
     mostPreciseBound(R <= template + args + 2 + 2 * args);
@@ -37,7 +38,7 @@ abstract public class LenientFormat extends Common {
         R = R + 1;
         builder++;
         R = R + 1;
-        i++;
+        i = i + 1;
       }
     }
   }
