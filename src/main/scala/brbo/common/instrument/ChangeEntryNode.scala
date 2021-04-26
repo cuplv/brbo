@@ -4,7 +4,7 @@ import brbo.common.GhostVariableUtils.GhostVariable.Resource
 import brbo.common.TypeUtils.BrboType
 import brbo.common.instrument.FileFormat.JAVA_FORMAT
 import brbo.common.instrument.InstrumentUtils.{NewMethodInformation, appendSemiColon}
-import brbo.common.instrument.JumpOrNormal.{Jump, JumpOrNormal, Normal}
+import brbo.common.instrument.JumpOrNormalOrExit.{Exit, Jump, JumpOrNormalOrExit, Normal}
 import brbo.common.{GhostVariableUtils, TargetMethod, TreeUtils}
 import brbo.verification.BasicProcessor
 import com.sun.source.tree._
@@ -64,6 +64,7 @@ object ChangeEntryNode {
                   }
                 case None => throw new Exception("Unexpected")
               }
+            case _: ReturnTree => LeafNode(Data(treeToAst(tree), Exit))
             case _ => LeafNode(Data(treeToAst(tree), Normal))
           }
         case tree: BlockTree =>
@@ -215,7 +216,12 @@ case class Loop(condition: ExpressionTree, body: AST) extends AST {
       if (string.startsWith("(") && string.endsWith(")")) string
       else s"($string)"
     }
-    s"while $conditionString ${body.print(preserveDeclaration, preservedUpdates)}"
+    val bodyString = {
+      val raw = body.print(preserveDeclaration, preservedUpdates)
+      if (raw.startsWith("{") && raw.endsWith("}")) raw
+      else s"{$raw}"
+    }
+    s"while $conditionString $bodyString"
   }
 }
 
@@ -226,7 +232,17 @@ case class ITE(condition: ExpressionTree, thenAst: AST, elseAst: AST) extends AS
       if (string.startsWith("(") && string.endsWith(")")) string
       else s"($string)"
     }
-    s"if $conditionString ${thenAst.print(preserveDeclaration, preservedUpdates)} else ${elseAst.print(preserveDeclaration, preservedUpdates)}"
+    val thenString = {
+      val raw = thenAst.print(preserveDeclaration, preservedUpdates)
+      if (raw.startsWith("{") && raw.endsWith("}")) raw
+      else s"{$raw}"
+    }
+    val elseString = {
+      val raw = elseAst.print(preserveDeclaration, preservedUpdates)
+      if (raw.startsWith("{") && raw.endsWith("}")) raw
+      else s"{$raw}"
+    }
+    s"if $conditionString $thenString else $elseString"
   }
 }
 
@@ -264,12 +280,12 @@ case object Empty extends AST {
   override def print(preserveDeclaration: Boolean, preservedUpdates: Set[StatementTree]): String = "{;}"
 }
 
-object JumpOrNormal extends Enumeration {
-  type JumpOrNormal = Value
-  val Jump, Normal = Value
+object JumpOrNormalOrExit extends Enumeration {
+  type JumpOrNormalOrExit = Value
+  val Jump, Normal, Exit = Value
 }
 
-case class Data(ast: AST, breakOrContinue: JumpOrNormal)
+case class Data(ast: AST, breakOrContinue: JumpOrNormalOrExit)
 
 object FatNode {
   def append(fatNode: FatNode, newNode: FatNode): FatNode = {
@@ -282,6 +298,7 @@ object FatNode {
         data.breakOrContinue match {
           case Jump => fatNode
           case Normal => SequenceNode(newNode, data)
+          case Exit => fatNode
         }
       case EmptyNode => newNode
     }
@@ -297,6 +314,7 @@ object FatNode {
         data.breakOrContinue match {
           case Jump => Block(List(data.ast, jumpNextPath))
           case Normal => Block(List(data.ast, normalNextPath))
+          case Exit => data.ast
         }
       case EmptyNode => normalNextPath
     }

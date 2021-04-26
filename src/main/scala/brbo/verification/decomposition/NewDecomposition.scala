@@ -84,6 +84,7 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
   }
 
   def decideReset(group: Group): Group = {
+    logger.info(s"Decide reset for: ${group.updates.map(u => s"${u.statement} (${u.statement.hashCode()})")}")
     val updateNodes = group.updates.map(u => u.node) // Two Nodes can be .equals but represent different CFG nodes
 
     val allResets = inputMethod.commandsNodesMap.filter({
