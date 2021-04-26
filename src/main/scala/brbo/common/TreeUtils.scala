@@ -10,6 +10,7 @@ import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
 import org.checkerframework.dataflow.cfg.node.Node
 
+import java.util
 import javax.lang.model.`type`.TypeMirror
 import scala.collection.JavaConverters._
 import scala.collection.immutable.{HashMap, HashSet}
@@ -213,10 +214,8 @@ object TreeUtils {
     if (tree == null) return false
 
     tree match {
-      case _@(_: AssertTree | _: EmptyStatementTree |
-              _: ExpressionStatementTree | _: ReturnTree | _: VariableTree) =>
-        // Disallow BreakTree and ContinueTree
-        true
+      case _@(_: AssertTree | _: EmptyStatementTree | _: BreakTree | _: ContinueTree |
+              _: ExpressionStatementTree | _: ReturnTree | _: VariableTree) => true
       case _ => false
     }
   }
@@ -281,10 +280,10 @@ object TreeUtils {
 
   val loopKinds: Set[Tree.Kind] = HashSet[Tree.Kind](Tree.Kind.FOR_LOOP, Tree.Kind.WHILE_LOOP)
 
-  def getMinimalEnclosingLoop(path: TreePath): Option[Tree] = {
+  def getMinimalEnclosingLoop(path: TreePath): Option[StatementTree] = {
     org.checkerframework.javacutil.TreePathUtil.enclosingOfKind(path, loopKinds.asJava) match {
       case null => None
-      case loop => Some(loop)
+      case loop => Some(loop.asInstanceOf[StatementTree])
     }
   }
 
@@ -317,7 +316,10 @@ object TreeUtils {
   def getNodesCorrespondingToCommand(controlFlowGraph: ControlFlowGraph, tree: StatementTree): Set[Node] = {
     assert(isCommand(tree))
     val nodes = tree match {
-      case _@(_: AssertTree | _: EmptyStatementTree | _: ReturnTree | _: VariableTree) => controlFlowGraph.getNodesCorrespondingToTree(tree)
+      case _@(_: AssertTree | _: EmptyStatementTree | _: ReturnTree | _: VariableTree | _: ContinueTree | _: BreakTree) =>
+        val set = controlFlowGraph.getNodesCorrespondingToTree(tree)
+        if (set == null) new util.HashSet[Node]()
+        else set
       case command: ExpressionStatementTree => controlFlowGraph.getNodesCorrespondingToTree(command.getExpression)
     }
     nodes.asScala.toSet

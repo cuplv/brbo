@@ -1,7 +1,7 @@
 package brbo.common.instrument
 
-import brbo.{StringCompare, TestCaseJavaProgram}
 import brbo.verification.BasicProcessor
+import brbo.{StringCompare, TestCaseJavaProgram}
 import org.scalatest.flatspec.AnyFlatSpec
 
 class ChangeEntryNodeUnitTest extends AnyFlatSpec {
@@ -10,7 +10,7 @@ class ChangeEntryNodeUnitTest extends AnyFlatSpec {
       testCase =>
         val inputMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val entryCommand = inputMethod.commands.filter(t => t.toString == "int y = 2").head
-        val newMethod = ChangeEntryNode.changeEntryNode(inputMethod, entryCommand, Set())
+        val newMethod = ChangeEntryNode.changeEntryNode(inputMethod, entryCommand, Set(), testMode = true)
         assert(StringCompare.ignoreWhitespaces(newMethod.methodTree.toString, testCase.expectedOutput, testCase.className))
     }
   }
@@ -31,7 +31,7 @@ object ChangeEntryNodeUnitTest {
       """void f(int n, int x, int y, int z) {
         |    {
         |        z = 3;
-        |        if (true) return;
+        |        ;
         |    }
         |}""".stripMargin
 
@@ -56,9 +56,7 @@ object ChangeEntryNodeUnitTest {
         |                if (true) return;
         |                z = 3;
         |            }
-        |            {
-        |                if (true) return;
-        |            }
+        |            ;
         |        }
         |    }
         |}""".stripMargin
@@ -87,9 +85,7 @@ object ChangeEntryNodeUnitTest {
         |                }
         |                i++;
         |            }
-        |            {
-        |                if (true) return;
-        |            }
+        |            ;
         |        }
         |    }
         |}""".stripMargin
@@ -118,18 +114,14 @@ object ChangeEntryNodeUnitTest {
         |                z = 3;
         |            }
         |            {
-        |                {
-        |                    while (1 < n) {
-        |                        while (3 < n) {
-        |                            x = 1;
-        |                            if (true) return;
-        |                            z = 3;
-        |                        }
-        |                    }
-        |                    {
+        |                while (1 < n) {
+        |                    while (3 < n) {
+        |                        x = 1;
         |                        if (true) return;
+        |                        z = 3;
         |                    }
         |                }
+        |                ;
         |            }
         |        }
         |    }
@@ -144,13 +136,27 @@ object ChangeEntryNodeUnitTest {
         |      }
         |      int x = 1;
         |      int y = 2;
+        |      if (n > 0) break;
         |      int z = 3;
         |    }
         |  }
         |}""".stripMargin
     val nestedLoop02Expected =
       """void f(int n, int x, int y, int z) {
-        |    {
+        |    if (n > 0) {
+        |        ;
+        |        {
+        |            while (1 < n) {
+        |                while (3 < n) {
+        |                }
+        |                x = 1;
+        |                if (true) return;
+        |                if (n > 0) break; else ;
+        |                z = 3;
+        |            }
+        |            ;
+        |        }
+        |    } else {
         |        z = 3;
         |        {
         |            while (1 < n) {
@@ -158,15 +164,13 @@ object ChangeEntryNodeUnitTest {
         |                }
         |                x = 1;
         |                if (true) return;
+        |                if (n > 0) break; else ;
         |                z = 3;
         |            }
-        |            {
-        |                if (true) return;
-        |            }
+        |            ;
         |        }
         |    }
-        |}
-        |""".stripMargin
+        |}""".stripMargin
 
     val nestedLoop03: String =
       """class NestedLoop03 {
@@ -175,6 +179,7 @@ object ChangeEntryNodeUnitTest {
         |    while (1 < n) {
         |      int x = 1;
         |      int y = 2;
+        |      if (n > 0) continue;
         |      int z = 3;
         |      while (3 < n) {
         |      }
@@ -183,25 +188,38 @@ object ChangeEntryNodeUnitTest {
         |}""".stripMargin
     val nestedLoop03Expected =
       """void f(int n, int x, int y, int z) {
-        |    {
-        |        z = 3;
-        |        while (3 < n) {
-        |        }
+        |    if (n > 0) {
+        |        ;
         |        {
         |            while (1 < n) {
         |                x = 1;
         |                if (true) return;
+        |                if (n > 0) continue; else ;
         |                z = 3;
         |                while (3 < n) {
         |                }
         |            }
+        |            ;
+        |        }
+        |    } else {
+        |        z = 3;
+        |        {
+        |            while (3 < n) {
+        |            }
         |            {
-        |                if (true) return;
+        |                while (1 < n) {
+        |                    x = 1;
+        |                    if (true) return;
+        |                    if (n > 0) continue; else ;
+        |                    z = 3;
+        |                    while (3 < n) {
+        |                    }
+        |                }
+        |                ;
         |            }
         |        }
         |    }
-        |}
-        |""".stripMargin
+        |}""".stripMargin
 
     val ifLoop01: String =
       """class IfLoop01 {
@@ -224,20 +242,16 @@ object ChangeEntryNodeUnitTest {
         |    {
         |        z = 3;
         |        {
-        |            {
-        |                while (1 < n) {
-        |                    if (3 < n) {
-        |                        x = 1;
-        |                        if (true) return;
-        |                        z = 3;
-        |                    } else {
-        |                        w = 4;
-        |                    }
-        |                }
-        |                {
+        |            while (1 < n) {
+        |                if (3 < n) {
+        |                    x = 1;
         |                    if (true) return;
+        |                    z = 3;
+        |                } else {
+        |                    w = 4;
         |                }
         |            }
+        |            ;
         |        }
         |    }
         |}""".stripMargin
@@ -278,9 +292,7 @@ object ChangeEntryNodeUnitTest {
         |                    }
         |                    b = 6;
         |                }
-        |                {
-        |                    if (true) return;
-        |                }
+        |                ;
         |            }
         |        }
         |    }

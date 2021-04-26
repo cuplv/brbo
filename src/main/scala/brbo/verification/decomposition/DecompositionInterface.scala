@@ -165,41 +165,41 @@ abstract class DecompositionInterface(inputMethod: TargetMethod, arguments: Comm
   }
 
   private def whatToInsert[T <: Segment](deltaCounterPairs: Map[T, DeltaCounterPair])(tree: StatementTree): String = {
-    if (tree == null) return ""
+    if (tree == null || !TreeUtils.isCommand(tree)) return ""
 
     val groups = deltaCounterPairs.keySet
-    val prepend1: String = groups.find({
-      group => group.beginCommand == tree
-    }) match {
-      case Some(group) =>
-        val pair = deltaCounterPairs(group)
-        val deltaPrime = GhostVariableUtils.generateDeltaVariablePrime(pair.delta)
-        // s"$deltaPrime = ($deltaPrime > ${pair.delta}) ? $deltaPrime: ${pair.delta}; ${pair.delta} = 0; ${pair.counter} = ${pair.counter} + 1;"
-        s"$deltaPrime = ${pair.delta}; ${pair.delta} = 0; ${pair.counter} = ${pair.counter} + 1;"
-      case None => ""
+    val resets: String = {
+      val groupsBeginningWithCommand = groups.filter({
+        group => group.beginCommand == tree
+      })
+      groupsBeginningWithCommand.map({
+        group =>
+          val pair = deltaCounterPairs(group)
+          val deltaPrime = GhostVariableUtils.generateDeltaVariablePrime(pair.delta)
+          // s"$deltaPrime = ($deltaPrime > ${pair.delta}) ? $deltaPrime: ${pair.delta}; ${pair.delta} = 0; ${pair.counter} = ${pair.counter} + 1;"
+          s"$deltaPrime = ${pair.delta}; ${pair.delta} = 0; ${pair.counter} = ${pair.counter} + 1;"
+      }).mkString(" ")
     }
 
-    val prepend2: String = {
-      if (TreeUtils.isCommand(tree)) {
-        tree match {
-          case expressionStatementTree: ExpressionStatementTree =>
-            GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Resource) match {
-              case Some(updateTree) =>
-                // Assume there is only 1 subprogram that contains command `R=R+e`
-                groups.find(group => group.containCommand(tree)) match {
-                  case Some(subprogram) =>
-                    val pair = deltaCounterPairs(subprogram)
-                    s"${pair.delta} = ${pair.delta} + ${updateTree.increment}"
-                  case None => ""
-                }
-              case None => ""
-            }
-          case _ => ""
-        }
+    val updates: String = {
+      tree match {
+        case expressionStatementTree: ExpressionStatementTree =>
+          GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Resource) match {
+            case Some(updateTree) =>
+              val groupsContainingCommand = groups.filter(group => group.containCommand(tree))
+              groupsContainingCommand.size match {
+                case 0 => ""
+                case 1 =>
+                  val pair = deltaCounterPairs(groupsContainingCommand.head)
+                  s"${pair.delta} = ${pair.delta} + ${updateTree.increment}"
+                case 2 => throw new Exception(s"Command `$tree` must only belong to one group!")
+              }
+            case None => ""
+          }
+        case _ => ""
       }
-      else ""
     }
 
-    s"${appendSemiColon(prepend1)}${appendSemiColon(prepend2)}"
+    s"${appendSemiColon(resets)}${appendSemiColon(updates)}"
   }
 }

@@ -1,5 +1,6 @@
 package brbo.common
 
+import brbo.common.javac.JavacUtils
 import org.scalatest.flatspec.AnyFlatSpec
 
 class CFGUtilsTest extends AnyFlatSpec {

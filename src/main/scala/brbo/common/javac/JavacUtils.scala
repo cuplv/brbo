@@ -1,19 +1,20 @@
-package brbo.common
+package brbo.common.javac
 
-import java.io.ByteArrayOutputStream
-import java.net.URI
-
-import brbo.verification.EarlyStopException
 import com.sun.tools.javac.main.JavaCompiler
 import com.sun.tools.javac.util.{Context, List, Options}
-import javax.annotation.processing.Processor
-import javax.tools.JavaFileObject.Kind
-import javax.tools.SimpleJavaFileObject
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.{CFGProcessor, ControlFlowGraph}
 
+import java.io.ByteArrayOutputStream
+import java.net.URI
+import javax.annotation.processing.Processor
+import javax.tools.JavaFileObject.Kind
+import javax.tools.SimpleJavaFileObject
+
 object JavacUtils {
   private val logger = LogManager.getLogger("brbo.common.JavacUtils")
+
+  val commonClassQualifiedName = "brbo.benchmarks.Common"
 
   def runCFGProcessor(className: String, methodName: String, sourceFileName: String, sourceCode: String): ControlFlowGraph = {
     val cfgProcessor = new CFGProcessor(className, methodName)
@@ -47,6 +48,22 @@ object JavacUtils {
       // System.setOut(newOutSteam)
       val fileObject = new JavaSourceFromString(compilationUnitName, sourceCode)
       javac.compile(List.of(fileObject), List.of(compilationUnitName), List.of(processor))
+
+      /*val javac2 = ToolProvider.getSystemJavaCompiler
+      val diagnostics: DiagnosticCollector[JavaFileObject] = new DiagnosticCollector[JavaFileObject]
+      val fileManager: StandardJavaFileManager = javac2.getStandardFileManager(diagnostics, null, null)
+
+      val compilationUnit = java.util.Arrays.asList(fileObject)
+      val clazz = java.util.Arrays.asList(s"$compilationUnitName")
+      val task = javac2.getTask(null, fileManager, diagnostics, null, clazz, compilationUnit)
+      task.setProcessors(java.util.Arrays.asList(processor))
+      task.call
+
+      diagnostics.getDiagnostics.asScala.foreach({
+        diagnostic =>
+          logger.fatal(s"Compilation error: ${diagnostic.toString}")
+      })*/
+
       s"${bytesErr.toString}\n${bytesOut.toString}"
     }
     catch {
@@ -54,8 +71,9 @@ object JavacUtils {
         logger.trace(s"Early stop when running processor ${processor.toString}")
         s"${bytesErr.toString}\n${bytesOut.toString}"
       case e: Throwable =>
-        logger.error(s"Exception in running processor ${processor.toString}", e)
-        s"${bytesErr.toString}\n${bytesOut.toString}"
+        // logger.fatal(s"Exception in running processor ${processor.toString} for source code:\n$sourceCode", e)
+        // s"${bytesErr.toString}\n${bytesOut.toString}"
+        throw e
     }
     finally {
       // System.setErr(oldErrStream)

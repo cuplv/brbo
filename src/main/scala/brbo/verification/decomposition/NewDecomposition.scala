@@ -3,8 +3,9 @@ package brbo.verification.decomposition
 import brbo.common.GhostVariableUtils.GhostVariable.Resource
 import brbo.common._
 import brbo.common.instrument.ChangeEntryNode
+import brbo.verification.AmortizationMode.{NO_AMORTIZE, FULL_AMORTIZE, SELECTIVE_AMORTIZE}
 import brbo.verification.dependency.{ControlDependency, Dominator, ReachingDefinition}
-import com.sun.source.tree.StatementTree
+import com.sun.source.tree.{BreakTree, ContinueTree, StatementTree}
 import org.checkerframework.dataflow.cfg.node.Node
 
 import scala.collection.immutable.HashSet
@@ -23,31 +24,30 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
     val groups = initializeGroups()
     val newGroups = mergeGroups(groups)
     val finalGroups = Groups(newGroups.elements.map(group => decideReset(group)))
-    IntermediateResult(finalGroups, arguments.getAmortizationMode)
+    IntermediateResult(finalGroups, SELECTIVE_AMORTIZE)
   }
 
   def noAmortize: IntermediateResult[Group] = {
     val groups = initializeGroups()
     val newGroups = groups.elements.map(group => Group(Some(group.updates.head.statement), group.updates))
-    IntermediateResult(Groups(newGroups), arguments.getAmortizationMode)
+    IntermediateResult(Groups(newGroups), NO_AMORTIZE)
   }
 
   def fullAmortize: IntermediateResult[Group] = {
     val updates = {
       commands.flatMap({ statement => initializeGroups(statement, inputMethod) })
         .map(pair => Update(pair._1, pair._2))
-        .toSet
     }
     val firstCommand = inputMethod.commands.last
     val group = Group(Some(firstCommand), updates)
-    IntermediateResult(Groups(Set(group)), arguments.getAmortizationMode)
+    IntermediateResult(Groups(Set(group)), FULL_AMORTIZE)
   }
 
   def initializeGroups(): Groups[Group] = {
     val updateCommands = commands.foldLeft(new HashSet[Group])({
       (acc, statement) =>
         initializeGroups(statement, inputMethod) match {
-          case Some((statement, node)) => acc + Group(None, HashSet(Update(statement, node)))
+          case Some((statement, node)) => acc + Group(None, List(Update(statement, node)))
           case None => acc
         }
     })
@@ -83,35 +83,41 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
   }
 
   def decideReset(group: Group): Group = {
-    val allNodes = group.updates.toList.map(u => u.node) // Two Nodes can be .equals but represent different CFG nodes
+    val updateNodes = group.updates.map(u => u.node) // Two Nodes can be .equals but represent different CFG nodes
 
     inputMethod.commands.find({
       command =>
         // For each command in the input program that dominates all update commands in the group, construct a new program
         val resetNodes = TreeUtils.getNodesCorrespondingToCommand(inputMethod.cfg, command)
-        val dominate = resetNodes.forall({
-          resetNode => allNodes.forall(updateNode => dominator.isDominatedBy(updateNode, resetNode))
-        })
-
-        if (!dominate) false
+        if (resetNodes.isEmpty) false
         else {
-          val newMethod = ChangeEntryNode.changeEntryNode(inputMethod, command, group.updates.map(u => u.statement))
-          val taintSet = DecompositionUtils.controlDataDependencyForResources(newMethod, debug = false)
-          logger.trace(s"Command: $command. Inputs: ${taintSet.inputs}. Program:\n${newMethod.methodTree}")
-          taintSet.inputs
-            .filter(identifier => !GhostVariableUtils.isGhostVariable(identifier, Resource))
-            .forall(identifier => inputMethod.inputVariables.contains(identifier))
+          val dominate = resetNodes.forall({
+            resetNode => updateNodes.forall(updateNode => dominator.isDominatedBy(updateNode, resetNode))
+          })
+
+          if (!dominate) false
+          else if (!command.isInstanceOf[BreakTree] && !command.isInstanceOf[ContinueTree]) {
+            val newMethod = ChangeEntryNode.changeEntryNode(inputMethod, command, group.updates.map(u => u.statement).toSet, testMode = false)
+            val taintSet = DecompositionUtils.controlDataDependencyForResources(newMethod, debug = false)
+            logger.trace(s"Command: $command. Inputs: ${taintSet.inputs}. Program:\n${newMethod.methodTree}")
+            taintSet.inputs
+              .filter(identifier => !GhostVariableUtils.isGhostVariable(identifier, Resource))
+              .forall(identifier => inputMethod.inputVariables.contains(identifier))
+          }
+          else false
         }
     }) match {
-      case Some(resetCommand) => Group(Some(resetCommand), group.updates)
+      case Some(resetCommand) =>
+        logger.info(s"Decide reset at `$resetCommand` for: ${group.updates.map(u => u.statement)}")
+        Group(Some(resetCommand), group.updates)
       case None => throw new Exception("Unexpected")
     }
   }
 
   case class Update(statement: StatementTree, node: Node)
 
-  case class Group(resetLocation: Option[StatementTree], updates: Set[Update]) extends Segment {
-    val taintSets: Set[TaintSet] = updates.map({
+  case class Group(resetLocation: Option[StatementTree], updates: List[Update]) extends Segment {
+    val taintSets: List[TaintSet] = updates.map({
       update => DecompositionUtils.taintSetPerExecution(update.node, reachingDefinition, controlDependency, new HashSet[Node], debug = false)
     })
 

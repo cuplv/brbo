@@ -1,7 +1,8 @@
 package brbo.verification
 
 import brbo.common.instrument.InstrumentUtils
-import brbo.common.{JavacUtils, TargetMethod}
+import brbo.common.javac.{EarlyStopException, JavacUtils}
+import brbo.common.TargetMethod
 import com.sun.source.tree.{ClassTree, CompilationUnitTree, MethodTree, Tree}
 import com.sun.source.util.{SourcePositions, TreePath, TreePathScanner, Trees}
 import org.apache.commons.io.FilenameUtils
@@ -70,8 +71,9 @@ class BasicProcessor extends BasicTypeProcessor {
   override def typeProcessingOver(): Unit = {
     val log = getCompilerLog
     if (log.nerrors > 0) {
-      logger.error(s"Compilation error in file `$getFileName`: ${log.toString}")
-      return
+      log.flush()
+      logger.fatal(s"Compilation error in file `$getFileName`: ${log.toString}")
+      throw new Exception(s"Compilation error in file `$getFileName`: ${log.toString}")
     }
 
     trees = Some(Trees.instance(processingEnv))
