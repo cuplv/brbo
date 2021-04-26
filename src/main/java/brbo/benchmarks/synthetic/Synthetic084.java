@@ -2,8 +2,9 @@ package brbo.benchmarks.synthetic;
 import brbo.benchmarks.Common;
 public abstract class Synthetic084 extends Common {
   void f(int n) {
-    if (n <= 0)
+    if (n <= 0) {
       return;
+    }
     int R = 0;
     mostPreciseBound(R <= (n * n * 1 + n * 1));
     lessPreciseBound(R <= (n * n * 1 + n * 1) * 8);
