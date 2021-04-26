@@ -30,14 +30,28 @@ object TreeUtils {
       case blockTree: BlockTree => blockTree.getStatements.asScala.foreach(t => acceptableTree(t))
       case forLoopTree: ForLoopTree =>
         forLoopTree.getInitializer.asScala.foreach(t => acceptableTree(t))
+        mustBeBlockTreeOrNull(forLoopTree.getStatement, forLoopTree)
         acceptableTree(forLoopTree.getStatement)
         forLoopTree.getUpdate.asScala.foreach(t => acceptableTree(t))
       case ifTree: IfTree =>
+        mustBeBlockTreeOrNull(ifTree.getThenStatement, ifTree)
+        mustBeBlockTreeOrNull(ifTree.getElseStatement, ifTree)
         acceptableTree(ifTree.getThenStatement)
         acceptableTree(ifTree.getElseStatement)
       // case labeledStatementTree: LabeledStatementTree => acceptableTree(labeledStatementTree.getStatement)
-      case whileLoopTree: WhileLoopTree => acceptableTree(whileLoopTree.getStatement)
+      case whileLoopTree: WhileLoopTree =>
+        mustBeBlockTreeOrNull(whileLoopTree.getStatement, whileLoopTree)
+        acceptableTree(whileLoopTree.getStatement)
       case _ => throw new Exception(s"Unsupported tree: `$tree`")
+    }
+  }
+
+  // Ensure inserting statements still preserves the original control flow
+  private def mustBeBlockTreeOrNull(tree: Tree, enclosingTree: Tree): Unit = {
+    tree match {
+      case null =>
+      case _: BlockTree =>
+      case _ => throw new Exception(s"Tree `$tree` must be a block tree in `$enclosingTree`")
     }
   }
 
@@ -161,7 +175,6 @@ object TreeUtils {
 
   /**
    *
-   * @param tree
    * @return All statement trees that are enclosed in `tree`
    */
   def collectStatementTrees(tree: StatementTree): Set[StatementTree] = {
@@ -247,36 +260,6 @@ object TreeUtils {
   }
 
   private val INDENT = 2
-
-  @deprecated
-  def treeToString(tree: StatementTree, indent: Int): String = {
-    if (tree == null) return ""
-
-    val indentString: String = " " * indent
-    tree match {
-      case _@(_: AssertTree | _: BreakTree | _: ContinueTree | _: EmptyStatementTree |
-              _: ExpressionStatementTree | _: ReturnTree | _: VariableTree) => s"$indentString${tree.toString}"
-      case tree2: BlockTree =>
-        s"$indentString{\n${treeToString(tree2.getStatements.asScala, indent + INDENT)}\n$indentString}"
-      case tree2: ForLoopTree =>
-        val initializers = tree2.getInitializer.asScala
-        val updates = tree2.getUpdate.asScala
-        assert(initializers.size <= 1)
-        assert(updates.size <= 1)
-        s"${indentString}for (${treeToString(initializers.head, 0)}; ${tree2.getCondition}; ${treeToString(updates.head, 0)})\n${treeToString(tree2.getStatement, indent + INDENT)}"
-      case tree2: IfTree =>
-        s"${indentString}if ${tree2.getCondition}\n${treeToString(tree2.getThenStatement, indent + INDENT)}\n${indentString}else\n${treeToString(tree2.getElseStatement, indent + INDENT)}"
-      case tree2: LabeledStatementTree => s"$indentString${tree2.getLabel}: ${treeToString(tree2.getStatement, indent)}"
-      case tree2: WhileLoopTree =>
-        s"${indentString}while ${tree2.getCondition} {\n${treeToString(tree2.getStatement, indent + INDENT)}\n}"
-      case _ => throw new Exception(s"Not yet support tree $tree (type: ${tree.getClass})")
-    }
-  }
-
-  @deprecated
-  def treeToString(trees: Iterable[StatementTree], indent: Int): String = {
-    trees.map(tree => treeToString(tree, indent)).mkString(";\n")
-  }
 
   val loopKinds: Set[Tree.Kind] = HashSet[Tree.Kind](Tree.Kind.FOR_LOOP, Tree.Kind.WHILE_LOOP)
 

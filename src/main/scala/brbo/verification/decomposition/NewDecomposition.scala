@@ -3,9 +3,9 @@ package brbo.verification.decomposition
 import brbo.common.GhostVariableUtils.GhostVariable.Resource
 import brbo.common._
 import brbo.common.instrument.ChangeEntryNode
-import brbo.verification.AmortizationMode.{NO_AMORTIZE, FULL_AMORTIZE, SELECTIVE_AMORTIZE}
+import brbo.verification.AmortizationMode.{FULL_AMORTIZE, NO_AMORTIZE, SELECTIVE_AMORTIZE}
 import brbo.verification.dependency.{ControlDependency, Dominator, ReachingDefinition}
-import com.sun.source.tree.{BreakTree, ContinueTree, StatementTree}
+import com.sun.source.tree.StatementTree
 import org.checkerframework.dataflow.cfg.node.Node
 
 import scala.collection.immutable.HashSet
@@ -85,18 +85,20 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
   def decideReset(group: Group): Group = {
     val updateNodes = group.updates.map(u => u.node) // Two Nodes can be .equals but represent different CFG nodes
 
-    inputMethod.commands.find({
+    val allResets = inputMethod.commands.filter({
       command =>
         // For each command in the input program that dominates all update commands in the group, construct a new program
         val resetNodes = TreeUtils.getNodesCorrespondingToCommand(inputMethod.cfg, command)
-        if (resetNodes.isEmpty) false
+        if (resetNodes.isEmpty) {
+          false
+        }
         else {
           val dominate = resetNodes.forall({
             resetNode => updateNodes.forall(updateNode => dominator.isDominatedBy(updateNode, resetNode))
           })
 
           if (!dominate) false
-          else if (!command.isInstanceOf[BreakTree] && !command.isInstanceOf[ContinueTree]) {
+          else {
             val newMethod = ChangeEntryNode.changeEntryNode(inputMethod, command, group.updates.map(u => u.statement).toSet, testMode = false)
             val taintSet = DecompositionUtils.controlDataDependencyForResources(newMethod, debug = false)
             logger.trace(s"Command: $command. Inputs: ${taintSet.inputs}. Program:\n${newMethod.methodTree}")
@@ -104,13 +106,26 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
               .filter(identifier => !GhostVariableUtils.isGhostVariable(identifier, Resource))
               .forall(identifier => inputMethod.inputVariables.contains(identifier))
           }
-          else false
         }
-    }) match {
-      case Some(resetCommand) =>
-        logger.info(s"Decide reset at `$resetCommand` for: ${group.updates.map(u => u.statement)}")
-        Group(Some(resetCommand), group.updates)
-      case None => throw new Exception("Unexpected")
+    })
+    /*val pairs = allResets.map(reset => (reset, TreeUtils.getNodesCorrespondingToCommand(inputMethod.cfg, reset)))
+    pairs.find({
+      case (_, resetNodes) =>
+        if (resetNodes.isEmpty) false
+        else {
+          resetNodes.forall({
+            resetNode =>
+              updateNodes.forall(updateNode => dominator.isDominatedBy(updateNode, resetNode))
+          })
+        }
+    })*/
+    if (allResets.nonEmpty) {
+      val resetCommand = allResets.head
+      logger.info(s"Decide reset at `$resetCommand (${resetCommand.hashCode()})` for: ${group.updates.map(u => s"${u.statement} (${u.statement.hashCode()})")}")
+      Group(Some(resetCommand), group.updates)
+    }
+    else {
+      throw new Exception("Unexpected")
     }
   }
 

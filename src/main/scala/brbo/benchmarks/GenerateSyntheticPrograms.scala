@@ -187,8 +187,9 @@ object GenerateSyntheticPrograms {
                |import brbo.benchmarks.Common;
                |public abstract class Synthetic$className extends Common {
                |  void f(${inputs.map(x => s"int $x").mkString(", ")}) {
-               |    if (${inputs.map(x => s"$x <= 0").mkString(" || ")})
+               |    if (${inputs.map(x => s"$x <= 0").mkString(" || ")}) {
                |      return;
+               |    }
                |    int $resourceVariable = 0;
                |    mostPreciseBound($resourceVariable <= $mostPreciseBound);
                |    lessPreciseBound($resourceVariable <= $lessPreciseBound);

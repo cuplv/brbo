@@ -32,12 +32,12 @@ object JavacUtils {
     res.getCFG
   }
 
-  def runProcessor(compilationUnitName: String, sourceCode: String, processor: Processor): String = {
+  def runProcessor(compilationUnitName: String, sourceCode: String, processor: Processor): Unit = {
     val context = new Context
     Options.instance(context).put("compilePolicy", "ATTR_ONLY")
     val javac = new JavaCompiler(context)
-    val bytesErr = new ByteArrayOutputStream()
-    val bytesOut = new ByteArrayOutputStream()
+    // val bytesErr = new ByteArrayOutputStream()
+    // val bytesOut = new ByteArrayOutputStream()
     // val oldOutStream = System.out
     // val oldErrStream = System.err
     // val newErrSteam = new PrintStream(bytesErr, true, "UTF-8")
@@ -63,13 +63,10 @@ object JavacUtils {
         diagnostic =>
           logger.fatal(s"Compilation error: ${diagnostic.toString}")
       })*/
-
-      s"${bytesErr.toString}\n${bytesOut.toString}"
     }
     catch {
       case _: EarlyStopException =>
         logger.trace(s"Early stop when running processor ${processor.toString}")
-        s"${bytesErr.toString}\n${bytesOut.toString}"
       case e: Throwable =>
         // logger.fatal(s"Exception in running processor ${processor.toString} for source code:\n$sourceCode", e)
         // s"${bytesErr.toString}\n${bytesOut.toString}"

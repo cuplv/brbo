@@ -24,7 +24,10 @@ object ChangeEntryNode {
    *                         program, and resource updates in the new program
    * @return A method that is almost the same as the input method, but with a different entry command
    */
-  def changeEntryNode(inputMethod: TargetMethod, entryTree: StatementTree, preservedUpdates: Set[StatementTree], testMode: Boolean): TargetMethod = {
+  def changeEntryNode(inputMethod: TargetMethod,
+                      entryTree: StatementTree,
+                      preservedUpdates: Set[StatementTree],
+                      testMode: Boolean): TargetMethod = {
     assert(TreeUtils.isCommand(entryTree))
     val entryTreeAst = treeToAst(entryTree)
 
@@ -254,11 +257,11 @@ case class Command(statement: StatementTree) extends AST {
 
 case object Return extends AST {
   // To avoid "unreachable statement" error from javac, we can use `if (true) return;`
-  override def print(preserveDeclaration: Boolean, preservedUpdates: Set[StatementTree]): String = "if (true) return;"
+  override def print(preserveDeclaration: Boolean, preservedUpdates: Set[StatementTree]): String = "if (true) {return;}"
 }
 
 case object Empty extends AST {
-  override def print(preserveDeclaration: Boolean, preservedUpdates: Set[StatementTree]): String = ";"
+  override def print(preserveDeclaration: Boolean, preservedUpdates: Set[StatementTree]): String = "{;}"
 }
 
 object JumpOrNormal extends Enumeration {
