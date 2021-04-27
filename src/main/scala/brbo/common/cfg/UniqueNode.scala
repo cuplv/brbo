@@ -14,3 +14,9 @@ case class UniqueNode(node: Node) {
     CFGUtils.nodeUniqueIdentifier(node).hashCode
   }
 }
+
+object UniqueNode {
+  def sortNodes(set: Set[UniqueNode]):List[UniqueNode] = {
+    set.toList.sortWith({ case (n1, n2) => CFGUtils.nodeUniqueIdentifier(n1.node) < CFGUtils.nodeUniqueIdentifier(n2.node)})
+  }
+}

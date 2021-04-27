@@ -113,32 +113,30 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
             logger.trace(s"Command: `$candidateReset`. Inputs: ${taintSet.inputs}. Program:\n${newMethod.methodTree}")
             taintSet.inputs.forall(identifier => inputMethod.inputVariables.contains(identifier))*/
 
-            logger.info(s"Command `$candidateReset` dominates all updates")
+            logger.error(s"Command `$candidateReset` dominates all updates")
             true
           }
         }
+    }).toList.sortWith({ // This sort is stable
+      case (pair1, pair2) =>
+        val sortedNodes1 = UniqueNode.sortNodes(pair1._2)
+        val sortedNodes2 = UniqueNode.sortNodes(pair2._2)
+        s"${pair1._1}: $sortedNodes1" < s"${pair2._2}: $sortedNodes2"
+    }).sortWith({
+      case (pair1, pair2) =>
+        val resetNodes1 = pair1._2
+        val resetNodes2 = pair2._2
+        resetNodes1.forall({
+          resetNode1 =>
+            resetNodes2.forall(resetNode2 => dominator.isDominatedBy(resetNode1, resetNode2))
+        })
     })
 
-    val allResetNodes = allResets.values.flatten
     val resetCommand: StatementTree = {
-      allResets.find({
-        case (_, resetNodes) =>
-          if (resetNodes.isEmpty) {
-            false
-          }
-          else {
-            resetNodes.forall({
-              resetNode =>
-                allResetNodes.forall(anotherResetNode => dominator.isDominatedBy(resetNode, anotherResetNode))
-            })
-          }
-      }) match {
-        case Some((resetCommand, _)) => resetCommand
-        case None =>
-          if (allResets.nonEmpty) allResets.head._1
-          else throw new Exception("Unexpected")
-      }
+      if (allResets.isEmpty) throw new Exception("Unexpected")
+      else allResets.head._1
     }
+
     logger.info(s"Decide reset at `$resetCommand (${resetCommand.hashCode()})` for: ${group.updates.map(u => s"${u.statement} (${u.statement.hashCode()})")}")
     Group(Some(resetCommand), group.updates)
   }
@@ -180,5 +178,4 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
 
     override def containCommand(tree: StatementTree): Boolean = updates.exists(u => u.statement == tree)
   }
-
 }

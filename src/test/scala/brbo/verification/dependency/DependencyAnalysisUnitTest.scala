@@ -152,18 +152,18 @@ object DependencyAnalysisUnitTest {
 
   val dataDependencyTests: List[TestCaseJavaProgram] = {
     val test01ExpectedOutput =
-      """R = R + a; -> All: List(R, a). Inputs: List()
+      """R = R + a; -> All: List(a). Inputs: List()
         |a = a + 1; -> All: List(a). Inputs: List()
         |int R = 0 -> All: List(). Inputs: List()
         |int a = 0 -> All: List(). Inputs: List()""".stripMargin
 
     val test02ExpectedOutput =
-      """R = R + a; -> All: List(R, a). Inputs: List()
+      """R = R + a; -> All: List(a). Inputs: List()
         |int R = 0 -> All: List(). Inputs: List()
         |int a = 0 -> All: List(). Inputs: List()""".stripMargin
 
     val test03ExpectedOutput =
-      """R = R + 1; -> All: List(R). Inputs: List()
+      """R = R + 1; -> All: List(). Inputs: List()
         |int R = 0 -> All: List(). Inputs: List()
         |int p = q -> All: List(q). Inputs: List()
         |int q = 0 -> All: List(). Inputs: List()
@@ -174,17 +174,17 @@ object DependencyAnalysisUnitTest {
         |x--; -> All: List(n, x). Inputs: List(n)""".stripMargin
 
     val test04ExpectedOutput =
-      """R = R + 1; -> All: List(R). Inputs: List()
+      """R = R + 1; -> All: List(). Inputs: List()
         |i++; -> All: List(i). Inputs: List()
         |int R = 0 -> All: List(). Inputs: List()
         |int i = 0 -> All: List(). Inputs: List()
         |int j = i + 1 -> All: List(i). Inputs: List()
         |j++; -> All: List(i, j). Inputs: List()
-        |j++; -> All: List(j). Inputs: List()
+        |j++; -> All: List(i, j). Inputs: List()
         |n--; -> All: List(n). Inputs: List(n)""".stripMargin
 
     val test05ExpectedOutput =
-      """R = R + 1; -> All: List(R). Inputs: List()
+      """R = R + 1; -> All: List(). Inputs: List()
         |a--; -> All: List(a). Inputs: List()
         |a--; -> All: List(a, n). Inputs: List(n)
         |b++; -> All: List(b). Inputs: List()
