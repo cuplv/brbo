@@ -13,8 +13,8 @@ class ControlDependencyUnitTest extends AnyFlatSpec {
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
         val result = {
-          val result = ControlDependency.computeControlDependency(targetMethod)
-          ControlDependency.reverseControlDependency(result).map({
+          val result = targetMethod.controlDependency
+          result.map({
             case (block, blocks) => (block, blocks.toList.sortWith(_.getUid < _.getUid))
           }).toList.sortWith(_._1.getUid < _._1.getUid)
         }

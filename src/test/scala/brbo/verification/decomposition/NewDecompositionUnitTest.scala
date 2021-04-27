@@ -13,7 +13,7 @@ class NewDecompositionUnitTest extends AnyFlatSpec {
     NewDecompositionUnitTest.mergeTests.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new NewDecomposition(targetMethod, DEFAULT_ARGUMENTS)
+        val decomposition = new NewDecomposition(targetMethod, DEFAULT_ARGUMENTS, testMode = true)
         val groups = decomposition.initializeGroups()
         val newGroups = decomposition.mergeGroups(groups)
         val string = newGroups.elements.toList.map({ group => group.toTestString }).sorted
@@ -25,7 +25,7 @@ class NewDecompositionUnitTest extends AnyFlatSpec {
     NewDecompositionUnitTest.decomposeSelectiveAmortizationUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new NewDecomposition(targetMethod, DEFAULT_ARGUMENTS)
+        val decomposition = new NewDecomposition(targetMethod, DEFAULT_ARGUMENTS, testMode = true)
         val groups = decomposition.selectiveAmortize.groups
         val string = groups.toTestString
         assert(StringCompare.ignoreWhitespaces(string, testCase.expectedOutput, testCase.className))
@@ -36,7 +36,7 @@ class NewDecompositionUnitTest extends AnyFlatSpec {
     NewDecompositionUnitTest.decomposeNoAmortizationUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new NewDecomposition(targetMethod, DEFAULT_ARGUMENTS)
+        val decomposition = new NewDecomposition(targetMethod, DEFAULT_ARGUMENTS, testMode = true)
         val groups = decomposition.noAmortize.groups
         val string = groups.toTestString
         assert(StringCompare.ignoreWhitespaces(string, testCase.expectedOutput, testCase.className))
@@ -47,7 +47,7 @@ class NewDecompositionUnitTest extends AnyFlatSpec {
     NewDecompositionUnitTest.decomposeFullAmortizationUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new NewDecomposition(targetMethod, DEFAULT_ARGUMENTS)
+        val decomposition = new NewDecomposition(targetMethod, DEFAULT_ARGUMENTS, testMode = true)
         val groups = decomposition.fullAmortize.groups
         val string = groups.toTestString
         assert(StringCompare.ignoreWhitespaces(string, testCase.expectedOutput, testCase.className))
@@ -98,8 +98,7 @@ object NewDecompositionUnitTest {
         |}""".stripMargin
     val test03ExpectedOutput =
       """Group(None, List(Update(R = R + 1;,R = (R + 1))))
-        |Group(None, List(Update(R = R + a;,R = (R + a))))
-        |Group(None, List(Update(R = R + m;,R = (R + m))))""".stripMargin
+        |Group(None, List(Update(R = R + a;,R = (R + a)), Update(R = R + m;,R = (R + m))))""".stripMargin
 
     val test04: String =
       """class Test04 {
@@ -174,7 +173,7 @@ object NewDecompositionUnitTest {
 
     val test02ExpectedOutput =
       """Group(Some(R = R + separator;), List(Update(R = R + separator;,R = (R + separator))))
-        |Group(Some(int R = 0), List(Update(R = R + (start - index);,R = (R + (start - index))), Update(R = R + (text - index);,R = (R + (text - index)))))""".stripMargin
+        |Group(Some(int sb = 0), List(Update(R = R + (start - index);,R = (R + (start - index))), Update(R = R + (text - index);,R = (R + (text - index)))))""".stripMargin
 
     List[TestCaseJavaProgram](
       TestCaseJavaProgram("Test01", decompositionTest01, test01ExpectedOutput),

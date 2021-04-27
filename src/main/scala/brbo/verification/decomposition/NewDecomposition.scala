@@ -1,22 +1,20 @@
 package brbo.verification.decomposition
 
-import brbo.common.GhostVariableUtils.GhostVariable.Resource
 import brbo.common._
 import brbo.common.instrument.ChangeEntryNode
 import brbo.verification.AmortizationMode.{FULL_AMORTIZE, NO_AMORTIZE, SELECTIVE_AMORTIZE}
-import brbo.verification.dependency.{ControlDependency, Dominator, ReachingDefinition}
+import brbo.verification.dependency.{DependencyAnalysis, Dominator}
 import com.sun.source.tree.StatementTree
 import org.checkerframework.dataflow.cfg.node.Node
 
 import scala.collection.immutable.HashSet
 
-class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) extends DecompositionInterface(inputMethod, arguments) {
-  private val reachingDefinition = ReachingDefinition.run(inputMethod)
-  private val controlDependency = {
-    val controlDependency = ControlDependency.computeControlDependency(inputMethod)
-    ControlDependency.reverseControlDependency(controlDependency)
-  }
+class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArguments, testMode: Boolean) extends DecompositionInterface(inputMethod, arguments) {
+  private val reachingDefinition = inputMethod.reachingDefinitions
+  private val controlDependency = inputMethod.controlDependency
   private val dominator = new Dominator(inputMethod)
+
+  override protected val debug: Boolean = false
 
   override def decompose: List[DecompositionResult] = decompose(fullAmortize, selectiveAmortize, noAmortize)
 
@@ -74,13 +72,13 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
   }
 
   def shouldMerge(group1: Group, group2: Group): Boolean = {
-    val taintSet1 = group1.taintSets.flatMap(taintSet => taintSet.allVariables -- taintSet.inputs)
-    val taintSet2 = group2.taintSets.flatMap(taintSet => taintSet.allVariables -- taintSet.inputs)
+    val taintSet1 = group1.taintSetsDataOnly // group1.taintSets.flatMap(taintSet => taintSet.allVariables -- taintSet.inputs)
+    val taintSet2 = group2.taintSetsDataOnly // group2.taintSets.flatMap(taintSet => taintSet.allVariables -- taintSet.inputs)
     traceOrError(s"Group 1: $group1")
     traceOrError(s"Group 1 taint set: $taintSet1")
     traceOrError(s"Group 2: $group2")
     traceOrError(s"Group 2 taint set: $taintSet2")
-    taintSet1.intersect(taintSet2).nonEmpty
+    taintSet1.allVariables.intersect(taintSet2.allVariables).nonEmpty
   }
 
   def decideReset(group: Group): Group = {
@@ -102,12 +100,13 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
             false
           }
           else {
-            val newMethod = ChangeEntryNode.changeEntryNode(inputMethod, candidateReset, group.updates.map(u => u.statement).toSet, testMode = false)
-            val taintSet = DecompositionUtils.controlDataDependencyForResources(newMethod, debug = false)
+            val newMethod = ChangeEntryNode.changeEntryNode(inputMethod, candidateReset, group.updates.map(u => u.statement).toSet, testMode)
+            val taintSet = {
+              val taintSet = DependencyAnalysis.controlDataDependencyForResources(newMethod, debug = false)
+              TaintSet.removeResourceVariables(taintSet)
+            }
             logger.trace(s"Command: $candidateReset. Inputs: ${taintSet.inputs}. Program:\n${newMethod.methodTree}")
-            taintSet.inputs
-              .filter(identifier => !GhostVariableUtils.isGhostVariable(identifier, Resource))
-              .forall(identifier => inputMethod.inputVariables.contains(identifier))
+            taintSet.inputs.forall(identifier => inputMethod.inputVariables.contains(identifier))
           }
         }
     })
@@ -139,9 +138,23 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
   case class Update(statement: StatementTree, node: Node)
 
   case class Group(resetLocation: Option[StatementTree], updates: List[Update]) extends Segment {
-    val taintSets: List[TaintSet] = updates.map({
-      update => DecompositionUtils.taintSetPerExecution(update.node, reachingDefinition, controlDependency, new HashSet[Node], debug = false)
-    })
+    val taintSets: TaintSet = {
+      val taintSets = updates.map({
+        update =>
+          val taintSet = DependencyAnalysis.taintSetPerExecution(update.node, reachingDefinition, controlDependency, debug = false)
+          TaintSet.removeResourceVariables(taintSet)
+      })
+      TaintSet.merge(taintSets)
+    }
+    val taintSetsDataOnly: TaintSet = {
+      val taintSets = updates.map({
+        update =>
+          val taintSet = DependencyAnalysis.transitiveDataDependency(update.node, reachingDefinition, Set(), excludeResourceVariables = true, debug = false)
+          traceOrError(s"Command `${update.statement}` -> Taint sets (data only): ${taintSet.toTestString}")
+          TaintSet.removeResourceVariables(taintSet)
+      })
+      TaintSet.merge(taintSets)
+    }
 
     resetLocation match {
       case Some(statement) => assert(TreeUtils.isCommand(statement))

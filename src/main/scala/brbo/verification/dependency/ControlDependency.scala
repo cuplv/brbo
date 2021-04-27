@@ -54,7 +54,7 @@ object ControlDependency {
     })
   }
 
-  def reverseControlDependency(dependency: Map[Block, Set[Block]]): Map[Block, Set[Block]] = {
+  private def reverseControlDependency(dependency: Map[Block, Set[Block]]): Map[Block, Set[Block]] = {
     var map = dependency.keySet.foldLeft(new HashMap[Block, Set[Block]])({
       (acc, block) => acc + (block -> new HashSet[Block])
     })
@@ -67,5 +67,10 @@ object ControlDependency {
     })
 
     map
+  }
+
+  def computeReverseControlDependency(targetMethod: TargetMethod): Map[Block, Set[Block]] = {
+    val controlDependency = computeControlDependency(targetMethod)
+    reverseControlDependency(controlDependency)
   }
 }

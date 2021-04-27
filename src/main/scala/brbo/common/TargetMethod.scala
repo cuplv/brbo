@@ -1,16 +1,17 @@
 package brbo.common
 
-import brbo.common.cfg.CFGUtils.deepCopyGraph
 import brbo.common.TypeUtils.BrboType.{BOOL, BrboType, INT, VOID}
+import brbo.common.cfg.CFGUtils.deepCopyGraph
 import brbo.common.cfg.UniqueNode
-import brbo.verification.dependency.BrboNode
+import brbo.verification.dependency.{BrboNode, ControlDependency, ReachingDefinition}
 import com.ibm.wala.util.graph.NumberedGraph
 import com.sun.source.tree.{MethodTree, StatementTree, Tree}
 import com.sun.source.util.TreePath
 import org.apache.logging.log4j.LogManager
 import org.checkerframework.dataflow.cfg.ControlFlowGraph
+import org.checkerframework.dataflow.cfg.block.Block
 
-import scala.collection.immutable.{HashMap, HashSet}
+import scala.collection.immutable.HashMap
 
 /**
  *
@@ -64,10 +65,14 @@ case class TargetMethod(fullQualifiedClassName: String,
     }
   }
 
-  val sortedCommands: List[StatementTree] = TreeUtils.collectCommands(methodTree.getBody).toList.sortWith({ case (c1, c2) => c1.toString < c2.toString})
+  val sortedCommands: List[StatementTree] = TreeUtils.collectCommands(methodTree.getBody).toList.sortWith({ case (c1, c2) => c1.toString < c2.toString })
   val commandsNodesMap: Map[StatementTree, Set[UniqueNode]] = {
     sortedCommands.foldLeft(new HashMap[StatementTree, Set[UniqueNode]])({
       (acc, command) => acc + (command -> TreeUtils.getNodesCorrespondingToCommand(cfg, command))
     })
   }
+
+  def reachingDefinitions: ReachingDefinition = ReachingDefinition.run(this)
+
+  def controlDependency: Map[Block, Set[Block]] = ControlDependency.computeReverseControlDependency(this)
 }

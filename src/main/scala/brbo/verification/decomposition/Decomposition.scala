@@ -8,6 +8,7 @@ import brbo.common.instrument.InstrumentUtils
 import brbo.common.instrument.InstrumentUtils.NewMethodInformation
 import brbo.verification.AmortizationMode.{FULL_AMORTIZE, NO_AMORTIZE, SELECTIVE_AMORTIZE}
 import brbo.verification.BasicProcessor
+import brbo.verification.dependency.DependencyAnalysis
 import com.sun.source.tree._
 
 import scala.collection.JavaConverters._
@@ -257,7 +258,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
     val modifiedSet = environmentModifiedSet(subprogram, subprograms)
     traceOrError(s"Environment modified set: `$modifiedSet`")
 
-    val taintSet = DecompositionUtils.controlDataDependencyForResources(subprogram.targetMethod, debug)
+    val taintSet = DependencyAnalysis.controlDataDependencyForResources(subprogram.targetMethod, debug)
     traceOrError(s"Taint set `$taintSet` of subprogram\n$subprogram")
 
     modifiedSet.intersect(taintSet.inputs).nonEmpty
@@ -343,7 +344,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
     }
 
     val modifiedSet1 = DecompositionUtils.computeModifiedSet(subprogram1.targetMethod)
-    val taintSet2 = DecompositionUtils.controlDataDependencyForResources(subprogram2.targetMethod, debug)
+    val taintSet2 = DependencyAnalysis.controlDataDependencyForResources(subprogram2.targetMethod, debug)
     traceOrError(s"Subprogram 1 modified set: $modifiedSet1")
     traceOrError(s"Subprogram 1:\n$subprogram1")
     traceOrError(s"Subprogram 2 taint set: $taintSet2")

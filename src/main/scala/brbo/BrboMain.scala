@@ -157,7 +157,7 @@ object BrboMain {
         CFGUtils.printPDF(targetMethod.cfg, None)
         logger.info(s"${targetMethod.cfg.toString}")
       }
-      val decomposition = new NewDecomposition(targetMethod, arguments)
+      val decomposition = new NewDecomposition(targetMethod, arguments, testMode = false)
       Some(decomposition.decompose)
     }
     else {
