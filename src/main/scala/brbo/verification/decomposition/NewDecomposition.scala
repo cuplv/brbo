@@ -1,7 +1,7 @@
 package brbo.verification.decomposition
 
 import brbo.common._
-import brbo.common.instrument.ChangeEntryNode
+import brbo.common.cfg.{CFGUtils, UniqueNode}
 import brbo.verification.AmortizationMode.{FULL_AMORTIZE, NO_AMORTIZE, SELECTIVE_AMORTIZE}
 import brbo.verification.dependency.{DependencyAnalysis, Dominator}
 import com.sun.source.tree.StatementTree
@@ -83,7 +83,7 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
 
   def decideReset(group: Group): Group = {
     logger.info(s"Decide reset for: ${group.updates.map(u => s"${u.statement} (${u.statement.hashCode()})")}")
-    val updateNodes = group.updates.map(u => u.node) // Two Nodes can be .equals but represent different CFG nodes
+    val updateNodes = group.updates.map(u => UniqueNode(u.node)) // Two Nodes can be .equals but represent different CFG nodes
 
     val allResets = inputMethod.commandsNodesMap.filter({
       case (candidateReset, resetNodes) =>
@@ -92,21 +92,29 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
           false
         }
         else {
-          val dominate = resetNodes.forall({
-            resetNode => updateNodes.forall(updateNode => dominator.isDominatedBy(updateNode, resetNode.node))
+          traceOrError(s"Try reset `$candidateReset`")
+          val dominate = MathUtils.crossJoin2(resetNodes, updateNodes).forall({
+            case (resetNode, updateNode) =>
+              val result = dominator.isDominatedBy(updateNode, resetNode)
+              val not = if (!result) "not" else ""
+              traceOrError(s"${CFGUtils.nodeUniqueIdentifier(updateNode.node)} is $not dominated by ${CFGUtils.nodeUniqueIdentifier(resetNode.node)}")
+              result
           })
 
           if (!dominate) {
             false
           }
           else {
-            val newMethod = ChangeEntryNode.changeEntryNode(inputMethod, candidateReset, group.updates.map(u => u.statement).toSet, testMode)
+            /*val newMethod = ChangeEntryNode.changeEntryNode(inputMethod, candidateReset, group.updates.map(u => u.statement).toSet, testMode)
             val taintSet = {
               val taintSet = DependencyAnalysis.controlDataDependencyForResources(newMethod, debug = false)
               TaintSet.removeResourceVariables(taintSet)
             }
-            logger.trace(s"Command: $candidateReset. Inputs: ${taintSet.inputs}. Program:\n${newMethod.methodTree}")
-            taintSet.inputs.forall(identifier => inputMethod.inputVariables.contains(identifier))
+            logger.trace(s"Command: `$candidateReset`. Inputs: ${taintSet.inputs}. Program:\n${newMethod.methodTree}")
+            taintSet.inputs.forall(identifier => inputMethod.inputVariables.contains(identifier))*/
+
+            logger.info(s"Command `$candidateReset` dominates all updates")
+            true
           }
         }
     })
@@ -121,7 +129,7 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
           else {
             resetNodes.forall({
               resetNode =>
-                allResetNodes.forall(anotherResetNode => dominator.isDominatedBy(resetNode.node, anotherResetNode.node))
+                allResetNodes.forall(anotherResetNode => dominator.isDominatedBy(resetNode, anotherResetNode))
             })
           }
       }) match {

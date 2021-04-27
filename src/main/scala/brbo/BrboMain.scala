@@ -105,9 +105,9 @@ object BrboMain {
     val logDirectory = s"$date-${arguments.toFileName}"
     arguments.getAmortizationMode match {
       case ALL_AMORTIZE =>
-        val aggregatedCsvFileContents = "programs,lines,verified,time,verified,time,verified,time\n" + aggregateResultsSummary(results).map(r => r.toCSV).mkString("\n")
+        val aggregatedCsvFileContents = "programs,lines,verified(no),time(no),verified(ful.),time(ful.),verified(sel.),time(sel.)\n" + aggregateResultsSummary(results).map(r => r.toCSV).mkString("\n")
         val aggregatedCsvFileContentsIndividual = {
-          "program,lines,verified,time,verified,time,verified,time\n" + aggregateResultsIndividual(results).sortWith({
+          "program,lines,verified(no),time(no),verified(ful.),time(ful.),verified(sel.),time(sel.)\n" + aggregateResultsIndividual(results).sortWith({
             case (r1, r2) => r1.files.head < r2.files.head
           }).map(r => r.toCSV).mkString("\n")
         }
