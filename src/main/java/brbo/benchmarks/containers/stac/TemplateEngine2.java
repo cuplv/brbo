@@ -29,7 +29,9 @@ public abstract class TemplateEngine2 extends Common {
       while (true) {
         startTagLocation = ndInt2(endTagLocation + 1, text);
         endTagLocation = ndInt2(startTagLocation + 1, text);
-        if (endTagLocation == text) break;
+        if (endTagLocation == text) {
+          break;
+        }
         stringBuilder += startTagLocation - linePointer;
         R = R + (startTagLocation - linePointer);
         linePointer = endTagLocation;
