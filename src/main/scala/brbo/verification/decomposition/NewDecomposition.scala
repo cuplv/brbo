@@ -93,12 +93,12 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
           false
         }
         else {
-          infoTestMode(s"Try reset `$candidateReset`")
+          traceDebugMode(s"Try reset `$candidateReset`")
           val dominate = MathUtils.crossJoin2(resetNodes, updateNodes).forall({
             case (resetNode, updateNode) =>
               val result = dominator.isDominatedBy(updateNode, resetNode)
               val not = if (!result) "not" else "indeed"
-              infoTestMode(s"${CFGUtils.nodeUniqueIdentifier(updateNode.node)} is $not dominated by ${CFGUtils.nodeUniqueIdentifier(resetNode.node)}")
+              traceDebugMode(s"${CFGUtils.nodeUniqueIdentifier(updateNode.node)} is $not dominated by ${CFGUtils.nodeUniqueIdentifier(resetNode.node)}")
               result
           })
 
@@ -107,12 +107,12 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
           }
           else {
             val newMethod = ChangeEntryNode.changeEntryNode(inputMethod, candidateReset, group.updates.map(u => u.statement).toSet, testMode)
-            infoTestMode(s"New program:\n${newMethod.methodTree}")
+            traceDebugMode(s"New program:\n${newMethod.methodTree}")
             val taintSet = {
               val taintSet = DependencyAnalysis.controlDataDependencyForResources(newMethod, debug = false)
               TaintSet.removeResourceVariables(taintSet)
             }
-            infoTestMode(s"Command: `$candidateReset`. Taint set: $taintSet.")
+            traceDebugMode(s"Command: `$candidateReset`. Taint set: $taintSet.")
             taintSet.inputs.forall(identifier => inputMethod.inputVariables.contains(identifier))
 
             /*infoTestMode(s"Command `$candidateReset` dominates all updates")

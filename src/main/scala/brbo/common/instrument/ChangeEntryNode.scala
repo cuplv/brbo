@@ -33,61 +33,6 @@ object ChangeEntryNode {
 
     /**
      *
-     * @return ALl paths (of the original program) that begin and end with the current tree,
-     *         along with the "direction" of the immediate next control flow
-     */
-    def handleBreakContinue(currentTree: StatementTree, enclosingLoop: Option[StatementTree]): FatNode = {
-      if (currentTree == null)
-        return EmptyNode
-      logger.trace(s"Break: `$currentTree`")
-      currentTree match {
-        case tree if TreeUtils.isCommand(currentTree) =>
-          tree match {
-            case _: BreakTree =>
-              enclosingLoop match {
-                case Some(loop) =>
-                  loop match {
-                    case _@(_: WhileLoopTree | _: ForLoopTree) => LeafNode(Data(Empty, Jump))
-                    case _ => throw new Exception("Unexpected")
-                  }
-                case None => throw new Exception("Unexpected")
-              }
-            case _: ContinueTree =>
-              enclosingLoop match {
-                case Some(loop) =>
-                  loop match {
-                    case _: WhileLoopTree => LeafNode(Data(Empty, Jump))
-                    case forLoopTree: ForLoopTree =>
-                      val updates = Block(forLoopTree.getUpdate.asScala.map(t => treeToAst(t)).toList)
-                      LeafNode(Data(updates, Jump))
-                    case _ => throw new Exception("Unexpected")
-                  }
-                case None => throw new Exception("Unexpected")
-              }
-            case _: ReturnTree => LeafNode(Data(treeToAst(tree), Exit))
-            case _ => LeafNode(Data(treeToAst(tree), Normal))
-          }
-        case tree: BlockTree =>
-          var node: FatNode = EmptyNode
-          val statements = tree.getStatements.asScala
-          var i = 0
-          while (i < statements.size) {
-            val toAppend = handleBreakContinue(statements(i), enclosingLoop)
-            node = FatNode.append(node, toAppend)
-            i = i + 1
-          }
-          node
-        case tree: IfTree =>
-          BranchNode(tree.getCondition,
-            handleBreakContinue(tree.getThenStatement, enclosingLoop), handleBreakContinue(tree.getElseStatement, enclosingLoop))
-        case tree: WhileLoopTree => LeafNode(Data(treeToAst(tree), Normal))
-        case tree: ForLoopTree => LeafNode(Data(treeToAst(tree), Normal))
-        case _ => logger.fatal(s"$currentTree (${currentTree.getClass})"); throw new Exception("Unexpected")
-      }
-    }
-
-    /**
-     *
      * @return All paths of the original program (expressed with an AST) that begin with the immediate next control location of the current tree
      */
     def handleNextPaths(currentTree: StatementTree): AST = {
@@ -114,7 +59,7 @@ object ChangeEntryNode {
             }
             else {
               if (foundEntryTree) {
-                val toAppend = handleBreakContinue(statements(i), enclosingLoop)
+                val toAppend = handleBreakContinue(treeToAst(statements(i)), enclosingLoop.map(s => treeToAst(s)))
                 node = FatNode.append(node, toAppend)
               }
             }
@@ -138,15 +83,16 @@ object ChangeEntryNode {
               case _ => Block(additionalUpdates :+ nextPaths)
             }
           }
+          // Jump target of the enclosing block tree
           val jumpNextPath = enclosingLoop match {
             case Some(loop) =>
-              Block(List(loopBodySubstitute(loop, entryTreeAst), handleNextPaths(loop)))
+              FatNode.appendAst(processLoop(loop, entryTreeAst), handleNextPaths(loop), BadJumpTarget)
             case None => Empty
           }
           FatNode.appendAst(node, normalNextPath, jumpNextPath)
         case tree: IfTree => handleNextPaths(tree)
         case tree@(_: WhileLoopTree | _: ForLoopTree) =>
-          Block(List(loopBodySubstitute(tree, entryTreeAst), handleNextPaths(tree)))
+          FatNode.appendAst(processLoop(tree, entryTreeAst), handleNextPaths(tree), BadJumpTarget)
         case _ => logger.fatal(s"$enclosingTree (${enclosingTree.getClass})"); throw new Exception("Unexpected")
       }
     }
@@ -192,18 +138,79 @@ object ChangeEntryNode {
         case _: Command => ast
         case Return => Return
         case Empty => Empty
+        case _ => throw new Exception("Unexpected")
       }
     }
   }
 
-  private def loopBodySubstitute(loop: StatementTree, toBeSubstituted: AST): AST = {
-    val loopBody = loop match {
+  private def processLoop(loop: StatementTree, toBeSubstituted: AST): FatNode = {
+    val loopAST: AST = loop match {
       case forLoopTree: ForLoopTree =>
         Loop(forLoopTree.getCondition, Block(treeToAst(forLoopTree.getStatement) :: forLoopTree.getUpdate.asScala.toList.map(t => treeToAst(t))))
       case whileLoopTree: WhileLoopTree => treeToAst(whileLoopTree)
       case _ => throw new Exception("Unexpected")
     }
-    substitute(loopBody, toBeSubstituted, Return)
+    val newLoopAST: AST = substitute(loopAST, toBeSubstituted, Return)
+    handleBreakContinue(newLoopAST, None)
+  }
+
+  /**
+   *
+   * @return ALl paths (of the original program) that begin and end with the current tree,
+   *         along with the "direction" of the immediate next control flow
+   */
+  def handleBreakContinue(currentTree: AST, enclosingLoop: Option[AST]): FatNode = {
+    if (currentTree == null)
+      return EmptyNode
+
+    currentTree match {
+      case Block(statements) =>
+        var node: FatNode = EmptyNode
+        var i = 0
+        while (i < statements.size) {
+          val toAppend = handleBreakContinue(statements(i), enclosingLoop)
+
+          node = FatNode.append(node, toAppend)
+          i = i + 1
+        }
+        node
+      case Loop(condition, body) =>
+        val newBody = {
+          val newBody = handleBreakContinue(body, Some(currentTree)) // Possible to exit inside loop body!
+          FatNode.toAST(newBody)
+        }
+        // TODO: The next control flow is not necessarily normal because it is possible to exit inside loop body
+        LeafNode(Data(Loop(condition, newBody), Normal))
+      case ITE(condition, thenAst, elseAst) =>
+        BranchNode(condition,
+          handleBreakContinue(thenAst, enclosingLoop), handleBreakContinue(elseAst, enclosingLoop))
+      case Command(statement) =>
+        statement match {
+          case _: BreakTree =>
+            enclosingLoop match {
+              case Some(loop) =>
+                loop match {
+                  case Loop(_, _) => LeafNode(Data(Empty, Jump))
+                  case _ => throw new Exception("Unexpected")
+                }
+              case None => throw new Exception("Unexpected")
+            }
+          case _: ContinueTree =>
+            enclosingLoop match {
+              case Some(loop) =>
+                loop match {
+                  case Loop(_, _) => LeafNode(Data(Empty, Jump))
+                  case _ => throw new Exception("Unexpected")
+                }
+              case None => throw new Exception("Unexpected")
+            }
+          case _: ReturnTree => LeafNode(Data(currentTree, Exit))
+          case _ => LeafNode(Data(currentTree, Normal))
+        }
+      case Return => LeafNode(Data(Return, Exit))
+      case Empty => LeafNode(Data(currentTree, Normal))
+      case _ => throw new Exception("Unexpected")
+    }
   }
 }
 
@@ -289,11 +296,15 @@ case class Command(statement: StatementTree) extends AST {
 
 case object Return extends AST {
   // To avoid "unreachable statement" error from javac, we can use `if (true) return;`
-  override def print(preserveDeclaration: Boolean, preservedUpdates: Set[StatementTree]): String = "if (true) {return;}"
+  override def print(preserveDeclaration: Boolean, preservedUpdates: Set[StatementTree]): String = "{return;}"
 }
 
 case object Empty extends AST {
   override def print(preserveDeclaration: Boolean, preservedUpdates: Set[StatementTree]): String = "{;}"
+}
+
+case object BadJumpTarget extends AST {
+  override def print(preserveDeclaration: Boolean, preservedUpdates: Set[StatementTree]): String = ???
 }
 
 object JumpOrNormalOrExit extends Enumeration {
@@ -328,11 +339,22 @@ object FatNode {
         Block(List(data.ast, appendAst(next, normalNextPath, jumpNextPath)))
       case LeafNode(data) =>
         data.breakOrContinue match {
-          case Jump => Block(List(data.ast, jumpNextPath))
+          case Jump =>
+            assert(jumpNextPath != BadJumpTarget)
+            Block(List(data.ast, jumpNextPath))
           case Normal => Block(List(data.ast, normalNextPath))
           case Exit => data.ast
         }
       case EmptyNode => normalNextPath
+    }
+  }
+
+  def toAST(fatNode: FatNode): AST = {
+    fatNode match {
+      case BranchNode(condition, thenNode, elseNode) => ITE(condition, toAST(thenNode), toAST(elseNode))
+      case SequenceNode(next, data) => Block(List(data.ast, toAST(next)))
+      case LeafNode(data) => data.ast
+      case EmptyNode => Empty
     }
   }
 }

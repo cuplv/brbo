@@ -98,7 +98,8 @@ object NewDecompositionUnitTest {
         |}""".stripMargin
     val test03ExpectedOutput =
       """Group(None, List(Update(R = R + 1;,R = (R + 1))))
-        |Group(None, List(Update(R = R + a;,R = (R + a)), Update(R = R + m;,R = (R + m))))""".stripMargin
+        |Group(None, List(Update(R = R + a;,R = (R + a))))
+        |Group(None, List(Update(R = R + m;,R = (R + m))))""".stripMargin
 
     val test04: String =
       """class Test04 {
@@ -148,7 +149,6 @@ object NewDecompositionUnitTest {
       |    int sb = 0;
       |    int i = 0;
       |    while (i < templateds) {
-      |      int k = 123;
       |      int index = 0;
       |      int start = 0;
       |      int end = 0;
@@ -174,7 +174,7 @@ object NewDecompositionUnitTest {
 
     val test02ExpectedOutput =
       """Group(Some(R = R + separator;), List(Update(R = R + separator;,R = (R + separator))))
-        |Group(Some(int end = 0), List(Update(R = R + (start - index);,R = (R + (start - index))), Update(R = R + (text - index);,R = (R + (text - index)))))""".stripMargin
+        |Group(Some(int index = 0), List(Update(R = R + (start - index);,R = (R + (start - index))), Update(R = R + (text - index);,R = (R + (text - index)))))""".stripMargin
 
     List[TestCaseJavaProgram](
       TestCaseJavaProgram("Test01", decompositionTest01, test01ExpectedOutput),

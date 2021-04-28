@@ -60,10 +60,9 @@ object ChangeEntryNodeUnitTest {
         |            {
         |                while (1 < n) {
         |                    x = 1;
-        |                    if (true) {
+        |                    {
         |                        return;
         |                    }
-        |                    z = 3;
         |                }
         |                {
         |                    ;
@@ -94,14 +93,10 @@ object ChangeEntryNodeUnitTest {
         |                i++;
         |                {
         |                    while (i < 3) {
+        |                        x = 1;
         |                        {
-        |                            x = 1;
-        |                            if (true) {
-        |                                return;
-        |                            }
-        |                            z = 3;
+        |                            return;
         |                        }
-        |                        i++;
         |                    }
         |                    {
         |                        ;
@@ -133,12 +128,7 @@ object ChangeEntryNodeUnitTest {
         |            j += 1;
         |            {
         |                while (j < 4) {
-        |                    {
-        |                        if (true) {
-        |                            return;
-        |                        }
-        |                    }
-        |                    j += 1;
+        |                    return;
         |                }
         |                {
         |                    z = 3;
@@ -146,22 +136,19 @@ object ChangeEntryNodeUnitTest {
         |                        i++;
         |                        {
         |                            while (i < 3) {
+        |                                x = 1;
         |                                {
-        |                                    x = 1;
+        |                                    j = 0;
         |                                    {
-        |                                        j = 0;
         |                                        while (j < 4) {
-        |                                            {
-        |                                                if (true) {
-        |                                                    return;
-        |                                                }
-        |                                            }
-        |                                            j += 1;
+        |                                            return;
+        |                                        }
+        |                                        {
+        |                                            z = 3;
+        |                                            i++;
         |                                        }
         |                                    }
-        |                                    z = 3;
         |                                }
-        |                                i++;
         |                            }
         |                            {
         |                                ;
@@ -196,19 +183,17 @@ object ChangeEntryNodeUnitTest {
         |            {
         |                while (3 < n) {
         |                    x = 1;
-        |                    if (true) {
+        |                    {
         |                        return;
         |                    }
-        |                    z = 3;
         |                }
         |                {
         |                    while (1 < n) {
         |                        while (3 < n) {
         |                            x = 1;
-        |                            if (true) {
+        |                            {
         |                                return;
         |                            }
-        |                            z = 3;
         |                        }
         |                    }
         |                    {
@@ -247,41 +232,40 @@ object ChangeEntryNodeUnitTest {
         |            {
         |                while (1 < n) {
         |                    while (3 < n) {
-        |                    }
-        |                    x = 1;
-        |                    if (true) {
-        |                        return;
-        |                    }
-        |                    if (n > 0) {
-        |                        break;
-        |                    } else {
         |                        ;
         |                    }
-        |                    z = 3;
+        |                    {
+        |                        x = 1;
+        |                        {
+        |                            return;
+        |                        }
+        |                    }
         |                }
         |                {
         |                    ;
         |                }
         |            }
         |        } else {
-        |            z = 3;
         |            {
-        |                while (1 < n) {
-        |                    while (3 < n) {
+        |                ;
+        |            }
+        |            {
+        |                z = 3;
+        |                {
+        |                    while (1 < n) {
+        |                        while (3 < n) {
+        |                            ;
+        |                        }
+        |                        {
+        |                            x = 1;
+        |                            {
+        |                                return;
+        |                            }
+        |                        }
         |                    }
-        |                    x = 1;
-        |                    if (true) {
-        |                        return;
-        |                    }
-        |                    if (n > 0) {
-        |                        break;
-        |                    } else {
+        |                    {
         |                        ;
         |                    }
-        |                    z = 3;
-        |                }
-        |                {
-        |                    ;
         |                }
         |            }
         |        }
@@ -315,16 +299,8 @@ object ChangeEntryNodeUnitTest {
         |            {
         |                while (1 < n) {
         |                    x = 1;
-        |                    if (true) {
+        |                    {
         |                        return;
-        |                    }
-        |                    if (n > 0) {
-        |                        continue;
-        |                    } else {
-        |                        ;
-        |                    }
-        |                    z = 3;
-        |                    while (3 < n) {
         |                    }
         |                }
         |                {
@@ -332,27 +308,25 @@ object ChangeEntryNodeUnitTest {
         |                }
         |            }
         |        } else {
-        |            z = 3;
         |            {
-        |                while (3 < n) {
-        |                }
+        |                ;
+        |            }
+        |            {
+        |                z = 3;
         |                {
-        |                    while (1 < n) {
-        |                        x = 1;
-        |                        if (true) {
-        |                            return;
-        |                        }
-        |                        if (n > 0) {
-        |                            continue;
-        |                        } else {
-        |                            ;
-        |                        }
-        |                        z = 3;
-        |                        while (3 < n) {
-        |                        }
+        |                    while (3 < n) {
+        |                        ;
         |                    }
         |                    {
-        |                        ;
+        |                        while (1 < n) {
+        |                            x = 1;
+        |                            {
+        |                                return;
+        |                            }
+        |                        }
+        |                        {
+        |                            ;
+        |                        }
         |                    }
         |                }
         |            }
@@ -386,10 +360,9 @@ object ChangeEntryNodeUnitTest {
         |                while (1 < n) {
         |                    if (3 < n) {
         |                        x = 1;
-        |                        if (true) {
+        |                        {
         |                            return;
         |                        }
-        |                        z = 3;
         |                    } else {
         |                        w = 4;
         |                    }
@@ -433,14 +406,13 @@ object ChangeEntryNodeUnitTest {
         |                        a = 5;
         |                        if (3 < 4) {
         |                            w = 4;
+        |                            b = 6;
         |                        } else {
         |                            x = 1;
-        |                            if (true) {
+        |                            {
         |                                return;
         |                            }
-        |                            z = 3;
         |                        }
-        |                        b = 6;
         |                    }
         |                    {
         |                        ;
