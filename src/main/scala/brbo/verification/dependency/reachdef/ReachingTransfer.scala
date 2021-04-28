@@ -1,5 +1,6 @@
 package brbo.verification.dependency.reachdef
 
+import brbo.common.cfg.UniqueNode
 import org.apache.logging.log4j.{LogManager, Logger}
 import org.checkerframework.dataflow.analysis.{ForwardTransferFunction, RegularTransferResult, TransferInput, TransferResult}
 import org.checkerframework.dataflow.cfg.UnderlyingAST
@@ -27,7 +28,7 @@ class ReachingTransfer
     val definedVariable = n.getTarget.toString
     val newDefinitions = {
       val killed = inputDefinitions.filter(value => value.variable == definedVariable)
-      val generated = ReachingValue(Some(n), definedVariable)
+      val generated = ReachingValue(Some(UniqueNode(n)), definedVariable)
       val result = inputDefinitions -- killed + generated
       logger.trace(s"[Assignment] Node `$n`\nInput: $inputDefinitions\nKilled: $killed\nGenerated: $generated\nResult: $result")
       result

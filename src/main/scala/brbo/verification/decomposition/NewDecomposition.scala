@@ -2,6 +2,7 @@ package brbo.verification.decomposition
 
 import brbo.common._
 import brbo.common.cfg.{CFGUtils, UniqueNode}
+import brbo.common.instrument.ChangeEntryNode
 import brbo.verification.AmortizationMode.{FULL_AMORTIZE, NO_AMORTIZE, SELECTIVE_AMORTIZE}
 import brbo.verification.dependency.{DependencyAnalysis, Dominator}
 import com.sun.source.tree.StatementTree
@@ -9,12 +10,12 @@ import org.checkerframework.dataflow.cfg.node.Node
 
 import scala.collection.immutable.HashSet
 
-class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArguments, testMode: Boolean) extends DecompositionInterface(inputMethod, arguments) {
+class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArguments, testMode: Boolean) extends DecompositionInterface(inputMethod, arguments, testMode) {
   private val reachingDefinition = inputMethod.reachingDefinitions
   private val controlDependency = inputMethod.controlDependency
   private val dominator = new Dominator(inputMethod)
 
-  override protected val debug: Boolean = false
+  // override protected val debug: Boolean = false
 
   override def decompose: List[DecompositionResult] = decompose(fullAmortize, selectiveAmortize, noAmortize)
 
@@ -62,8 +63,8 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
         .find({ pair => shouldMerge(pair._1, pair._2) }) match {
         case Some(pair) =>
           val newGroup = Group(None, pair._1.updates ++ pair._2.updates)
-          logger.info(s"Merge two groups")
-          traceOrError(s"Group 1: ${pair._1}\nGroup 2: ${pair._2}\nNew group: $newGroup")
+          infoTestMode(s"Merge two groups")
+          traceDebugMode(s"Group 1: ${pair._1}\nGroup 2: ${pair._2}\nNew group: $newGroup")
           newGroups = newGroups - pair._1 - pair._2 + newGroup
         case None => continue = false
       }
@@ -72,17 +73,17 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
   }
 
   def shouldMerge(group1: Group, group2: Group): Boolean = {
-    val taintSet1 = group1.taintSetsDataOnly // group1.taintSets.flatMap(taintSet => taintSet.allVariables -- taintSet.inputs)
-    val taintSet2 = group2.taintSetsDataOnly // group2.taintSets.flatMap(taintSet => taintSet.allVariables -- taintSet.inputs)
-    traceOrError(s"Group 1: $group1")
-    traceOrError(s"Group 1 taint set: $taintSet1")
-    traceOrError(s"Group 2: $group2")
-    traceOrError(s"Group 2 taint set: $taintSet2")
+    val taintSet1 = group1.taintSetsDataOnlyExcludeInputs // group1.taintSets.flatMap(taintSet => taintSet.allVariables -- taintSet.inputs)
+    val taintSet2 = group2.taintSetsDataOnlyExcludeInputs // group2.taintSets.flatMap(taintSet => taintSet.allVariables -- taintSet.inputs)
+    traceDebugMode(s"Group 1: $group1")
+    traceDebugMode(s"Group 1 taint set: $taintSet1")
+    traceDebugMode(s"Group 2: $group2")
+    traceDebugMode(s"Group 2 taint set: $taintSet2")
     taintSet1.allVariables.intersect(taintSet2.allVariables).nonEmpty
   }
 
   def decideReset(group: Group): Group = {
-    logger.info(s"Decide reset for: ${group.updates.map(u => s"${u.statement} (${u.statement.hashCode()})")}")
+    infoTestMode(s"Decide reset for: ${group.updates.map(u => s"${u.statement} (${u.statement.hashCode()})")}")
     val updateNodes = group.updates.map(u => UniqueNode(u.node)) // Two Nodes can be .equals but represent different CFG nodes
 
     val allResets = inputMethod.commandsNodesMap.filter({
@@ -92,12 +93,12 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
           false
         }
         else {
-          traceOrError(s"Try reset `$candidateReset`")
+          infoTestMode(s"Try reset `$candidateReset`")
           val dominate = MathUtils.crossJoin2(resetNodes, updateNodes).forall({
             case (resetNode, updateNode) =>
               val result = dominator.isDominatedBy(updateNode, resetNode)
-              val not = if (!result) "not" else ""
-              traceOrError(s"${CFGUtils.nodeUniqueIdentifier(updateNode.node)} is $not dominated by ${CFGUtils.nodeUniqueIdentifier(resetNode.node)}")
+              val not = if (!result) "not" else "indeed"
+              infoTestMode(s"${CFGUtils.nodeUniqueIdentifier(updateNode.node)} is $not dominated by ${CFGUtils.nodeUniqueIdentifier(resetNode.node)}")
               result
           })
 
@@ -105,16 +106,17 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
             false
           }
           else {
-            /*val newMethod = ChangeEntryNode.changeEntryNode(inputMethod, candidateReset, group.updates.map(u => u.statement).toSet, testMode)
+            val newMethod = ChangeEntryNode.changeEntryNode(inputMethod, candidateReset, group.updates.map(u => u.statement).toSet, testMode)
+            infoTestMode(s"New program:\n${newMethod.methodTree}")
             val taintSet = {
               val taintSet = DependencyAnalysis.controlDataDependencyForResources(newMethod, debug = false)
               TaintSet.removeResourceVariables(taintSet)
             }
-            logger.trace(s"Command: `$candidateReset`. Inputs: ${taintSet.inputs}. Program:\n${newMethod.methodTree}")
-            taintSet.inputs.forall(identifier => inputMethod.inputVariables.contains(identifier))*/
+            infoTestMode(s"Command: `$candidateReset`. Taint set: $taintSet.")
+            taintSet.inputs.forall(identifier => inputMethod.inputVariables.contains(identifier))
 
-            logger.error(s"Command `$candidateReset` dominates all updates")
-            true
+            /*infoTestMode(s"Command `$candidateReset` dominates all updates")
+            true*/
           }
         }
     }).toList.sortWith({ // This sort is stable
@@ -137,7 +139,8 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
       else allResets.head._1
     }
 
-    logger.info(s"Decide reset at `$resetCommand (${resetCommand.hashCode()})` for: ${group.updates.map(u => s"${u.statement} (${u.statement.hashCode()})")}")
+    infoTestMode(s"Candidate resets: ${allResets.map(pair => pair._1)}")
+    infoTestMode(s"Decide reset at `$resetCommand (${resetCommand.hashCode()})` for: ${group.updates.map(u => s"${u.statement} (${u.statement.hashCode()})")}")
     Group(Some(resetCommand), group.updates)
   }
 
@@ -152,12 +155,13 @@ class NewDecomposition(inputMethod: TargetMethod, arguments: CommandLineArgument
       })
       TaintSet.merge(taintSets)
     }
-    val taintSetsDataOnly: TaintSet = {
+    val taintSetsDataOnlyExcludeInputs: TaintSet = {
       val taintSets = updates.map({
         update =>
           val taintSet = DependencyAnalysis.transitiveDataDependency(update.node, reachingDefinition, Set(), excludeResourceVariables = true, debug = false)
-          traceOrError(s"Command `${update.statement}` -> Taint sets (data only): ${taintSet.toTestString}")
-          TaintSet.removeResourceVariables(taintSet)
+          val excludeInputs = TaintSet(taintSet.allVariables.diff(inputMethod.inputVariables.keySet), taintSet.inputs.diff(inputMethod.inputVariables.keySet))
+          traceDebugMode(s"Command `${update.statement}` -> Taint sets (data only): ${taintSet.toTestString}. Exclude inputs: ${excludeInputs.toTestString}")
+          TaintSet.removeResourceVariables(excludeInputs)
       })
       TaintSet.merge(taintSets)
     }

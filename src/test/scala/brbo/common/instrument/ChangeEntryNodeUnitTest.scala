@@ -30,9 +30,12 @@ object ChangeEntryNodeUnitTest {
     val blockExpected =
       """void f(int n, int x, int y, int z) {
         |    {
-        |        z = 3;
+        |        y = 2;
         |        {
-        |            ;
+        |            z = 3;
+        |            {
+        |                ;
+        |            }
         |        }
         |    }
         |}""".stripMargin
@@ -51,17 +54,20 @@ object ChangeEntryNodeUnitTest {
     val whileLoopExpected =
       """void f(int n, int x, int y, int z) {
         |    {
-        |        z = 3;
+        |        y = 2;
         |        {
-        |            while (1 < n) {
-        |                x = 1;
-        |                if (true) {
-        |                    return;
-        |                }
-        |                z = 3;
-        |            }
+        |            z = 3;
         |            {
-        |                ;
+        |                while (1 < n) {
+        |                    x = 1;
+        |                    if (true) {
+        |                        return;
+        |                    }
+        |                    z = 3;
+        |                }
+        |                {
+        |                    ;
+        |                }
         |            }
         |        }
         |    }
@@ -81,20 +87,88 @@ object ChangeEntryNodeUnitTest {
     val forLoopExpected =
       """void f(int i, int n, int x, int y, int z) {
         |    {
-        |        z = 3;
+        |        y = 2;
         |        {
-        |            while (i < 3) {
-        |                {
-        |                    x = 1;
-        |                    if (true) {
-        |                        return;
-        |                    }
-        |                    z = 3;
-        |                }
-        |                i++;
-        |            }
+        |            z = 3;
         |            {
-        |                ;
+        |                i++;
+        |                {
+        |                    while (i < 3) {
+        |                        {
+        |                            x = 1;
+        |                            if (true) {
+        |                                return;
+        |                            }
+        |                            z = 3;
+        |                        }
+        |                        i++;
+        |                    }
+        |                    {
+        |                        ;
+        |                    }
+        |                }
+        |            }
+        |        }
+        |    }
+        |}""".stripMargin
+
+    val forLoop2: String = // A loop with a nesting depth of 2
+      """class ForLoop2 {
+        |  void f(int n)
+        |  {
+        |    for (int i = 0; i < 3; i++) {
+        |      int x = 1;
+        |      for (int j = 0; j < 4; j+=1) {
+        |        int y = 2;
+        |      }
+        |      int z = 3;
+        |    }
+        |  }
+        |}""".stripMargin
+    val forLoop2Expected =
+      """void f(int i, int j, int n, int x, int y, int z) {
+        |    {
+        |        y = 2;
+        |        {
+        |            j += 1;
+        |            {
+        |                while (j < 4) {
+        |                    {
+        |                        if (true) {
+        |                            return;
+        |                        }
+        |                    }
+        |                    j += 1;
+        |                }
+        |                {
+        |                    z = 3;
+        |                    {
+        |                        i++;
+        |                        {
+        |                            while (i < 3) {
+        |                                {
+        |                                    x = 1;
+        |                                    {
+        |                                        j = 0;
+        |                                        while (j < 4) {
+        |                                            {
+        |                                                if (true) {
+        |                                                    return;
+        |                                                }
+        |                                            }
+        |                                            j += 1;
+        |                                        }
+        |                                    }
+        |                                    z = 3;
+        |                                }
+        |                                i++;
+        |                            }
+        |                            {
+        |                                ;
+        |                            }
+        |                        }
+        |                    }
+        |                }
         |            }
         |        }
         |    }
@@ -116,27 +190,30 @@ object ChangeEntryNodeUnitTest {
     val nestedLoop01Expected =
       """void f(int n, int x, int y, int z) {
         |    {
-        |        z = 3;
+        |        y = 2;
         |        {
-        |            while (3 < n) {
-        |                x = 1;
-        |                if (true) {
-        |                    return;
-        |                }
-        |                z = 3;
-        |            }
+        |            z = 3;
         |            {
-        |                while (1 < n) {
-        |                    while (3 < n) {
-        |                        x = 1;
-        |                        if (true) {
-        |                            return;
-        |                        }
-        |                        z = 3;
+        |                while (3 < n) {
+        |                    x = 1;
+        |                    if (true) {
+        |                        return;
         |                    }
+        |                    z = 3;
         |                }
         |                {
-        |                    ;
+        |                    while (1 < n) {
+        |                        while (3 < n) {
+        |                            x = 1;
+        |                            if (true) {
+        |                                return;
+        |                            }
+        |                            z = 3;
+        |                        }
+        |                    }
+        |                    {
+        |                        ;
+        |                    }
         |                }
         |            }
         |        }
@@ -161,48 +238,51 @@ object ChangeEntryNodeUnitTest {
         |}""".stripMargin
     val nestedLoop02Expected =
       """void f(int n, int x, int y, int z) {
-        |    if (n > 0) {
-        |        {
-        |            ;
-        |        }
-        |        {
-        |            while (1 < n) {
-        |                while (3 < n) {
-        |                }
-        |                x = 1;
-        |                if (true) {
-        |                    return;
-        |                }
-        |                if (n > 0) {
-        |                    break;
-        |                } else {
-        |                    ;
-        |                }
-        |                z = 3;
-        |            }
+        |    {
+        |        y = 2;
+        |        if (n > 0) {
         |            {
         |                ;
         |            }
-        |        }
-        |    } else {
-        |        z = 3;
-        |        {
-        |            while (1 < n) {
-        |                while (3 < n) {
+        |            {
+        |                while (1 < n) {
+        |                    while (3 < n) {
+        |                    }
+        |                    x = 1;
+        |                    if (true) {
+        |                        return;
+        |                    }
+        |                    if (n > 0) {
+        |                        break;
+        |                    } else {
+        |                        ;
+        |                    }
+        |                    z = 3;
         |                }
-        |                x = 1;
-        |                if (true) {
-        |                    return;
-        |                }
-        |                if (n > 0) {
-        |                    break;
-        |                } else {
+        |                {
         |                    ;
         |                }
-        |                z = 3;
         |            }
+        |        } else {
+        |            z = 3;
         |            {
-        |                ;
+        |                while (1 < n) {
+        |                    while (3 < n) {
+        |                    }
+        |                    x = 1;
+        |                    if (true) {
+        |                        return;
+        |                    }
+        |                    if (n > 0) {
+        |                        break;
+        |                    } else {
+        |                        ;
+        |                    }
+        |                    z = 3;
+        |                }
+        |                {
+        |                    ;
+        |                }
         |            }
         |        }
         |    }
@@ -226,33 +306,11 @@ object ChangeEntryNodeUnitTest {
         |}""".stripMargin
     val nestedLoop03Expected =
       """void f(int n, int x, int y, int z) {
-        |    if (n > 0) {
-        |        {
-        |            ;
-        |        }
-        |        {
-        |            while (1 < n) {
-        |                x = 1;
-        |                if (true) {
-        |                    return;
-        |                }
-        |                if (n > 0) {
-        |                    continue;
-        |                } else {
-        |                    ;
-        |                }
-        |                z = 3;
-        |                while (3 < n) {
-        |                }
-        |            }
+        |    {
+        |        y = 2;
+        |        if (n > 0) {
         |            {
         |                ;
-        |            }
-        |        }
-        |    } else {
-        |        z = 3;
-        |        {
-        |            while (3 < n) {
         |            }
         |            {
         |                while (1 < n) {
@@ -271,6 +329,31 @@ object ChangeEntryNodeUnitTest {
         |                }
         |                {
         |                    ;
+        |                }
+        |            }
+        |        } else {
+        |            z = 3;
+        |            {
+        |                while (3 < n) {
+        |                }
+        |                {
+        |                    while (1 < n) {
+        |                        x = 1;
+        |                        if (true) {
+        |                            return;
+        |                        }
+        |                        if (n > 0) {
+        |                            continue;
+        |                        } else {
+        |                            ;
+        |                        }
+        |                        z = 3;
+        |                        while (3 < n) {
+        |                        }
+        |                    }
+        |                    {
+        |                        ;
+        |                    }
         |                }
         |            }
         |        }
@@ -296,21 +379,24 @@ object ChangeEntryNodeUnitTest {
     val ifLoop01Expected =
       """void f(int n, int w, int x, int y, int z) {
         |    {
-        |        z = 3;
+        |        y = 2;
         |        {
-        |            while (1 < n) {
-        |                if (3 < n) {
-        |                    x = 1;
-        |                    if (true) {
-        |                        return;
-        |                    }
-        |                    z = 3;
-        |                } else {
-        |                    w = 4;
-        |                }
-        |            }
+        |            z = 3;
         |            {
-        |                ;
+        |                while (1 < n) {
+        |                    if (3 < n) {
+        |                        x = 1;
+        |                        if (true) {
+        |                            return;
+        |                        }
+        |                        z = 3;
+        |                    } else {
+        |                        w = 4;
+        |                    }
+        |                }
+        |                {
+        |                    ;
+        |                }
         |            }
         |        }
         |    }
@@ -337,25 +423,28 @@ object ChangeEntryNodeUnitTest {
     val ifLoop02Expected =
       """void f(int a, int b, int n, int w, int x, int y, int z) {
         |    {
-        |        z = 3;
+        |        y = 2;
         |        {
-        |            b = 6;
+        |            z = 3;
         |            {
-        |                while (1 < n) {
-        |                    a = 5;
-        |                    if (3 < 4) {
-        |                        w = 4;
-        |                    } else {
-        |                        x = 1;
-        |                        if (true) {
-        |                            return;
-        |                        }
-        |                        z = 3;
-        |                    }
-        |                    b = 6;
-        |                }
+        |                b = 6;
         |                {
-        |                    ;
+        |                    while (1 < n) {
+        |                        a = 5;
+        |                        if (3 < 4) {
+        |                            w = 4;
+        |                        } else {
+        |                            x = 1;
+        |                            if (true) {
+        |                                return;
+        |                            }
+        |                            z = 3;
+        |                        }
+        |                        b = 6;
+        |                    }
+        |                    {
+        |                        ;
+        |                    }
         |                }
         |            }
         |        }
@@ -366,6 +455,7 @@ object ChangeEntryNodeUnitTest {
       TestCaseJavaProgram("Block", block, blockExpected),
       TestCaseJavaProgram("WhileLoop", whileLoop, whileLoopExpected),
       TestCaseJavaProgram("ForLoop", forLoop, forLoopExpected),
+      TestCaseJavaProgram("ForLoop2", forLoop2, forLoop2Expected),
       TestCaseJavaProgram("NestedLoop01", nestedLoop01, nestedLoop01Expected),
       TestCaseJavaProgram("NestedLoop02", nestedLoop02, nestedLoop02Expected),
       TestCaseJavaProgram("NestedLoop03", nestedLoop03, nestedLoop03Expected),

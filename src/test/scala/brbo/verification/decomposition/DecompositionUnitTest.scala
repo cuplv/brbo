@@ -16,7 +16,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.initializeSubprogramsUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod, DEFAULT_ARGUMENTS)
+        val decomposition = new Decomposition(targetMethod, DEFAULT_ARGUMENTS, testMode = true)
         val result = decomposition.initializeSubprograms()
         assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
     })
@@ -26,7 +26,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.mergeSubprogramsUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod, DEFAULT_ARGUMENTS)
+        val decomposition = new Decomposition(targetMethod, DEFAULT_ARGUMENTS, testMode = true)
         val initialSubprograms: Set[Subprogram] = decomposition.initializeSubprograms()
         val result: Traversable[Subprogram] = MathUtils.crossJoin(List(initialSubprograms, initialSubprograms)).map({
           subprograms =>
@@ -44,7 +44,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.mergeIfOverlapSubprogramsUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod, DEFAULT_ARGUMENTS)
+        val decomposition = new Decomposition(targetMethod, DEFAULT_ARGUMENTS, testMode = true)
         val result = decomposition.mergeIfOverlap(decomposition.initializeSubprograms())
         assert(StringCompare.ignoreWhitespaces(result.programs, testCase.expectedOutput, testCase.className))
     })
@@ -54,7 +54,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.enlargeSubprogramsUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod, DEFAULT_ARGUMENTS)
+        val decomposition = new Decomposition(targetMethod, DEFAULT_ARGUMENTS, testMode = true)
         val initialSubprograms: Set[Subprogram] = decomposition.initializeSubprograms()
         val result: Set[Subprogram] = initialSubprograms.map({
           subprogram =>
@@ -70,7 +70,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.environmentModifiedSetUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod, DEFAULT_ARGUMENTS)
+        val decomposition = new Decomposition(targetMethod, DEFAULT_ARGUMENTS, testMode = true)
         val subprograms = decomposition.mergeIfOverlap(decomposition.initializeSubprograms())
         val result = decomposition.environmentModifiedSet(subprograms.programs.head, subprograms)
         assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
@@ -81,7 +81,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.subsequentExecutionUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod, DEFAULT_ARGUMENTS)
+        val decomposition = new Decomposition(targetMethod, DEFAULT_ARGUMENTS, testMode = true)
         val initialSubprograms: List[Subprogram] = decomposition.initializeSubprograms().toList
         val result = MathUtils.crossJoin2(initialSubprograms, initialSubprograms).map({
           case (subprogram1, subprogram2) =>
@@ -97,7 +97,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.decomposeSelectiveAmortizationUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod, DEFAULT_ARGUMENTS)
+        val decomposition = new Decomposition(targetMethod, DEFAULT_ARGUMENTS, testMode = true)
         val result = decomposition.selectiveAmortize.groups.elements
         assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
     })
@@ -107,7 +107,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.insertingResetsAndUpdatesUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod, DEFAULT_ARGUMENTS)
+        val decomposition = new Decomposition(targetMethod, DEFAULT_ARGUMENTS, testMode = true)
         val subprograms = decomposition.mergeIfOverlap(decomposition.initializeSubprograms())
         val result = decomposition.insertGhostVariables(IntermediateResult(Groups(subprograms.programs), UNKNOWN))
         assert(StringCompare.ignoreWhitespaces(result.newSourceFileContents, testCase.expectedOutput, testCase.className))
@@ -118,7 +118,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.decomposeNoAmortizationUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod, DEFAULT_ARGUMENTS)
+        val decomposition = new Decomposition(targetMethod, DEFAULT_ARGUMENTS, testMode = true)
         val result = decomposition.noAmortize.groups.elements
         assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
     })
@@ -128,7 +128,7 @@ class DecompositionUnitTest extends AnyFlatSpec {
     DecompositionUnitTest.decomposeFullAmortizationUnitTest.foreach({
       testCase =>
         val targetMethod = BasicProcessor.getTargetMethod(testCase.className, testCase.inputProgram)
-        val decomposition = new Decomposition(targetMethod, DEFAULT_ARGUMENTS)
+        val decomposition = new Decomposition(targetMethod, DEFAULT_ARGUMENTS, testMode = true)
         val result = decomposition.fullAmortize.groups.elements
         assert(StringCompare.ignoreWhitespaces(result, testCase.expectedOutput, testCase.className))
     })

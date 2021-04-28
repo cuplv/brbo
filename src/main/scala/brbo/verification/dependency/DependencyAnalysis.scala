@@ -95,11 +95,11 @@ object DependencyAnalysis {
     val set = reachingDefinitions.get(inputNode) match {
       case Some(definitions) =>
         val newDefinitions = definitions.filter(definition => usedVariables.contains(definition.variable))
-        traceOrError(s"Reaching definitions (that are used): $newDefinitions", debug)
+        traceOrError(s"Reaching definitions: $definitions. Used: $newDefinitions", debug)
         val taintSets = newDefinitions.map({
           definition =>
             definition.node match {
-              case Some(node) => transitiveDataDependency(node, reachingDefinitions, visited + UniqueNode(inputNode), excludeResourceVariables, debug)
+              case Some(UniqueNode(node)) => transitiveDataDependency(node, reachingDefinitions, visited + UniqueNode(inputNode), excludeResourceVariables, debug)
               case None => TaintSet(HashSet[String](definition.variable), HashSet[String](definition.variable)) // This definition comes from an input variable
             }
         })
@@ -116,7 +116,7 @@ object DependencyAnalysis {
                                            visited: Set[UniqueNode],
                                            debug: Boolean): TaintSet = {
     if (visited.contains(UniqueNode(inputNode))) return TaintSet(new HashSet[String], new HashSet[String])
-    // logger.error(visited)
+    traceOrError(s"Visit node `$inputNode`", debug)
 
     val usedVariables: Set[String] = CFGUtils.getUsedVariables(inputNode, inputNodeIsExpression)
     traceOrError(s"Used variables: $usedVariables", debug)
@@ -124,11 +124,11 @@ object DependencyAnalysis {
     val set1: TaintSet = reachingDefinitions.get(inputNode) match {
       case Some(definitions) =>
         val newDefinitions = definitions.filter(definition => usedVariables.contains(definition.variable))
-        traceOrError(s"Reaching definitions (that are used): $newDefinitions", debug)
+        traceOrError(s"Reaching definitions: $definitions. Used: $newDefinitions", debug)
         val taintSets = newDefinitions.map({
           definition =>
             definition.node match {
-              case Some(node) =>
+              case Some(UniqueNode(node)) =>
                 controlDataDependencyForNode(node, inputNodeIsExpression = false,
                   reachingDefinitions, controlDependency, visited + UniqueNode(inputNode), debug)
               case None => TaintSet(HashSet[String](definition.variable), HashSet[String](definition.variable)) // This definition comes from an input variable
@@ -170,7 +170,7 @@ object DependencyAnalysis {
         val taintSets = newDefinitions.map({
           definition =>
             definition.node match {
-              case Some(node) => controlDataDependencyForNode(node, inputNodeIsExpression = false, reachingDefinitions, controlDependency, Set(UniqueNode(resourceUpdateNode)), debug)
+              case Some(UniqueNode(node)) => controlDataDependencyForNode(node, inputNodeIsExpression = false, reachingDefinitions, controlDependency, Set(UniqueNode(resourceUpdateNode)), debug)
               case None => TaintSet(HashSet[String](definition.variable), HashSet[String](definition.variable)) // This definition comes from an input variable
             }
         })

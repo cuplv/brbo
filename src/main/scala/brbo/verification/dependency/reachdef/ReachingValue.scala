@@ -1,9 +1,9 @@
 package brbo.verification.dependency.reachdef
 
+import brbo.common.cfg.UniqueNode
 import org.checkerframework.dataflow.analysis.AbstractValue
-import org.checkerframework.dataflow.cfg.node.Node
 
-case class ReachingValue(node: Option[Node], variable: String) extends AbstractValue[ReachingValue] {
+case class ReachingValue(node: Option[UniqueNode], variable: String) extends AbstractValue[ReachingValue] {
   override def leastUpperBound(other: ReachingValue): ReachingValue = {
     ???
   }

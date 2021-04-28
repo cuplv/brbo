@@ -121,7 +121,23 @@ object ChangeEntryNode {
             i = i + 1
           }
 
-          val normalNextPath = handleNextPaths(tree)
+          val normalNextPath = {
+            val additionalUpdates: List[AST] = {
+              // Check if the enclosing tree of this block tree is a for loop. If yes, then append the updates
+              if (enclosingTrees.size > 3) {
+                enclosingTrees(enclosingTrees.size - 3) match {
+                  case forLoopTree: ForLoopTree => forLoopTree.getUpdate.asScala.map(u => treeToAst(u)).toList
+                  case _ => Nil
+                }
+              }
+              else Nil
+            }
+            val nextPaths = handleNextPaths(tree)
+            additionalUpdates match {
+              case Nil => nextPaths
+              case _ => Block(additionalUpdates :+ nextPaths)
+            }
+          }
           val jumpNextPath = enclosingLoop match {
             case Some(loop) =>
               Block(List(loopBodySubstitute(loop, entryTreeAst), handleNextPaths(loop)))
@@ -135,7 +151,7 @@ object ChangeEntryNode {
       }
     }
 
-    val newAst = handleNextPaths(entryTree)
+    val newAst = Block(List(treeToAst(entryTree), handleNextPaths(entryTree)))
     val parameters = (inputMethod.inputVariables ++ inputMethod.localVariables).toList.map(pair => BrboType.variableDeclaration(pair._1, pair._2)).sorted.mkString(", ")
     val newMethodBody = s"{\n${newAst.print(preserveDeclaration = false, preservedUpdates)}\n}"
     val methodInformation = {

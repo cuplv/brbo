@@ -148,6 +148,7 @@ object NewDecompositionUnitTest {
       |    int sb = 0;
       |    int i = 0;
       |    while (i < templateds) {
+      |      int k = 123;
       |      int index = 0;
       |      int start = 0;
       |      int end = 0;

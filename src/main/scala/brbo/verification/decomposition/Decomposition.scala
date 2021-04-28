@@ -14,7 +14,8 @@ import com.sun.source.tree._
 import scala.collection.JavaConverters._
 import scala.collection.immutable.HashSet
 
-class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) extends DecompositionInterface(inputMethod, arguments) {
+class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments, testMode: Boolean)
+  extends DecompositionInterface(inputMethod, arguments, testMode) {
 
   override def decompose: List[DecompositionResult] = decompose(fullAmortize, selectiveAmortize, noAmortize)
 
@@ -54,16 +55,16 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
         val newSubprogram = {
           if (pair._1 == pair._2) {
             logger.info(s"Enlarge a subprogram due to interference between subprograms")
-            traceOrError(s"Enlarge subprogram: ${pair._1}")
+            traceDebugMode(s"Enlarge subprogram: ${pair._1}")
             enlarge(pair._1)
           }
           else {
             logger.info(s"Merge a subprogram due to interference between subprograms")
-            traceOrError(s"Merge subprograms: $pair")
+            traceDebugMode(s"Merge subprograms: $pair")
             merge(pair._1, pair._2)
           }
         }
-        traceOrError(s"Decomposition - New subprogram: $newSubprogram")
+        traceDebugMode(s"Decomposition - New subprogram: $newSubprogram")
         subprograms = mergeIfOverlap(subprograms.programs - pair._1 - pair._2 + newSubprogram)
       }
     }
@@ -81,7 +82,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
   }
 
   def merge(subprogram1: Subprogram, subprogram2: Subprogram): Subprogram = {
-    traceOrError(s"Merge - Subprogram 1: $subprogram1\nSubprogram 2: $subprogram2")
+    traceDebugMode(s"Merge - Subprogram 1: $subprogram1\nSubprogram 2: $subprogram2")
     (subprogram1.minimalEnclosingBlock, subprogram2.minimalEnclosingBlock) match {
       case (Some(minimalEnclosingBlock1), Some(minimalEnclosingBlock2)) if minimalEnclosingBlock1 == minimalEnclosingBlock2 =>
         val head = {
@@ -96,7 +97,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
           assert(last1 != -1 && last2 != -1)
           if (last1 >= last2) last1 else last2
         }
-        traceOrError(s"Merge - Choose a subsequence from index `$head` to `$last` in minimal enclosing block `$minimalEnclosingBlock1`")
+        traceDebugMode(s"Merge - Choose a subsequence from index `$head` to `$last` in minimal enclosing block `$minimalEnclosingBlock1`")
         return Subprogram(inputMethod, minimalEnclosingBlock1.getStatements.asScala.slice(head, last + 1).toList)
       case _ =>
         getAllCommonEnclosingTrees(subprogram1, subprogram2).last match {
@@ -110,7 +111,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
             val startIndex = statements.indexOf(statements2.head)
             val endIndex = statements.indexOf(statements2.last)
             assert(startIndex != -1 && endIndex != -1)
-            traceOrError(s"Merge - Choose a subsequence from index `$startIndex` to `$endIndex` in common enclosing block `$blockTree`")
+            traceDebugMode(s"Merge - Choose a subsequence from index `$startIndex` to `$endIndex` in common enclosing block `$blockTree`")
             return Subprogram(inputMethod, statements.slice(startIndex, endIndex + 1))
           case tree@_ => return Subprogram(inputMethod, List(tree.asInstanceOf[StatementTree]))
         }
@@ -126,9 +127,9 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
       newSubprograms.programs.find(subprogram => interferedByEnvironment(subprogram, newSubprograms)) match {
         case Some(interferedSubprogram) =>
           logger.info(s"Enlarge a subprogram due to interference from the environment")
-          traceOrError(s"Subprogram is interfered by the environment: $interferedSubprogram")
+          traceDebugMode(s"Subprogram is interfered by the environment: $interferedSubprogram")
           val newSubprogram: Subprogram = enlarge(interferedSubprogram)
-          traceOrError(s"Eliminate environment interference - New subprogram: $newSubprogram")
+          traceDebugMode(s"Eliminate environment interference - New subprogram: $newSubprogram")
           newSubprograms = mergeIfOverlap(newSubprograms.programs - interferedSubprogram + newSubprogram)
         case None => continue = false
       }
@@ -157,7 +158,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
           case _ => false
         })
       }
-      traceOrError(s"Enlarge - Contain dangling `break` or `continue`? $containsBreakContinue")
+      traceDebugMode(s"Enlarge - Contain dangling `break` or `continue`? $containsBreakContinue")
       if (containsBreakContinue) {
         val minimalLoop = TreeUtils.getMinimalEnclosingLoop(inputMethod.getPath(minimalEnclosingBlock))
         assert(minimalLoop.isDefined)
@@ -182,7 +183,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
                   }
                   else {
                     val newStatement = statements.get(indexLast + 1)
-                    traceOrError(s"Enlarge - (Next) New statement $newStatement")
+                    traceDebugMode(s"Enlarge - (Next) New statement $newStatement")
                     avoidDanglingBreakContinue(newStatement, minimalEnclosingBlock) match {
                       case Some(minimalLoop) => List(minimalLoop)
                       case None => subprogram.astNodes :+ newStatement
@@ -192,7 +193,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
             }
             else {
               val newStatement = statements.get(indexHead - 1)
-              traceOrError(s"Enlarging - (Previous) New statement $newStatement")
+              traceDebugMode(s"Enlarging - (Previous) New statement $newStatement")
               avoidDanglingBreakContinue(newStatement, minimalEnclosingBlock) match {
                 case Some(minimalLoop) => List(minimalLoop)
                 case None => newStatement :: subprogram.astNodes
@@ -226,7 +227,7 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
         case Some(pair) =>
           val newSubprogram = merge(pair._1, pair._2)
           logger.info(s"Merge two subprograms because they overlap with each other")
-          traceOrError(s"Merge if overlap - Subprogram 1: ${pair._1}\nSubprogram 2: ${pair._2}\nNew subprogram: $newSubprogram")
+          traceDebugMode(s"Merge if overlap - Subprogram 1: ${pair._1}\nSubprogram 2: ${pair._2}\nNew subprogram: $newSubprogram")
           newSubprograms = newSubprograms - pair._1 - pair._2 + newSubprogram
         case None => continue = false
       }
@@ -238,12 +239,12 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
     // Environment interferes only if there exists a path from the subprgram to the environment
     TreeUtils.getMaximalEnclosingLoop(inputMethod.getPath(subprogram.astNodes.head)) match {
       case Some(maximalLoop) =>
-        traceOrError(s"Maximal enclosing loop: $maximalLoop")
+        traceDebugMode(s"Maximal enclosing loop: $maximalLoop")
         val environmentCommands = TreeUtils.collectCommands(maximalLoop.asInstanceOf[StatementTree]).filter({
           command =>
             !subprograms.programs.exists({ subprogram => subprogram.commands.contains(command) })
         })
-        traceOrError(s"Environment commands: $environmentCommands")
+        traceDebugMode(s"Environment commands: $environmentCommands")
         environmentCommands
           .flatMap(statement => TreeUtils.modifiedVariables(statement))
           .toSet
@@ -256,10 +257,10 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
     assert(subprograms.programs.contains(subprogram))
 
     val modifiedSet = environmentModifiedSet(subprogram, subprograms)
-    traceOrError(s"Environment modified set: `$modifiedSet`")
+    traceDebugMode(s"Environment modified set: `$modifiedSet`")
 
-    val taintSet = DependencyAnalysis.controlDataDependencyForResources(subprogram.targetMethod, debug)
-    traceOrError(s"Taint set `$taintSet` of subprogram\n$subprogram")
+    val taintSet = DependencyAnalysis.controlDataDependencyForResources(subprogram.targetMethod, debugMode)
+    traceDebugMode(s"Taint set `$taintSet` of subprogram\n$subprogram")
 
     modifiedSet.intersect(taintSet.inputs).nonEmpty
   }
@@ -337,18 +338,18 @@ class Decomposition(inputMethod: TargetMethod, arguments: CommandLineArguments) 
   def interfere(subprogram1: Subprogram, subprogram2: Subprogram): Boolean = {
     // First check if there exists a path from subprogram1's exit to subprogram2's entry
     if (!subsequentExecute(subprogram1, subprogram2)) {
-      traceOrError(s"Subprogram 2 cannot be subsequently executed after subprogram 1")
-      traceOrError(s"Subprogram 1:\n$subprogram1")
-      traceOrError(s"Subprogram 2:\n$subprogram2")
+      traceDebugMode(s"Subprogram 2 cannot be subsequently executed after subprogram 1")
+      traceDebugMode(s"Subprogram 1:\n$subprogram1")
+      traceDebugMode(s"Subprogram 2:\n$subprogram2")
       return false
     }
 
     val modifiedSet1 = DecompositionUtils.computeModifiedSet(subprogram1.targetMethod)
-    val taintSet2 = DependencyAnalysis.controlDataDependencyForResources(subprogram2.targetMethod, debug)
-    traceOrError(s"Subprogram 1 modified set: $modifiedSet1")
-    traceOrError(s"Subprogram 1:\n$subprogram1")
-    traceOrError(s"Subprogram 2 taint set: $taintSet2")
-    traceOrError(s"Subprogram 2:\n$subprogram2")
+    val taintSet2 = DependencyAnalysis.controlDataDependencyForResources(subprogram2.targetMethod, debugMode)
+    traceDebugMode(s"Subprogram 1 modified set: $modifiedSet1")
+    traceDebugMode(s"Subprogram 1:\n$subprogram1")
+    traceDebugMode(s"Subprogram 2 taint set: $taintSet2")
+    traceDebugMode(s"Subprogram 2:\n$subprogram2")
     modifiedSet1.intersect(taintSet2.inputs).nonEmpty
   }
 }

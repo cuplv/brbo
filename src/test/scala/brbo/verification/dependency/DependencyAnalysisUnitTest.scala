@@ -107,16 +107,16 @@ object DependencyAnalysisUnitTest {
       |    int b = 0;
       |    int R = 0;
       |    while (a > 0) {
-      |      a--;
-      |      b++;
+      |      a = a - 1;
+      |      b = b + 1;
       |      while (b > 0) {
       |        b--;
       |        int i = n - 1;
       |        while (i > 0) {
       |          if (a > 0) {
       |            R = R + 1;
-      |            a--;
-      |            b++;
+      |            a = a - 2;
+      |            b = b + 2;
       |          }
       |          i++;
       |        }
@@ -185,10 +185,10 @@ object DependencyAnalysisUnitTest {
 
     val test05ExpectedOutput =
       """R = R + 1; -> All: List(). Inputs: List()
-        |a--; -> All: List(a). Inputs: List()
-        |a--; -> All: List(a, n). Inputs: List(n)
-        |b++; -> All: List(b). Inputs: List()
-        |b++; -> All: List(b). Inputs: List()
+        |a = a - 1; -> All: List(a, n). Inputs: List(n)
+        |a = a - 2; -> All: List(a, n). Inputs: List(n)
+        |b = b + 1; -> All: List(b). Inputs: List()
+        |b = b + 2; -> All: List(b). Inputs: List()
         |b--; -> All: List(b). Inputs: List()
         |i++; -> All: List(i, n). Inputs: List(n)
         |int R = 0 -> All: List(). Inputs: List()

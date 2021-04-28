@@ -17,17 +17,22 @@ import org.checkerframework.dataflow.cfg.node.Node
 
 import scala.collection.immutable.HashMap
 
-abstract class DecompositionInterface(inputMethod: TargetMethod, arguments: CommandLineArguments) {
-  protected val debug: Boolean = arguments.getDebugMode
+abstract class DecompositionInterface(inputMethod: TargetMethod, arguments: CommandLineArguments, testMode: Boolean) {
+  protected val debugMode: Boolean = arguments.getDebugMode
   protected val logger: Logger = LogManager.getLogger(classOf[Decomposition])
 
   protected val sortedCommands: List[StatementTree] = inputMethod.sortedCommands
 
   protected val counterMap: Map[Tree, String] = CounterAxiomGenerator.generateCounterMap(inputMethod.methodTree.getBody)
 
-  protected def traceOrError(message: String): Unit = {
-    if (debug) logger.error(message)
+  protected def traceDebugMode(message: String): Unit = {
+    if (debugMode) logger.error(message)
     else logger.trace(message)
+  }
+
+  protected def infoTestMode(message: String): Unit = {
+    if (testMode) logger.error(message)
+    else logger.info(message)
   }
 
   def decompose: List[DecompositionResult]
@@ -140,7 +145,7 @@ abstract class DecompositionInterface(inputMethod: TargetMethod, arguments: Comm
       indent = 2
     )
     val result = DecompositionResult(newSourceFile, deltaCounterPairs.values.toSet, amortizationMode, inputMethod)
-    if (debug || arguments.getPrintCFG) CFGUtils.printPDF(result.outputMethod.cfg, Some("decomposed-"))
+    if (debugMode || arguments.getPrintCFG) CFGUtils.printPDF(result.outputMethod.cfg, Some("decomposed-"))
     result
   }
 
