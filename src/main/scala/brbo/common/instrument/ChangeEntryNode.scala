@@ -186,7 +186,7 @@ object ChangeEntryNode {
           handleBreakContinue(thenAst, enclosingLoop), handleBreakContinue(elseAst, enclosingLoop))
       case Command(statement) =>
         statement match {
-          case _: BreakTree =>
+          case _@(_: BreakTree | _: ContinueTree) =>
             enclosingLoop match {
               case Some(loop) =>
                 loop match {
@@ -194,17 +194,8 @@ object ChangeEntryNode {
                   case Block(statements) =>
                     statements.last match {
                       case Loop(_, _) => LeafNode(Data(Empty, Jump)) // This corresponds to a for loop. See `treetoAST`
-                      case _ => throw new Exception(s"Unexpected!")
+                      case _ => throw new Exception("Unexpected")
                     }
-                  case _ => throw new Exception(s"Unexpected!")
-                }
-              case None => throw new Exception("Unexpected")
-            }
-          case _: ContinueTree =>
-            enclosingLoop match {
-              case Some(loop) =>
-                loop match {
-                  case Loop(_, _) => LeafNode(Data(Empty, Jump))
                   case _ => throw new Exception("Unexpected")
                 }
               case None => throw new Exception("Unexpected")
