@@ -190,8 +190,13 @@ object ChangeEntryNode {
             enclosingLoop match {
               case Some(loop) =>
                 loop match {
-                  case Loop(_, _) => LeafNode(Data(Empty, Jump))
-                  case _ => throw new Exception("Unexpected")
+                  case Loop(_, _) => LeafNode(Data(Empty, Jump)) // This corresponds to a while loop
+                  case Block(statements) =>
+                    statements.last match {
+                      case Loop(_, _) => LeafNode(Data(Empty, Jump)) // This corresponds to a for loop. See `treetoAST`
+                      case _ => throw new Exception(s"Unexpected!")
+                    }
+                  case _ => throw new Exception(s"Unexpected!")
                 }
               case None => throw new Exception("Unexpected")
             }
@@ -304,7 +309,7 @@ case object Empty extends AST {
 }
 
 case object BadJumpTarget extends AST {
-  override def print(preserveDeclaration: Boolean, preservedUpdates: Set[StatementTree]): String = ???
+  override def print(preserveDeclaration: Boolean, preservedUpdates: Set[StatementTree]): String = throw new Exception("Unexpected")
 }
 
 object JumpOrNormalOrExit extends Enumeration {
