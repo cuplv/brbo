@@ -259,6 +259,14 @@ object BoundChecking {
                 {
                   tree: Tree => if (tree == lastTree) true else false
                 },
+                /*{
+                  case expressionStatementTree: ExpressionStatementTree =>
+                    GhostVariableUtils.extractUpdate(expressionStatementTree.getExpression, Counter) match {
+                      case Some(value) => counterVariable == value.identifier
+                      case None => false
+                    }
+                  case _ => false
+                },*/
                 AFTER
               ),
               counterVariable,
