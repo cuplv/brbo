@@ -30,7 +30,7 @@ class InvariantInference(targetMethod: TargetMethod) {
     // s"assert($whichVariable >= 101)"
     val cProgram = InvariantInference.translateToCAndInsertAssertions(targetMethod, locations, "true")
     // println(cProgram)
-    Icra.runAndParseInvariant(cProgram, arguments.getIcraTimeout, icraPath = Icra.ICRA_PATH) match {
+    Icra.runAndParseInvariant(cProgram, arguments.getIcraTimeout, icraPath = arguments.getIcraPath) match {
       case Some(parsedInvariants) =>
         val existentiallyQuantifiedInvariants = {
           parsedInvariants.map {
