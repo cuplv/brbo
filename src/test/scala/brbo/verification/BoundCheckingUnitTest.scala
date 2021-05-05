@@ -1,5 +1,6 @@
 package brbo.verification
 
+import brbo.common.icra.Icra
 import brbo.common.{CommandLineArguments, Z3Solver}
 import brbo.verification.AmortizationMode.UNKNOWN
 import brbo.verification.decomposition.{DecompositionResult, DeltaCounterPair}
@@ -26,7 +27,7 @@ class BoundCheckingUnitTest extends AnyFlatSpec {
         val arguments = new CommandLineArguments
         arguments.initialize(UNKNOWN, debugMode = false, "", skipSanityCheck = false,
           testCase.expectedOutput == "true", printIcraInputs = false, icraTimeout = 20,
-          printCFG = false, decomposeOnly = false, lessPreciseBound = false, generateSynthetic = 0)
+          printCFG = false, decomposeOnly = false, lessPreciseBound = false, generateSynthetic = 0, icraPath = Icra.ICRA_PATH)
         val result = BoundChecking.checkBound(
           solver,
           decompositionResult,

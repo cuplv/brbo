@@ -16,23 +16,23 @@ import scala.sys.process._
 
 object Icra {
   private val logger = LogManager.getLogger("brbo.common.icra.Icra")
-  private val ICRA_PATH = s"${System.getProperty("user.home")}/Documents/workspace/icra/icra"
+  val ICRA_PATH = s"${System.getProperty("user.home")}/Documents/workspace/icra/icra"
 
-  def runAndParseInvariant(sourceCode: String, timeout: Int): Option[List[ParsedInvariant]] = {
-    runAndGetStdOutput(sourceCode, timeout) match {
+  def runAndParseInvariant(sourceCode: String, timeout: Int, icraPath: String): Option[List[ParsedInvariant]] = {
+    runAndGetStdOutput(sourceCode, timeout, icraPath) match {
       case Some(icraOutput) => Some(parseInvariants(icraOutput))
       case None => None
     }
   }
 
-  def runAndParseAssertionChecks(sourceCode: String, timeout: Int): Option[List[Boolean]] = {
-    runAndGetStdOutput(sourceCode, timeout) match {
+  def runAndParseAssertionChecks(sourceCode: String, timeout: Int, icraPath: String): Option[List[Boolean]] = {
+    runAndGetStdOutput(sourceCode, timeout, icraPath) match {
       case Some(icraOutput) => Some(parseAssertionChecks(icraOutput))
       case None => None
     }
   }
 
-  private def runAndGetStdOutput(sourceCode: String, timeout: Int): Option[String] = {
+  private def runAndGetStdOutput(sourceCode: String, timeout: Int, icraPath: String): Option[String] = {
     val stdout = new StringBuilder
     val stderr = new StringBuilder
 
@@ -46,7 +46,7 @@ object Icra {
     // val cmd = s"""ulimit -H -v 1000000; $ICRA_PATH -cra-split-loops -cra-prsd ${file.toAbsolutePath}"""
     val cmd = {
       val timeoutPrefix = if (timeout >= 0) s"timeout ${timeout}s" else ""
-      s"$timeoutPrefix $ICRA_PATH -cra-split-loops -cra-prsd ${file.toAbsolutePath}"
+      s"$timeoutPrefix $icraPath -cra-split-loops -cra-prsd ${file.toAbsolutePath}"
     }
 
     try {

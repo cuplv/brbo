@@ -62,7 +62,7 @@ class BoundInference(targetMethod: TargetMethod, arguments: CommandLineArguments
     if (arguments.getPrintIcraInputs) {
       logger.error(s"ICRA input:\n$cProgram")
     }
-    Icra.runAndParseAssertionChecks(cProgram, arguments.getIcraTimeout) match {
+    Icra.runAndParseAssertionChecks(cProgram, arguments.getIcraTimeout, icraPath = Icra.ICRA_PATH) match {
       case Some(checks) => checks.forall(b => b)
       case None => false
     }

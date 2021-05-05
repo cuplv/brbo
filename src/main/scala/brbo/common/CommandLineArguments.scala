@@ -1,6 +1,7 @@
 package brbo.common
 
 import brbo.common.CommandLineArguments.logger
+import brbo.common.icra.Icra
 import brbo.verification.AmortizationMode._
 import org.apache.logging.log4j.LogManager
 import org.kohsuke.args4j.{CmdLineException, CmdLineParser, Option}
@@ -49,6 +50,10 @@ class CommandLineArguments {
   @Option(name = "--generate-synthetic", required = false, usage = "Generate `n` synthetic programs")
   private var generateSynthetic: Int = 0
 
+  @Option(name = "--icra-path", required = false,
+    usage = "The absolute path of binary file `icra`.")
+  private var icraPath: String = Icra.ICRA_PATH
+
   def getAmortizationMode: AmortizationMode = {
     amortizationMode.toLowerCase() match {
       case "no" => NO_AMORTIZE
@@ -79,6 +84,8 @@ class CommandLineArguments {
 
   def getGenerateSynthetic: Int = generateSynthetic
 
+  def getIcraPath: String = icraPath
+
   private var initialized = false
 
   def initialize(amortizationMode: AmortizationMode,
@@ -91,7 +98,8 @@ class CommandLineArguments {
                  printCFG: Boolean,
                  decomposeOnly: Boolean,
                  lessPreciseBound: Boolean,
-                 generateSynthetic: Int): Unit = {
+                 generateSynthetic: Int,
+                 icraPath: String): Unit = {
     if (initialized) {
       logger.info(s"Already initialized")
       return
@@ -108,6 +116,7 @@ class CommandLineArguments {
     this.decomposeOnly = decomposeOnly
     this.lessPreciseBound = lessPreciseBound
     this.generateSynthetic = generateSynthetic
+    this.icraPath = icraPath
   }
 
   override def toString: String = {
@@ -122,7 +131,8 @@ class CommandLineArguments {
       s"Print CFG? `$printCFG`",
       s"No bound check? `$decomposeOnly`",
       s"Check less precise bounds? `$lessPreciseBound`",
-      s"Generate `$generateSynthetic` synthetic programs"
+      s"Generate `$generateSynthetic` synthetic programs",
+      s"Icra path is `$icraPath`"
     )
     strings.mkString("\n")
   }
@@ -158,7 +168,7 @@ object CommandLineArguments {
     val arguments = new CommandLineArguments
     arguments.initialize(UNKNOWN, debugMode = false, "", skipSanityCheck = false,
       printCounterExample = false, printIcraInputs = false, icraTimeout = 20,
-      printCFG = false, decomposeOnly = false, lessPreciseBound = false, generateSynthetic = 0)
+      printCFG = false, decomposeOnly = false, lessPreciseBound = false, generateSynthetic = 0, icraPath = Icra.ICRA_PATH)
     arguments
   }
 }
