@@ -108,7 +108,7 @@ object AnalysisResult {
     def update(no: RawResult, selective: RawResult, full: RawResult): TableRow = {
       assert(no.lines == selective.lines && selective.lines == full.lines)
       (no.verified, selective.verified, full.verified) match {
-        case (true, true, true) => TableRow(name, numberOfPrograms + 1, lines + no.lines, GroupResult())
+        case (true, true, true) => ??? // TableRow(name, numberOfPrograms + 1, lines + no.lines, GroupResult())
         case (true, true, false) => ???
         case (true, false, true) => ???
         case (true, false, false) => ???
