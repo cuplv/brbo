@@ -1,6 +1,6 @@
 # Create a docker image for brbo
 
-## Install all dependencies except for `cil`
+## Install all dependencies
 
 1. `winpty docker run -it  --privileged -v //c/Users/tianh:/home/tianh  debian:buster-slim`
 2. `apt-get install opam libgmp-dev libmpfr-dev libntl-dev`
