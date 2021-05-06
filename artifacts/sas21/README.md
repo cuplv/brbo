@@ -7,6 +7,7 @@ Contents in the docker image:
 - `/home/sas-artifact-41/brbo-impl`: the source code of brbo tool.
     - `src`: Source code of brbo.
     - `scripts`: Scripts for running experimental evaluation.
+    - `artifacts/sas21`: A copy of this manual and `table.xlsx` (which is used for generating Table 1 in the paper).
 - `/home/sas-artifact-41/icra`: the source code and binaries of ICRA.
 
 ## Setup the stage for using the provided docker image
@@ -20,48 +21,8 @@ Contents in the docker image:
 ### Step 1: Run the experiments
 
 1. Inside the docker. Run `cd /home/sas-artifact-41/brbo-impl`.
-2. Run `./scripts/benchmarks/both_all.sh`. The expected output is something like
-    ```
-    root@20189c0ba200:/home/sas-artifact-41/brbo-impl# ./scripts/benchmarks/both_all.sh
-    + ./scripts/benchmarks/all.sh
-    + ./scripts/benchmarks/string.sh
-    ++ date +%m%d-%H%M
-    + today=0505-2337
-    + timeout=60
-    + mostPrecise=mostPrecise
-    + ./scripts/run.sh -d src/main/java/brbo/benchmarks/string -a all -t 60 --icra-path /home/sas-artifact-41/icra/icra
-    + ./scripts/benchmarks/containers.sh
-    ++ date +%m%d-%H%M
-    + today=0506-0041
-    + timeout=60
-    + mostPrecise=mostPrecise
-    + ./scripts/run.sh -d src/main/java/brbo/benchmarks/containers -a all -t 60 --icra-path /home/sas-artifact-41/icra/icra
-    + ./scripts/benchmarks/synthetic.sh
-    ++ date +%m%d-%H%M
-    + today=0506-0046
-    + timeout=60
-    + mostPrecise=mostPrecise
-    + ./scripts/run.sh -d src/main/java/brbo/benchmarks/synthetic -a all -t 60 --icra-path /home/sas-artifact-41/icra/icra
-    + ./scripts/benchmarks/less-precise/all.sh
-    + ./scripts/benchmarks/less-precise/string.sh
-    ++ date +%m%d-%H%M
-    + today=0506-0259
-    + timeout=60
-    + lessPrecise=lessPrecise
-    + ./scripts/run.sh -d src/main/java/brbo/benchmarks/string -a all -t 60 --less-precise --icra-path /home/sas-artifact-41/icra/icra
-    + ./scripts/benchmarks/less-precise/containers.sh
-    ++ date +%m%d-%H%M
-    + today=0506-0415
-    + timeout=60
-    + lessPrecise=lessPrecise
-    + ./scripts/run.sh -d src/main/java/brbo/benchmarks/containers -a all -t 60 --icra-path /home/sas-artifact-41/icra/icra --less-precise
-    + ./scripts/benchmarks/less-precise/synthetic.sh
-    ++ date +%m%d-%H%M
-    + today=0506-0419
-    + timeout=60
-    + lessPrecise=lessPrecise
-    + ./scripts/run.sh -d src/main/java/brbo/benchmarks/synthetic -a all -t 60 --icra-path /home/sas-artifact-41/icra/icra --less-precise
-    ```
+2. Run `./scripts/benchmarks/both_all.sh`.
+3. Wait until the script finishes executing. This process typically takes 5+ hours.
 
 ### Step 2: Generate Table 1 in the paper
 
@@ -72,7 +33,7 @@ Contents in the docker image:
     - `DATE-TIME-allAmortize-60s-lessPrecise`: Results for `guava`, `lang3`, `stringutils` when verifying constant-weakened bounds.
     - `DATE-TIME-allAmortize-60s-lessPrecise`: Results for `stac` when verifying constant-weakened bounds.
     - `DATE-TIME-allAmortize-60s-lessPrecise`: Results for `generated` when verifying constant-weakened bounds.
-2. Open `table.xlsx`.
+2. Open `table.xlsx` under `/home/sas-artifact-41/brbo-impl/artifacts/sas21`.
 3. Collect results for configuration `Most Precise Bounds` in Table 1.
     1. Copy all contents in `guava-summary-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` into cell `A2` in Sheet `Most precise` of `table.xlsx`.
     2. Copy all contents in `guava-individual-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` into cell `A13` in Sheet `Most precise`.
@@ -88,7 +49,7 @@ Contents in the docker image:
     12. Copy all contents in `synthetic-individual-DATE-TIME-allAmortize-60s-mostPrecise-100-199.csv` into cell `BC13` in Sheet `Most precise`.
 4. Collect results for configuration `Constant-Weakened Bounds` in Table 1 in a similar way as the above step into Sheet `Less precise` in `table.xlsx`.
 5. Now Sheet `Summary` in `table.xlsx` should have similar results as Table 1.
-    - Note that, the number of verified programs in `Summary` may differ from that of Table 1, depending on the performance of the machine that conducted the experiment and other unknown factors. Such numbers are highly related with if ICRA can successfully infer invariants, which is non-deterministic and depends on the machine performance.
+    - Note that, the number of verified programs in `Summary` may differ from that of Table 1, depending on the performance of the machine that conducted the experiment and other unknown factors. The reason is that, such numbers are highly related with if ICRA can successfully infer invariants, which is non-deterministic and depends on the machine performance.
 
 ## Extend the brbo tool
 
