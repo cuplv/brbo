@@ -17,7 +17,7 @@
 
 ### Install `cil`
 
-If `opam init` was executed (instead of `opam init  --disable-sandboxing`), remove the following from `$HOME/.opam/config`:
+If `opam init` was executed (instead of `opam init  --disable-sandboxing`), remove the following from `$HOME/.opam/config`, in order to successfully install `cil`:
 ```
 wrap-build-commands:
   ["%{hooks}%/sandbox.sh" "build"] {os = "linux" | os = "macos"}
@@ -27,7 +27,7 @@ wrap-remove-commands:
   ["%{hooks}%/sandbox.sh" "remove"] {os = "linux" | os = "macos"}
 ```
 
-### References
+#### References
 
 1. https://discuss.ocaml.org/t/help-with-set-up-opam-sandboxing-fails-on-windows-wsl/3456
 2. https://discuss.ocaml.org/t/install-opam-1-package-via-opam-2/2776
