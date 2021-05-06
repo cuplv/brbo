@@ -23,7 +23,7 @@ export DYLD_LIBRARY_PATH=$z3lib:$DYLD_LIBRARY_PATH
 classpath=".:$brbo_jar:$tools_jar:$lib_jars"
 
 set -x
-time java -cp $classpath brbo.BrboMain "${@:1}"
+time java -Dlog4j.configurationFile="src/resources/log4j2.properties" -cp $classpath brbo.BrboMain "${@:1}"
 # time java -jar target/scala-2.12/brbo-impl-assembly-0.1.jar $javafiles
 
 # Clean up
