@@ -64,6 +64,6 @@ Everything needed for artifact evaluation is under directory `/home/sas-artifact
 
 ### Run brbo on custom `*.java` files
 
-We enforce syntactic restriction on the `*.java` files that brbo accepts for simpler implementation. Thus, brbo will throw exceptions (with hopefully useful information about which syntactic restriction is violated), if a `*.java` file is not acceptable.
+We enforce syntactic restriction on the `*.java` files that brbo accepts (for simpler implementation). Thus, brbo will throw exceptions (with hopefully useful information about which syntactic restriction is violated), if a `*.java` file is not acceptable.
 
 See examples of acceptable `*.java` files under `/home/sas-artifact-41/brbo-impl/src/main/java/brbo/benchmarks` (and also see how to specify upper bounds).
