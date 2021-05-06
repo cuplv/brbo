@@ -1,17 +1,14 @@
 #!/bin/bash
 
 # This script should be executed from the root directory of this project via `./scripts/run.sh`
-# Before running this script, please make sure that using javac to compile the target project will not have any compiler errors
 
 # Create output directory
 mkdir -p output/
 mkdir -p output/cfg
-mkdir -p output/c_files
-mkdir -p output/class_files
 
 # Machine-dependent path configurations
 tools_jar="/usr/lib/jvm/jdk1.8.0_271/lib/tools.jar"
-brbo_jar="$HOME/win_c/Desktop/brbo-fat.jar"
+brbo_jar="$HOME/win_c/Desktop/brbo-fat.jar" # Assume this jar file contains all dependencies
 
 # Set up paths for Z3
 lib="$(pwd)/lib"
