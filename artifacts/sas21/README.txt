@@ -17,6 +17,7 @@ Everything needed for artifact evaluation is under directory `/home/sas-artifact
 1. Download the docker image `sas-artifact-41.tar`.
 2. Import the image via `docker load < sas-artifact-41.tar`.
 3. Run the container via `docker run -it --privileged sas-artifact-41`.
+    - Note that, **in order to complete Step 2 below, it is strongly recommended to run the container with an additional option `-v`** such that you may copy the generated data files from within the container into the host machine, and thus you can open the data files with Microsoft Excel (in the host machine) and perform data processing (as described below). For example, under Windows, command `docker run -it -v //c/Users/USER_NAME/Documents/:/home/Documents --privileged sas-artifact-41` will mount the host directory `//c/Users/USER_NAME/Documents/` into the container directory `/home/Documents`, so that you can copy files from within the container into the host machine. Specifically, if you copy files into the container directory `/home/Documents`, they will show up in the host directory `//c/Users/USER_NAME/Documents/`. More details about using `-v` option can be found here: https://docs.docker.com/storage/volumes/.
 
 ## Validate the experimental results (Table 1 in the paper)
 
@@ -35,7 +36,8 @@ Everything needed for artifact evaluation is under directory `/home/sas-artifact
     - `DATE-TIME-allAmortize-60s-lessPrecise`: Results for `guava`, `lang3`, `stringutils` when verifying constant-weakened bounds.
     - `DATE-TIME-allAmortize-60s-lessPrecise`: Results for `stac` when verifying constant-weakened bounds.
     - `DATE-TIME-allAmortize-60s-lessPrecise`: Results for `generated` when verifying constant-weakened bounds.
-2. Open `table.xlsx` under `/home/sas-artifact-41/brbo-impl/artifacts/sas21`.
+2. Open `table.xlsx` under `/home/sas-artifact-41/brbo-impl/artifacts/sas21` with Microsoft Excel.
+    - Note that, to complete this and the following steps, **it is strongly recommended to run the container with option `-v`** such that you may copy `table.xlsx` into the host machine and use Microsoft Excel in the host machine to open it.
 3. Collect results for configuration `Most Precise Bounds` in Table 1. Note that, it is required to open the following `*.csv` files under `/home/sas-artifact-41/brbo-impl/output` with Microsoft Excel.
     1. Copy all contents in `guava-summary-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` at cell `A2` in Sheet `Most precise` of `table.xlsx`.
     2. Copy all contents in `guava-individual-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` at cell `A13` in Sheet `Most precise`.
