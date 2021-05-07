@@ -1,4 +1,4 @@
-package brbo.benchmarks.basic;
+package brbo.archive.basic;
 
 import brbo.benchmarks.Common;
 

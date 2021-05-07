@@ -200,7 +200,7 @@ object BrboMain {
             val timeElapsed = (endTime - startTime).toDouble / 1000000000
             logger.info(s"Time consumption: `${StringFormatUtils.float(timeElapsed)}` seconds")
             val numberOfLines = result.inputMethod.sourceCode.split("\r\n|\r|\n").length
-            RawResult(result.inputMethod.className, timeElapsed, verified, result.amortizationMode, numberOfLines)
+            RawResult(result.inputMethod.className, timeElapsed, verified, result.amortizationMode, numberOfLines, arguments)
         })
       case None => List[RawResult]()
     }

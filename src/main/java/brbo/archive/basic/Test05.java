@@ -1,8 +1,8 @@
-package brbo.benchmarks.basic;
+package brbo.archive.basic;
 
 import brbo.benchmarks.Common;
 
-abstract class Test07 extends Common {
+abstract class Test05 extends Common {
   void f(int n, int m) {
     if (n <= 0 || m <= 0) {
       return;
@@ -15,12 +15,11 @@ abstract class Test07 extends Common {
       iterator -= entry;
       R = R + entry;
     }
-    // If there are more than 1 loop that contains resource update commands, then full amortization cannot infer a precise bound
     for (int i = 0; i < m; i++) {
+      // If there are more than 1 resource update commands, then full amortization cannot infer a precise bound
       R = R + 1;
-    }
-    for (int i2 = 0; i2 < m; i2++) {
       R = R + 1;
+      // R = R + 1;
     }
   }
 }

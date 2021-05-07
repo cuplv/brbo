@@ -38,22 +38,22 @@ Everything needed for artifact evaluation is under directory `/home/sas-artifact
     - `DATE-TIME-allAmortize-60s-lessPrecise`: Results for `generated` when verifying constant-weakened bounds.
 2. Open `table.xlsx` under `/home/sas-artifact-41/brbo-impl/artifacts/sas21` with Microsoft Excel.
     - Note that, to complete this and the following steps, **it is strongly recommended to run the container with option `-v`** such that you may copy `table.xlsx` into the host machine and use Microsoft Excel in the host machine to open it.
-3. Collect results for configuration `Most Precise Bounds` in Table 1. Note that, it is required to open the following `*.csv` files under `/home/sas-artifact-41/brbo-impl/output` with Microsoft Excel.
-    1. Copy all contents in `guava-summary-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` at cell `A2` in Sheet `Most precise` of `table.xlsx`.
-    2. Copy all contents in `guava-individual-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` at cell `A13` in Sheet `Most precise`.
-    3. Copy all contents in `lang3-summary-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` at cell `J2` in Sheet `Most precise`.
-    4. Copy all contents in `lang3-individual-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` at cell `J13` in Sheet `Most precise`.
-    5. Copy all contents in `stringutils-summary-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` at cell `S2` in Sheet `Most precise`.
-    6. Copy all contents in `stringutils-individual-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` at cell `S13` in Sheet `Most precise`.
-    7. Copy all contents in `stac-summary-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` at cell `AB2` in Sheet `Most precise`.
-    8. Copy all contents in `stac-individual-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` at cell `AB13` in Sheet `Most precise`.
-    9. Copy all contents in `synthetic-summary-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` at cell `AT2` in Sheet `Most precise`.
-    10. Copy all contents in `synthetic-individual-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` at cell `AT13` in Sheet `Most precise`.
-    11. Copy all contents in `synthetic-summary-DATE-TIME-allAmortize-60s-mostPrecise-100-199.csv` at cell `BC2` in Sheet `Most precise`.
-    12. Copy all contents in `synthetic-individual-DATE-TIME-allAmortize-60s-mostPrecise-100-199.csv` at cell `BC13` in Sheet `Most precise`.
-4. Collect results for configuration `Constant-Weakened Bounds` in Table 1 in a similar way as the above step into Sheet `Less precise` in `table.xlsx`.
-5. Now Sheet `Summary` in `table.xlsx` should have similar results as Table 1.
-    - Note that, it is observed that the number of verified programs in `Summary` may slightly differ from that of Table 1 *when running experiments from different machines*, due to our time out setting of ICRA. Since we hardcoded the time out of running ICRA, machines with better (or poorer) performance may allow ICRA to infer more (or less) invariants within the fixed timeout, which may contribute to a higher (or lower) number of verified programs in Table 1.
+3. Collect results into `table.xlsx` for configuration `Most Precise Bounds` (Table 1). Note that, it is required to open the following `*.csv` files under `/home/sas-artifact-41/brbo-impl/output` with Microsoft Excel.
+    1. Copy all contents of `guava-summary-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` and then paste at cell `A2` in Sheet `Most precise` of `table.xlsx`.
+    2. Copy all contents of `guava-individual-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` and then paste at cell `A13` in Sheet `Most precise`.
+    3. Copy all contents of `lang3-summary-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` and then paste at cell `J2` in Sheet `Most precise`.
+    4. Copy all contents of `lang3-individual-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` and then paste at cell `J13` in Sheet `Most precise`.
+    5. Copy all contents of `stringutils-summary-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` and then paste at cell `S2` in Sheet `Most precise`.
+    6. Copy all contents of `stringutils-individual-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` and then paste at cell `S13` in Sheet `Most precise`.
+    7. Copy all contents of `stac-summary-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` and then paste at cell `AB2` in Sheet `Most precise`.
+    8. Copy all contents of `stac-individual-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` and then paste at cell `AB13` in Sheet `Most precise`.
+    9. Copy all contents of `synthetic-summary-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` and then paste at cell `AT2` in Sheet `Most precise`.
+    10. Copy all contents of `synthetic-individual-DATE-TIME-allAmortize-60s-mostPrecise-000-099.csv` and then paste at cell `AT13` in Sheet `Most precise`.
+    11. Copy all contents of `synthetic-summary-DATE-TIME-allAmortize-60s-mostPrecise-100-199.csv` and then paste at cell `BC2` in Sheet `Most precise`.
+    12. Copy all contents of `synthetic-individual-DATE-TIME-allAmortize-60s-mostPrecise-100-199.csv` and then paste at cell `BC13` in Sheet `Most precise`.
+4. Collect results into `table.xlsx` for configuration `Constant-Weakened Bounds` (Table 1) in a similar way as the above step into Sheet `Less precise` in `table.xlsx`.
+5. Now Sheet `Summary` in `table.xlsx` should have similar results as in Table 1.
+    - Note that, it is observed that the number of verified programs in `Summary` may slightly differ from that of Table 1 *when running experiments from different machines*, due to our time out setting of ICRA. In particular, since we hardcoded the time out of running ICRA, machines with better (or poorer) performance may allow ICRA to infer more (or less) invariants within the fixed amount of timeout, which may contribute to a higher (or lower) number of verified programs in Table 1.
 
 ## Extend the brbo tool
 
@@ -66,6 +66,6 @@ Everything needed for artifact evaluation is under directory `/home/sas-artifact
 
 ### Run brbo on custom `*.java` files
 
-We enforce syntactic restriction on the `*.java` files that brbo accepts for simpler implementation. Thus, brbo will throw exceptions (with hopefully useful information about which syntactic restriction is violated), if a `*.java` file is not acceptable.
+We enforce syntactic restriction on the `*.java` files that brbo accepts (for simpler implementation). Thus, brbo will throw exceptions (with hopefully useful information about which syntactic restriction is violated), if a `*.java` file is not acceptable.
 
 See examples of acceptable `*.java` files under `/home/sas-artifact-41/brbo-impl/src/main/java/brbo/benchmarks` (and also see how to specify upper bounds).
