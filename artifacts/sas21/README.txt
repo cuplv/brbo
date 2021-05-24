@@ -12,6 +12,117 @@ Everything needed for artifact evaluation is under directory `/home/sas-artifact
     - `artifacts/sas21`: `table.xlsx` (which is used for generating Table 1 in the paper), and scripts for running the experiments.
 - `/home/sas-artifact-41/icra`: the source code and binaries of ICRA, which is an invariant verification tool that is used by brbo.
 
+### [Updated] How to set up the host machine (Windows)
+
+1. Set up WSL 2 according to https://docs.microsoft.com/en-us/windows/wsl/install-win10.
+2. Install Docker Desktop (WSL 2 backend): https://docs.docker.com/docker-for-windows/install/.
+
+We've successfully run the experiments on two Windows host machines with the following configurations.
+
+#### Machine 1 (Windows)
+
+##### Docker Desktop version
+
+```
+$ docker version
+Client:
+ Cloud integration: 1.0.14
+ Version:           20.10.6
+ API version:       1.41
+ Go version:        go1.16.3
+ Git commit:        370c289
+ Built:             Fri Apr  9 22:49:36 2021
+ OS/Arch:           windows/amd64
+ Context:           default
+ Experimental:      true
+
+Server: Docker Engine - Community
+ Engine:
+  Version:          20.10.6
+  API version:      1.41 (minimum version 1.12)
+  Go version:       go1.13.15
+  Git commit:       8728dd2
+  Built:            Fri Apr  9 22:44:56 2021
+  OS/Arch:          linux/amd64
+  Experimental:     false
+ containerd:
+  Version:          1.4.4
+  GitCommit:        05f951a3781f4f2c1911b05e61c160e9c30eaa8e
+ runc:
+  Version:          1.0.0-rc93
+  GitCommit:        12644e614e25b05da6fd08a38ffa0cfe1903fdec
+ docker-init:
+  Version:          0.19.0
+  GitCommit:        de40ad0
+```
+
+##### Windows version
+
+```
+20H2 (10.0.19042.985)
+```
+
+##### WSL version
+
+```
+PS C:\Users\Chao> wsl -l -v
+  NAME                   STATE           VERSION
+  docker-desktop         Running         2
+  docker-desktop-data    Running         2
+```
+
+#### Machine 2 (Windows)
+
+##### Docker desktop version
+
+```
+(09:20:13) [/] $ docker version
+Client:
+ Cloud integration: 1.0.14
+ Version:           20.10.6
+ API version:       1.41
+ Go version:        go1.16.3
+ Git commit:        370c289
+ Built:             Fri Apr  9 22:49:36 2021
+ OS/Arch:           windows/amd64
+ Context:           default
+ Experimental:      true
+
+Server: Docker Engine - Community
+ Engine:
+  Version:          20.10.6
+  API version:      1.41 (minimum version 1.12)
+  Go version:       go1.13.15
+  Git commit:       8728dd2
+  Built:            Fri Apr  9 22:44:56 2021
+  OS/Arch:          linux/amd64
+  Experimental:     false
+ containerd:
+  Version:          1.4.4
+  GitCommit:        05f951a3781f4f2c1911b05e61c160e9c30eaa8e
+ runc:
+  Version:          1.0.0-rc93
+  GitCommit:        12644e614e25b05da6fd08a38ffa0cfe1903fdec
+ docker-init:
+  Version:          0.19.0
+  GitCommit:        de40ad0
+```
+
+##### Windows version
+
+```
+2004 (10.0.19041.985)
+```
+
+##### WSL version
+
+```
+PS C:\Users\tianh> wsl -l -v
+  NAME                   STATE           VERSION
+  docker-desktop         Running         2
+  docker-desktop-data    Running         2
+```
+
 ### How to run the docker image
 
 1. Download the docker image `sas-artifact-41.tar`.
