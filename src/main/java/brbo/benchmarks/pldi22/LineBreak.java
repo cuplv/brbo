@@ -1,4 +1,4 @@
-package brbo.benchmarks.pldi21;
+package brbo.benchmarks.pldi22;
 
 import brbo.benchmarks.Common;
 
@@ -28,6 +28,7 @@ public abstract class LineBreak extends Common {
                 R += paraDelim;
                 curParagraph = 0;
             }
+            // it + curParagraph + totalLines = text
         }
         totalLines += curParagraph;
     }

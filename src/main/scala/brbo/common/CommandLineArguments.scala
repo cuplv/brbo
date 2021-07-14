@@ -31,7 +31,7 @@ class CommandLineArguments {
   private var printIcraInputs: Boolean = false
 
   @Option(name = "--directory", aliases = Array("-d"), required = true,
-    usage = "The directory to analyze.")
+    usage = "The directory (which will be recursively traversed) or the file to analyze.")
   private var directoryToAnalyze: String = "."
 
   @Option(name = "--icra-timeout", aliases = Array("-t"),
