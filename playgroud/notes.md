@@ -24,9 +24,17 @@ winpty docker run -it -v //c/Users/tianh/:/home/tianh --privileged debian-java-1
 
 To let `Ultimate.py` find Java 11 (installed by SDK MAN), add line `/root/.sdkman/candidates/java/current/bin/java` to `Ultimate.py` at line 225 in function `get_java`.
 
+#### Run in Docker
+
 ```
 root@b55c3f6c2cfb:/home/tianh/Desktop/UAutomizer-linux#  ./Ultimate.py --spec ../test/unreach-call.prp --architecture 64bit --file ../test/test.c
 root@b55c3f6c2cfb:/home/tianh/Desktop/UAutomizer-linux#  ./Ultimate.py --spec ../test/unreach-call.prp --architecture 64bit --file /home/tianh/Documents/workspace/brbo-impl/playgroud/examples/test.c
+```
+
+#### Run in WSL 2
+
+```
+~/win_c/Desktop/UAutomizer-linux$ sudo ./Ultimate.py --spec ../test/unreach-call.prp --architecture 64bit --file /home/tianhan/brbo-impl/playgroud/examples/test.c
 ```
 
 ### Run VeriAbs

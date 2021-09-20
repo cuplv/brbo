@@ -74,7 +74,7 @@ void main(int text)
     stringBuilder += text - linePointer;
     
     D1 = D1 + (text - linePointer);
-    assert(D1 <= text - 2);
+    assert(D1 <= text - 10);
     R = R + (text - linePointer);
     // assert (R <= text - 1);
   }

@@ -260,8 +260,6 @@ object TreeUtils {
     })
   }
 
-  private val INDENT = 2
-
   val loopKinds: Set[Tree.Kind] = HashSet[Tree.Kind](Tree.Kind.FOR_LOOP, Tree.Kind.WHILE_LOOP)
 
   def getMinimalEnclosingLoop(path: TreePath): Option[StatementTree] = {

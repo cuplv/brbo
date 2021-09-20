@@ -7,6 +7,7 @@ import org.checkerframework.dataflow.cfg.{CFGProcessor, ControlFlowGraph}
 
 import java.io.ByteArrayOutputStream
 import java.net.URI
+import java.util
 import javax.annotation.processing.Processor
 import javax.tools.JavaFileObject.Kind
 import javax.tools.SimpleJavaFileObject
@@ -47,7 +48,7 @@ object JavacUtils {
       // System.setErr(newErrSteam)
       // System.setOut(newOutSteam)
       val fileObject = new JavaSourceFromString(compilationUnitName, sourceCode)
-      javac.compile(List.of(fileObject), List.of(compilationUnitName), List.of(processor))
+      javac.compile(createJavaList(fileObject), createJavaList(compilationUnitName), createJavaList(processor), createJavaList())
 
       /*val javac2 = ToolProvider.getSystemJavaCompiler
       val diagnostics: DiagnosticCollector[JavaFileObject] = new DiagnosticCollector[JavaFileObject]
@@ -76,6 +77,12 @@ object JavacUtils {
       // System.setErr(oldErrStream)
       // System.setOut(oldOutStream)
     }
+  }
+
+  private def createJavaList[T](elements: T*): java.util.List[T] = {
+    val list = new util.LinkedList[T]()
+    elements.foreach(element => list.add(element))
+    list
   }
 
   /**
